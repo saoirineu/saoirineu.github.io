@@ -38,7 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       loading,
-      signInWithGoogle: () => signInWithPopup(auth, googleProvider).then(() => undefined),
+      signInWithGoogle: async () => {
+        try {
+          await signInWithPopup(auth, googleProvider);
+        } catch (err) {
+          // Alguns navegadores/headers podem bloquear fechamento da popup; redireciona como fallback.
+          if (err instanceof Error && err.message.includes('block the window')) {
+            await import('firebase/auth').then(({ signInWithRedirect }) => signInWithRedirect(auth, googleProvider));
+            return;
+          }
+          throw err;
+        }
+      },
       emailSignIn: (email, password) => signInWithEmailAndPassword(auth, email, password).then(() => undefined),
       emailSignUp: (email, password) => createUserWithEmailAndPassword(auth, email, password).then(() => undefined),
       signOut: () => firebaseSignOut(auth)
