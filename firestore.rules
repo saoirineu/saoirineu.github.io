@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(field) {
+      return isSignedIn() && request.auth.uid == request.resource.data[field];
+    }
+
+    match /usuarios/{uid} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /pessoas/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /igrejas/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /hinarios/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /hinos/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /bebidaLotes/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /trabalhos/{id} {
+      allow read: if true;
+      allow create: if isSignedIn() && isOwner('createdBy');
+      allow update: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /conceitos/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Default deny anything not matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
