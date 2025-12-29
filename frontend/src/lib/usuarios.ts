@@ -1,4 +1,4 @@
-import { Timestamp, collection, doc, getDoc, setDoc } from 'firebase/firestore';
+import { Timestamp, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 import { db } from './firebase';
 
@@ -31,6 +31,15 @@ export type UsuarioPerfil = {
 };
 
 const usuariosRef = collection(db, 'usuarios');
+
+export async function fetchUsuarios(): Promise<UsuarioPerfil[]> {
+  const snapshot = await getDocs(usuariosRef);
+  return snapshot.docs.map(docSnap => {
+    const data = docSnap.data() as UsuarioPerfil;
+    const { uid: _, ...rest } = data;
+    return { uid: docSnap.id, ...rest };
+  });
+}
 
 export async function fetchUsuario(uid: string): Promise<UsuarioPerfil | null> {
   const snap = await getDoc(doc(usuariosRef, uid));

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  deleteDoc,
   getDocs,
   orderBy,
   query,
@@ -46,6 +47,12 @@ export type Trabalho = {
 };
 
 const trabalhosRef = collection(db, 'trabalhos');
+const igrejasRef = collection(db, 'igrejas');
+
+function cleanUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
+  return Object.fromEntries(entries) as T;
+}
 
 export async function fetchTrabalhos(): Promise<Trabalho[]> {
   const q = query(trabalhosRef, orderBy('data', 'desc'));
@@ -96,6 +103,13 @@ export type TrabalhoInput = {
 export type IgrejaInfo = {
   id: string;
   nome: string;
+  cidade?: string;
+  estado?: string;
+  pais?: string;
+  linhagem?: string;
+  observacoes?: string;
+  lat?: number;
+  lng?: number;
 };
 
 export type BebidaInfo = {
@@ -105,15 +119,70 @@ export type BebidaInfo = {
 
 export async function fetchIgrejas(): Promise<IgrejaInfo[]> {
   try {
-    const q = query(collection(db, 'igrejas'));
+    const q = query(igrejasRef);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      nome: (doc.data() as any).nome || doc.id
-    }));
+    return snapshot.docs.map(doc => {
+      const d = doc.data() as any;
+      return {
+        id: doc.id,
+        nome: d.nome || doc.id,
+        cidade: d.cidade,
+        estado: d.estado,
+        pais: d.pais,
+        linhagem: d.linhagem,
+        observacoes: d.observacoes,
+        lat: typeof d.lat === 'number' ? d.lat : undefined,
+        lng: typeof d.lng === 'number' ? d.lng : undefined
+      };
+    });
   } catch {
     return [];
   }
+}
+
+export type IgrejaInput = {
+  nome: string;
+  cidade?: string;
+  estado?: string;
+  pais?: string;
+  linhagem?: string;
+  observacoes?: string;
+  lat?: number;
+  lng?: number;
+};
+
+export async function createIgreja(input: IgrejaInput) {
+  const payload = cleanUndefined({
+    nome: input.nome,
+    cidade: input.cidade || undefined,
+    estado: input.estado || undefined,
+    pais: input.pais || undefined,
+    linhagem: input.linhagem || undefined,
+    observacoes: input.observacoes || undefined,
+    lat: typeof input.lat === 'number' ? input.lat : undefined,
+    lng: typeof input.lng === 'number' ? input.lng : undefined,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now()
+  });
+
+  return addDoc(igrejasRef, payload as Record<string, unknown>);
+}
+
+export async function updateIgreja(id: string, input: Partial<IgrejaInput>) {
+  const ref = doc(igrejasRef, id);
+  const payload = cleanUndefined({
+    ...input,
+    lat: typeof input.lat === 'number' ? input.lat : undefined,
+    lng: typeof input.lng === 'number' ? input.lng : undefined,
+    updatedAt: Timestamp.now()
+  });
+
+  return updateDoc(ref, payload as Record<string, unknown>);
+}
+
+export async function deleteIgreja(id: string) {
+  const ref = doc(igrejasRef, id);
+  return deleteDoc(ref);
 }
 
 export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
