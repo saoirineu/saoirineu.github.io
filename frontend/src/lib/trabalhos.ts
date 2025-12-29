@@ -1,4 +1,13 @@
-import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  Timestamp,
+  updateDoc
+} from 'firebase/firestore';
 
 import { db } from './firebase';
 
@@ -40,4 +49,50 @@ export async function fetchTrabalhos(): Promise<Trabalho[]> {
       horarioInicio: (data as any).horarioInicio ?? null
     } as Trabalho;
   });
+}
+
+export type TrabalhoInput = {
+  titulo?: string;
+  data?: Timestamp | null;
+  horarioInicio?: Timestamp | null;
+  duracaoEsperadaMin?: number | null;
+  duracaoEfetivaMin?: number | null;
+  local?: string;
+  hinarios?: string[];
+  igrejasResponsaveis?: string[];
+  participantes?: {
+    homens?: number;
+    mulheres?: number;
+    outros?: number;
+  };
+  bebida?: {
+    loteId?: string;
+    quantidadeLitros?: number | null;
+  };
+  anotacoes?: string;
+  createdBy: string;
+};
+
+export async function createTrabalho(input: TrabalhoInput) {
+  const payload: Record<string, unknown> = {
+    ...input,
+    duracaoEsperadaMin: input.duracaoEsperadaMin ?? null,
+    duracaoEfetivaMin: input.duracaoEfetivaMin ?? null,
+    data: input.data ?? null,
+    horarioInicio: input.horarioInicio ?? null,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now()
+  };
+
+  return addDoc(trabalhosRef, payload);
+}
+
+export async function updateTrabalho(id: string, input: Partial<TrabalhoInput>) {
+  const ref = doc(trabalhosRef, id);
+  const payload: Record<string, unknown> = {
+    ...input,
+    updatedAt: Timestamp.now()
+  };
+
+  return updateDoc(ref, payload);
 }
