@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Timestamp } from 'firebase/firestore';
 
@@ -163,240 +163,248 @@ export function TrabalhosPage() {
       </div>
 
       <form
-        className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2"
+        className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
         onSubmit={e => {
           e.preventDefault();
           mutation.mutate();
         }}
       >
-        <div className="sm:col-span-2">
+        <div>
           <h2 className="text-sm font-semibold text-slate-800">Novo trabalho</h2>
           <p className="text-xs text-slate-500">Campos principais para criar rapidamente.</p>
         </div>
 
-        <label className="text-sm text-slate-700">
-          Título
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.titulo}
-            onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
-            placeholder="Trabalho de..."
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3 sm:grid-cols-2">
           <label className="text-sm text-slate-700">
-            Data
+            Título
             <input
-              type="date"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.data}
-              onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
+              value={form.titulo}
+              onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+              placeholder="Trabalho de..."
             />
           </label>
-          <label className="text-sm text-slate-700">
-            Horário início
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm text-slate-700">
+              Data
+              <input
+                type="date"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.data}
+                onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Horário início
+              <input
+                type="time"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.horario}
+                onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:col-span-2">
+            <label className="text-sm text-slate-700">
+              Duração esperada (min)
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.duracaoEsperadaMin}
+                onChange={e => setForm(f => ({ ...f, duracaoEsperadaMin: e.target.value }))}
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Duração efetiva (min)
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.duracaoEfetivaMin}
+                onChange={e => setForm(f => ({ ...f, duracaoEfetivaMin: e.target.value }))}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm text-slate-700">
+              Igreja responsável (cadastrada)
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.igrejaRespId}
+                onChange={e => {
+                  const found = igrejasQuery.data?.find(i => i.id === e.target.value);
+                  setForm(f => ({ ...f, igrejaRespId: e.target.value, igrejaRespNome: found?.nome ?? '' }));
+                }}
+              >
+                <option value="">— Selecionar —</option>
+                {igrejasQuery.data?.map(ig => (
+                  <option key={ig.id} value={ig.id}>
+                    {ig.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="text-sm text-slate-700">
+              Igreja responsável (texto livre)
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.igrejasTexto}
+                onChange={e => setForm(f => ({ ...f, igrejasTexto: e.target.value }))}
+                placeholder="Ex.: igreja não cadastrada ou múltiplas"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm text-slate-700">
+              Local (igreja cadastrada)
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.localId}
+                onChange={e => {
+                  const found = igrejasQuery.data?.find(i => i.id === e.target.value);
+                  setForm(f => ({ ...f, localId: e.target.value, localNome: found?.nome ?? '' }));
+                }}
+              >
+                <option value="">— Selecionar —</option>
+                {igrejasQuery.data?.map(ig => (
+                  <option key={ig.id} value={ig.id}>
+                    {ig.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-slate-700">
+              Local (texto livre)
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.localTexto}
+                onChange={e => setForm(f => ({ ...f, localTexto: e.target.value }))}
+                placeholder="Ex.: nome da igreja não cadastrada ou outra localidade"
+              />
+            </label>
+          </div>
+
+          <label className="text-sm text-slate-700 sm:col-span-2">
+            Hinários (separar por vírgula)
             <input
-              type="time"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.horario}
-              onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}
+              value={form.hinarios}
+              onChange={e => setForm(f => ({ ...f, hinarios: e.target.value }))}
+              placeholder="Ex.: O Cruzeiro, Lua Branca"
             />
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3">
+          <div className="grid grid-cols-4 gap-3">
+            <label className="text-sm text-slate-700">
+              Homens
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.homens}
+                onChange={e => setForm(f => ({ ...f, homens: e.target.value }))}
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Mulheres
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.mulheres}
+                onChange={e => setForm(f => ({ ...f, mulheres: e.target.value }))}
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Crianças
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.criancas}
+                onChange={e => setForm(f => ({ ...f, criancas: e.target.value }))}
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Outros
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.outros}
+                onChange={e => setForm(f => ({ ...f, outros: e.target.value }))}
+              />
+            </label>
+          </div>
           <label className="text-sm text-slate-700">
-            Local (igreja cadastrada)
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.localId}
-              onChange={e => {
-                const found = igrejasQuery.data?.find(i => i.id === e.target.value);
-                setForm(f => ({ ...f, localId: e.target.value, localNome: found?.nome ?? '' }));
-              }}
-            >
-              <option value="">— Selecionar —</option>
-              {igrejasQuery.data?.map(ig => (
-                <option key={ig.id} value={ig.id}>
-                  {ig.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm text-slate-700">
-            Local (texto livre)
+            Descrição de "outros"
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.localTexto}
-              onChange={e => setForm(f => ({ ...f, localTexto: e.target.value }))}
-              placeholder="Ex.: nome da igreja não cadastrada ou outra localidade"
+              value={form.outrosDescricao}
+              onChange={e => setForm(f => ({ ...f, outrosDescricao: e.target.value }))}
+              placeholder="Ex.: visitantes, músicos convidados, equipe técnica"
             />
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm text-slate-700">
-            Duração esperada (min)
-            <input
-              type="number"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.duracaoEsperadaMin}
-              onChange={e => setForm(f => ({ ...f, duracaoEsperadaMin: e.target.value }))}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            Duração efetiva (min)
-            <input
-              type="number"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.duracaoEfetivaMin}
-              onChange={e => setForm(f => ({ ...f, duracaoEfetivaMin: e.target.value }))}
-            />
-          </label>
-        </div>
-
-        <label className="text-sm text-slate-700">
-          Hinários (separar por vírgula)
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.hinarios}
-            onChange={e => setForm(f => ({ ...f, hinarios: e.target.value }))}
-            placeholder="Ex.: O Cruzeiro, Lua Branca"
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm text-slate-700">
-            Igreja responsável (cadastrada)
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.igrejaRespId}
-              onChange={e => {
-                const found = igrejasQuery.data?.find(i => i.id === e.target.value);
-                setForm(f => ({ ...f, igrejaRespId: e.target.value, igrejaRespNome: found?.nome ?? '' }));
-              }}
-            >
-              <option value="">— Selecionar —</option>
-              {igrejasQuery.data?.map(ig => (
-                <option key={ig.id} value={ig.id}>
-                  {ig.nome}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm text-slate-700">
+              Lote de Daime (cadastrado)
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.loteId}
+                onChange={e => {
+                  const found = bebidaQuery.data?.find(b => b.id === e.target.value);
+                  setForm(f => ({ ...f, loteId: e.target.value, loteDescricao: found?.descricao ?? '' }));
+                }}
+              >
+                <option value="">— Selecionar —</option>
+                {bebidaQuery.data?.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.descricao}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-slate-700">
+              Quantidade (L)
+              <input
+                type="number"
+                step="0.1"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.quantidadeLitros}
+                onChange={e => setForm(f => ({ ...f, quantidadeLitros: e.target.value }))}
+              />
+            </label>
+          </div>
 
           <label className="text-sm text-slate-700">
-            Igreja responsável (texto livre)
+            Descrição do Daime (texto livre)
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.igrejasTexto}
-              onChange={e => setForm(f => ({ ...f, igrejasTexto: e.target.value }))}
-              placeholder="Ex.: igreja não cadastrada ou múltiplas"
+              value={form.loteTexto}
+              onChange={e => setForm(f => ({ ...f, loteTexto: e.target.value }))}
+              placeholder="Ex.: primeiro grau, 1x1, 2023, Céu do Vale"
             />
           </label>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="rounded-lg bg-slate-50/70 p-3">
           <label className="text-sm text-slate-700">
-            Homens
-            <input
-              type="number"
+            Anotações
+            <textarea
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.homens}
-              onChange={e => setForm(f => ({ ...f, homens: e.target.value }))}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            Mulheres
-            <input
-              type="number"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.mulheres}
-              onChange={e => setForm(f => ({ ...f, mulheres: e.target.value }))}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            Crianças
-            <input
-              type="number"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.criancas}
-              onChange={e => setForm(f => ({ ...f, criancas: e.target.value }))}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            Outros
-            <input
-              type="number"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.outros}
-              onChange={e => setForm(f => ({ ...f, outros: e.target.value }))}
-            />
-          </label>
-        </div>
-        <label className="text-sm text-slate-700">
-          Descrição de "outros"
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.outrosDescricao}
-            onChange={e => setForm(f => ({ ...f, outrosDescricao: e.target.value }))}
-            placeholder="Ex.: visitantes, músicos convidados, equipe técnica"
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm text-slate-700">
-            Lote de Daime (cadastrado)
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.loteId}
-              onChange={e => {
-                const found = bebidaQuery.data?.find(b => b.id === e.target.value);
-                setForm(f => ({ ...f, loteId: e.target.value, loteDescricao: found?.descricao ?? '' }));
-              }}
-            >
-              <option value="">— Selecionar —</option>
-              {bebidaQuery.data?.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.descricao}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm text-slate-700">
-            Quantidade (L)
-            <input
-              type="number"
-              step="0.1"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.quantidadeLitros}
-              onChange={e => setForm(f => ({ ...f, quantidadeLitros: e.target.value }))}
+              rows={3}
+              value={form.anotacoes}
+              onChange={e => setForm(f => ({ ...f, anotacoes: e.target.value }))}
             />
           </label>
         </div>
 
-        <label className="text-sm text-slate-700">
-          Descrição do Daime (texto livre)
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.loteTexto}
-            onChange={e => setForm(f => ({ ...f, loteTexto: e.target.value }))}
-            placeholder="Ex.: primeiro grau, 1x1, 2023, Céu do Vale"
-          />
-        </label>
-
-        <label className="sm:col-span-2 text-sm text-slate-700">
-          Anotações
-          <textarea
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            rows={3}
-            value={form.anotacoes}
-            onChange={e => setForm(f => ({ ...f, anotacoes: e.target.value }))}
-          />
-        </label>
-
-        <div className="sm:col-span-2 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={mutation.isPending}
@@ -432,8 +440,7 @@ export function TrabalhosPage() {
                 <div>
                   <div className="text-lg font-semibold text-slate-900">{trabalho.titulo || 'Trabalho'}</div>
                   <div className="text-sm text-slate-600">
-                    {formatDate(trabalho.data)} • {formatTime(trabalho.horarioInicio)} •
-                    {' '}
+                    {formatDate(trabalho.data)} • {formatTime(trabalho.horarioInicio)} •{' '}
                     {trabalho.localNome || trabalho.localTexto || 'Local a definir'}
                   </div>
                 </div>
