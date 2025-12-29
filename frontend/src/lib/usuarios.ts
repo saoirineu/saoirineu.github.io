@@ -21,6 +21,10 @@ export type UsuarioPerfil = {
   fardamentoIgrejaNome?: string;
   fardadorNome?: string;
   fardadoComQuem?: string;
+  padrinhoMadrinha?: boolean;
+  padrinhoIgrejasIds?: string[];
+  padrinhoIgrejasNomes?: string[];
+  papeisDoutrina?: string[];
   observacoes?: string;
   updatedAt?: Timestamp;
   createdAt?: Timestamp;
@@ -39,6 +43,7 @@ export async function fetchUsuario(uid: string): Promise<UsuarioPerfil | null> {
 export async function upsertUsuario(uid: string, data: Partial<UsuarioPerfil>) {
   const ref = doc(usuariosRef, uid);
   const payload = {
+    uid,
     ...data,
     updatedAt: Timestamp.now()
   } as Record<string, unknown>;

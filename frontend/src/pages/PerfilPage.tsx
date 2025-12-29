@@ -23,6 +23,10 @@ const initialForm = {
   fardamentoIgrejaNome: '',
   fardadorNome: '',
   fardadoComQuem: '',
+  padrinhoMadrinha: false,
+  padrinhoIgrejasIds: [] as string[],
+  padrinhoIgrejasTexto: '',
+  papeisTexto: '',
   observacoes: ''
 };
 
@@ -36,6 +40,7 @@ export default function PerfilPage() {
   const qc = useQueryClient();
 
   const [form, setForm] = useState(initialForm);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const igrejasQuery = useQuery({ queryKey: ['igrejas'], queryFn: fetchIgrejas });
   const perfilQuery = useQuery({
@@ -66,6 +71,10 @@ export default function PerfilPage() {
       fardamentoIgrejaNome: data?.fardamentoIgrejaNome || '',
       fardadorNome: data?.fardadorNome || '',
       fardadoComQuem: data?.fardadoComQuem || '',
+      padrinhoMadrinha: data?.padrinhoMadrinha || false,
+      padrinhoIgrejasIds: data?.padrinhoIgrejasIds || [],
+      padrinhoIgrejasTexto: data?.padrinhoIgrejasNomes?.join(', ') || '',
+      papeisTexto: data?.papeisDoutrina?.join(', ') || '',
       observacoes: data?.observacoes || ''
     }));
   }, [perfilQuery.data, user]);
@@ -73,6 +82,19 @@ export default function PerfilPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sessão expirada');
+      setErrorMsg('');
+
+      const isFardado = form.fardado;
+      const isPadrinho = isFardado && form.padrinhoMadrinha;
+      const padrinhoIgrejasNomes = form.padrinhoIgrejasTexto
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      const papeisList = form.papeisTexto
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
       const payload: Partial<UsuarioPerfil> = {
         uid: user.uid,
         displayName: form.displayName || undefined,
@@ -85,19 +107,28 @@ export default function PerfilPage() {
         igrejaAtualId: form.igrejaAtualId || undefined,
         igrejaAtualNome: form.igrejaAtualNome || undefined,
         igrejaOrigemNome: form.igrejaOrigemNome || undefined,
-        fardado: form.fardado,
-        fardamentoData: form.fardamentoData || undefined,
-        fardamentoLocal: form.fardamentoLocal || undefined,
-        fardamentoIgrejaId: form.fardamentoIgrejaId || undefined,
-        fardamentoIgrejaNome: form.fardamentoIgrejaNome || undefined,
-        fardadorNome: form.fardadorNome || undefined,
-        fardadoComQuem: form.fardadoComQuem || undefined,
+        fardado: isFardado,
+        fardamentoData: isFardado ? form.fardamentoData || undefined : undefined,
+        fardamentoLocal: isFardado ? form.fardamentoLocal || undefined : undefined,
+        fardamentoIgrejaId: isFardado ? form.fardamentoIgrejaId || undefined : undefined,
+        fardamentoIgrejaNome: isFardado ? form.fardamentoIgrejaNome || undefined : undefined,
+        fardadorNome: isFardado ? form.fardadorNome || undefined : undefined,
+        fardadoComQuem: isFardado ? form.fardadoComQuem || undefined : undefined,
+        padrinhoMadrinha: isPadrinho,
+        padrinhoIgrejasIds: isPadrinho ? form.padrinhoIgrejasIds.filter(Boolean) : undefined,
+        padrinhoIgrejasNomes: isPadrinho ? padrinhoIgrejasNomes : undefined,
+        papeisDoutrina: papeisList.length ? papeisList : undefined,
         observacoes: form.observacoes || undefined
       };
+
       return upsertUsuario(user.uid, payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['usuario', user?.uid] });
+    },
+    onError: err => {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar';
+      setErrorMsg(msg);
     }
   });
 
@@ -258,91 +289,160 @@ export default function PerfilPage() {
         </div>
 
         <div className="space-y-3 rounded-lg bg-slate-100 p-3">
-          <div className="flex items-center gap-2">
-            <input
-              id="fardado"
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 text-slate-900"
-              checked={form.fardado}
-              onChange={e => setForm(f => ({ ...f, fardado: e.target.checked }))}
-            />
-            <label htmlFor="fardado" className="text-sm font-medium text-slate-800">Sou fardado(a)</label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+              <input
+                id="fardado"
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-slate-900"
+                checked={form.fardado}
+                onChange={e =>
+                  setForm(f => ({
+                    ...f,
+                    fardado: e.target.checked,
+                    padrinhoMadrinha: e.target.checked ? f.padrinhoMadrinha : false,
+                    padrinhoIgrejasIds: e.target.checked ? f.padrinhoIgrejasIds : [],
+                    padrinhoIgrejasTexto: e.target.checked ? f.padrinhoIgrejasTexto : ''
+                  }))
+                }
+              />
+              Sou fardado(a)
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+              <input
+                id="padrinho"
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-slate-900"
+                checked={form.padrinhoMadrinha}
+                disabled={!form.fardado}
+                onChange={e => setForm(f => ({ ...f, padrinhoMadrinha: e.target.checked }))}
+              />
+              Sou padrinho/madrinha
+            </label>
           </div>
 
           {form.fardado ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-3">
-                <label className="text-sm text-slate-700">
-                  Data do fardamento
-                  <input
-                    type="date"
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    value={form.fardamentoData}
-                    onChange={e => setForm(f => ({ ...f, fardamentoData: e.target.value }))}
-                  />
-                </label>
-                <label className="text-sm text-slate-700">
-                  Local do fardamento
-                  <input
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    value={form.fardamentoLocal}
-                    onChange={e => setForm(f => ({ ...f, fardamentoLocal: e.target.value }))}
-                    placeholder="Cidade/estado ou igreja"
-                  />
-                </label>
-                <label className="text-sm text-slate-700">
-                  Quem me fardou
-                  <input
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    value={form.fardadorNome}
-                    onChange={e => setForm(f => ({ ...f, fardadorNome: e.target.value }))}
-                    placeholder="Nome do padrinho/madrinha"
-                  />
-                </label>
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
+                  <label className="text-sm text-slate-700">
+                    Data do fardamento
+                    <input
+                      type="date"
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.fardamentoData}
+                      onChange={e => setForm(f => ({ ...f, fardamentoData: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-sm text-slate-700">
+                    Local do fardamento
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.fardamentoLocal}
+                      onChange={e => setForm(f => ({ ...f, fardamentoLocal: e.target.value }))}
+                      placeholder="Cidade/estado ou igreja"
+                    />
+                  </label>
+                  <label className="text-sm text-slate-700">
+                    Quem me fardou
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.fardadorNome}
+                      onChange={e => setForm(f => ({ ...f, fardadorNome: e.target.value }))}
+                      placeholder="Nome do padrinho/madrinha"
+                    />
+                  </label>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-sm text-slate-700">
+                    Igreja onde fui fardado (cadastrada)
+                    <select
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.fardamentoIgrejaId}
+                      onChange={e => {
+                        const found = igrejasQuery.data?.find(i => i.id === e.target.value);
+                        setForm(f => ({ ...f, fardamentoIgrejaId: e.target.value, fardamentoIgrejaNome: found?.nome ?? '' }));
+                      }}
+                    >
+                      <option value="">— Selecionar —</option>
+                      {igrejasQuery.data?.map(ig => (
+                        <option key={ig.id} value={ig.id}>
+                          {ig.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm text-slate-700">
+                    Igreja onde fui fardado (texto livre)
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.fardamentoIgrejaNome}
+                      onChange={e => setForm(f => ({ ...f, fardamentoIgrejaNome: e.target.value }))}
+                      placeholder="Se não estiver cadastrada"
+                    />
+                  </label>
+                  <label className="text-sm text-slate-700">
+                    Com quem me fardei
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.fardadoComQuem}
+                      onChange={e => setForm(f => ({ ...f, fardadoComQuem: e.target.value }))}
+                      placeholder="Outras pessoas fardadas junto"
+                    />
+                  </label>
+                </div>
               </div>
-              <div className="space-y-3">
-                <label className="text-sm text-slate-700">
-                  Igreja onde fui fardado (cadastrada)
-                  <select
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    value={form.fardamentoIgrejaId}
-                    onChange={e => {
-                      const found = igrejasQuery.data?.find(i => i.id === e.target.value);
-                      setForm(f => ({ ...f, fardamentoIgrejaId: e.target.value, fardamentoIgrejaNome: found?.nome ?? '' }));
-                    }}
-                  >
-                    <option value="">— Selecionar —</option>
-                    {igrejasQuery.data?.map(ig => (
-                      <option key={ig.id} value={ig.id}>
-                        {ig.nome}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm text-slate-700">
-                  Igreja onde fui fardado (texto livre)
-                  <input
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    value={form.fardamentoIgrejaNome}
-                    onChange={e => setForm(f => ({ ...f, fardamentoIgrejaNome: e.target.value }))}
-                    placeholder="Se não estiver cadastrada"
-                  />
-                </label>
-                <label className="text-sm text-slate-700">
-                  Com quem me fardei
-                  <input
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    value={form.fardadoComQuem}
-                    onChange={e => setForm(f => ({ ...f, fardadoComQuem: e.target.value }))}
-                    placeholder="Outras pessoas fardadas junto"
-                  />
-                </label>
-              </div>
-            </div>
+
+              {form.padrinhoMadrinha ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm text-slate-700">
+                    Igrejas onde sou padrinho/madrinha (cadastradas)
+                    <select
+                      multiple
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.padrinhoIgrejasIds}
+                      onChange={e => {
+                        const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+                        setForm(f => ({ ...f, padrinhoIgrejasIds: selected }));
+                      }}
+                      size={Math.min(igrejasQuery.data?.length ?? 4, 6)}
+                    >
+                      {igrejasQuery.data?.map(ig => (
+                        <option key={ig.id} value={ig.id}>
+                          {ig.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm text-slate-700">
+                    Igrejas onde sou padrinho/madrinha (texto livre)
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      value={form.padrinhoIgrejasTexto}
+                      onChange={e => setForm(f => ({ ...f, padrinhoIgrejasTexto: e.target.value }))}
+                      placeholder="Ex.: nome de igrejas não cadastradas"
+                    />
+                  </label>
+                </div>
+              ) : null}
+            </>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="space-y-2">
+          <label className="text-sm text-slate-700">
+            Papéis na doutrina (separar por vírgula)
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={form.papeisTexto}
+              onChange={e => setForm(f => ({ ...f, papeisTexto: e.target.value }))}
+              placeholder="Ex.: tesoureiro, coordenador, músico oficial, limpeza"
+            />
+          </label>
+          <p className="text-xs text-slate-500">Use termos livres (ex.: tesoureiro, cozinheira oficial, organização, arrumação, limpeza, músico, músico oficial).</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="submit"
             disabled={mutation.isPending}
@@ -352,6 +452,7 @@ export default function PerfilPage() {
           </button>
           {mutation.isError ? <span className="text-sm text-red-600">Erro ao salvar.</span> : null}
           {mutation.isSuccess ? <span className="text-sm text-green-700">Salvo.</span> : null}
+          {errorMsg ? <span className="text-sm text-red-600">{errorMsg}</span> : null}
         </div>
       </form>
     </div>
