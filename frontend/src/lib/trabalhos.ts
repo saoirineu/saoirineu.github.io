@@ -20,16 +20,25 @@ export type Trabalho = {
   duracaoEfetivaMin?: number;
   anotacoes?: string;
   participantes?: {
+    total?: number;
     homens?: number;
     mulheres?: number;
+    criancas?: number;
     outros?: number;
+    outrosDescricao?: string;
   };
   hinarios?: string[];
-  igrejasResponsaveis?: string[];
-  local?: string;
+  igrejasResponsaveisIds?: string[];
+  igrejasResponsaveisNomes?: string[];
+  igrejasResponsaveisTexto?: string;
+  localId?: string;
+  localNome?: string;
+  localTexto?: string;
   bebida?: {
     loteRef?: string;
     loteId?: string;
+    loteDescricao?: string;
+    loteTexto?: string;
     quantidadeLitros?: number;
   };
   createdBy?: string;
@@ -57,21 +66,69 @@ export type TrabalhoInput = {
   horarioInicio?: Timestamp | null;
   duracaoEsperadaMin?: number | null;
   duracaoEfetivaMin?: number | null;
-  local?: string;
+  localId?: string;
+  localNome?: string;
+  localTexto?: string;
   hinarios?: string[];
-  igrejasResponsaveis?: string[];
+  igrejasResponsaveisIds?: string[];
+  igrejasResponsaveisNomes?: string[];
+  igrejasResponsaveisTexto?: string;
   participantes?: {
+    total?: number;
     homens?: number;
     mulheres?: number;
+    criancas?: number;
     outros?: number;
+    outrosDescricao?: string;
   };
   bebida?: {
     loteId?: string;
+    loteDescricao?: string;
+    loteTexto?: string;
     quantidadeLitros?: number | null;
   };
   anotacoes?: string;
   createdBy: string;
 };
+
+export type IgrejaInfo = {
+  id: string;
+  nome: string;
+};
+
+export type BebidaInfo = {
+  id: string;
+  descricao: string;
+};
+
+export async function fetchIgrejas(): Promise<IgrejaInfo[]> {
+  try {
+    const q = query(collection(db, 'igrejas'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      nome: (doc.data() as any).nome || doc.id
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
+  try {
+    const q = query(collection(db, 'bebidaLotes'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+      const d = doc.data() as any;
+      const desc = d.descricao
+        ? d.descricao
+        : `${d.grau ?? '?'}º grau, ${d.concentracao ?? ''} ${d.ano ?? ''} ${d.localidade ?? ''}`.trim();
+      return { id: doc.id, descricao: desc };
+    });
+  } catch {
+    return [];
+  }
+}
 
 export async function createTrabalho(input: TrabalhoInput) {
   const payload: Record<string, unknown> = {
