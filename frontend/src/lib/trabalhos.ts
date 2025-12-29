@@ -21,6 +21,7 @@ export type Trabalho = {
   anotacoes?: string;
   participantes?: {
     total?: number;
+    fardados?: number;
     homens?: number;
     mulheres?: number;
     criancas?: number;
@@ -75,6 +76,7 @@ export type TrabalhoInput = {
   igrejasResponsaveisTexto?: string;
   participantes?: {
     total?: number;
+    fardados?: number;
     homens?: number;
     mulheres?: number;
     criancas?: number;

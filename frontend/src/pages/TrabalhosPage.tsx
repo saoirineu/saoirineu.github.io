@@ -27,6 +27,7 @@ function totalParticipantes(p?: Trabalho['participantes']) {
     (p.total ?? 0) || (p.homens ?? 0) + (p.mulheres ?? 0) + (p.criancas ?? 0) + (p.outros ?? 0);
   return {
     total,
+    fardados: p.fardados ?? null,
     homens: p.homens ?? 0,
     mulheres: p.mulheres ?? 0,
     criancas: p.criancas ?? 0,
@@ -55,6 +56,8 @@ export function TrabalhosPage() {
     localId: '',
     localNome: '',
     localTexto: '',
+    total: '',
+    fardados: '',
     homens: '',
     mulheres: '',
     criancas: '',
@@ -80,6 +83,13 @@ export function TrabalhosPage() {
       const localSelecionado = igrejasQuery.data?.find(i => i.id === form.localId);
       const loteSelecionado = bebidaQuery.data?.find(b => b.id === form.loteId);
 
+      const totalManual = form.total ? Number(form.total) : undefined;
+      const derivedTotal =
+        (form.homens ? Number(form.homens) : 0) +
+        (form.mulheres ? Number(form.mulheres) : 0) +
+        (form.criancas ? Number(form.criancas) : 0) +
+        (form.outros ? Number(form.outros) : 0);
+
       return createTrabalho({
         titulo: form.titulo || undefined,
         data: dataTs,
@@ -97,11 +107,8 @@ export function TrabalhosPage() {
         igrejasResponsaveisNomes: igrejaResp ? [igrejaResp.nome] : undefined,
         igrejasResponsaveisTexto: form.igrejasTexto || undefined,
         participantes: {
-          total:
-            (form.homens ? Number(form.homens) : 0) +
-            (form.mulheres ? Number(form.mulheres) : 0) +
-            (form.criancas ? Number(form.criancas) : 0) +
-            (form.outros ? Number(form.outros) : 0),
+          total: totalManual ?? derivedTotal,
+          fardados: form.fardados ? Number(form.fardados) : undefined,
           homens: form.homens ? Number(form.homens) : undefined,
           mulheres: form.mulheres ? Number(form.mulheres) : undefined,
           criancas: form.criancas ? Number(form.criancas) : undefined,
@@ -133,6 +140,8 @@ export function TrabalhosPage() {
         localId: '',
         localNome: '',
         localTexto: '',
+        total: '',
+        fardados: '',
         homens: '',
         mulheres: '',
         criancas: '',
@@ -174,7 +183,7 @@ export function TrabalhosPage() {
           <p className="text-xs text-slate-500">Campos principais para criar rapidamente.</p>
         </div>
 
-        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3 sm:grid-cols-2">
+        <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
           <label className="text-sm text-slate-700">
             Título
             <input
@@ -226,7 +235,7 @@ export function TrabalhosPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3 sm:grid-cols-2">
+        <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm text-slate-700">
               Igreja responsável (cadastrada)
@@ -299,8 +308,26 @@ export function TrabalhosPage() {
           </label>
         </div>
 
-        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3">
-          <div className="grid grid-cols-4 gap-3">
+        <div className="grid gap-3 rounded-lg bg-slate-100 p-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <label className="text-sm text-slate-700">
+              Total de pessoas
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.total}
+                onChange={e => setForm(f => ({ ...f, total: e.target.value }))}
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Fardados
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.fardados}
+                onChange={e => setForm(f => ({ ...f, fardados: e.target.value }))}
+              />
+            </label>
             <label className="text-sm text-slate-700">
               Homens
               <input
@@ -349,7 +376,7 @@ export function TrabalhosPage() {
           </label>
         </div>
 
-        <div className="grid gap-3 rounded-lg bg-slate-50/70 p-3">
+        <div className="grid gap-3 rounded-lg bg-slate-100 p-3">
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm text-slate-700">
               Lote de Daime (cadastrado)
@@ -392,7 +419,7 @@ export function TrabalhosPage() {
           </label>
         </div>
 
-        <div className="rounded-lg bg-slate-50/70 p-3">
+        <div className="rounded-lg bg-slate-100 p-3">
           <label className="text-sm text-slate-700">
             Anotações
             <textarea
@@ -466,7 +493,7 @@ export function TrabalhosPage() {
                 <div>
                   <span className="font-medium">Participantes:</span>{' '}
                   {participantes
-                    ? `${participantes.total} (H:${participantes.homens} M:${participantes.mulheres}` +
+                    ? `${participantes.total} (F:${participantes.fardados ?? '0'} H:${participantes.homens} M:${participantes.mulheres}` +
                       ` C:${participantes.criancas} ` +
                       `${participantes.outros ? ` O:${participantes.outros}` : ''})`
                     : '—'}
