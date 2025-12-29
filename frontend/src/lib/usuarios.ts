@@ -32,6 +32,11 @@ export type UsuarioPerfil = {
 
 const usuariosRef = collection(db, 'usuarios');
 
+function cleanUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
+  return Object.fromEntries(entries) as T;
+}
+
 export async function fetchUsuarios(): Promise<UsuarioPerfil[]> {
   const snapshot = await getDocs(usuariosRef);
   return snapshot.docs.map(docSnap => {
@@ -51,11 +56,11 @@ export async function fetchUsuario(uid: string): Promise<UsuarioPerfil | null> {
 
 export async function upsertUsuario(uid: string, data: Partial<UsuarioPerfil>) {
   const ref = doc(usuariosRef, uid);
-  const payload = {
+  const payload = cleanUndefined({
     uid,
     ...data,
     updatedAt: Timestamp.now()
-  } as Record<string, unknown>;
+  });
 
   const snap = await getDoc(ref);
   if (!snap.exists()) {
