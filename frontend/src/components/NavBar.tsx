@@ -8,7 +8,8 @@ const links = [
   { to: '/igrejas', label: 'Igrejas' },
   { to: '/hinarios', label: 'Hinários/Hinos' },
   { to: '/bebida', label: 'Bebida' },
-  { to: '/trabalhos', label: 'Trabalhos' }
+  { to: '/trabalhos', label: 'Trabalhos' },
+  { to: '/perfil', label: 'Perfil' }
 ];
 
 export function NavBar() {

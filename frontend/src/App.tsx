@@ -10,6 +10,7 @@ import HymnsPage from './pages/HymnsPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PeoplePage from './pages/PeoplePage';
+import PerfilPage from './pages/PerfilPage';
 import TrabalhosPage from './pages/TrabalhosPage';
 
 function Shell() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/hinarios" element={<HymnsPage />} />
           <Route path="/bebida" element={<BeveragePage />} />
           <Route path="/trabalhos" element={<TrabalhosPage />} />
+          <Route path="/perfil" element={<PerfilPage />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />
