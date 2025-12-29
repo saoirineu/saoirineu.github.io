@@ -10,6 +10,7 @@ import HymnsPage from './pages/HymnsPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PeoplePage from './pages/PeoplePage';
+import TrabalhosPage from './pages/TrabalhosPage';
 
 function Shell() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/igrejas" element={<ChurchesPage />} />
           <Route path="/hinarios" element={<HymnsPage />} />
           <Route path="/bebida" element={<BeveragePage />} />
+          <Route path="/trabalhos" element={<TrabalhosPage />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

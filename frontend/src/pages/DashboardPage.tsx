@@ -5,7 +5,8 @@ const cards = [
   { to: '/pessoas', title: 'Pessoas', desc: 'Daimistas, papéis e perfis.' },
   { to: '/igrejas', title: 'Igrejas', desc: 'Casas, linhagens e vínculos.' },
   { to: '/hinarios', title: 'Hinários / Hinos', desc: 'Taxonomia, autores, gravações.' },
-  { to: '/bebida', title: 'Bebida', desc: 'Lotes, insumos, análises e destino.' }
+  { to: '/bebida', title: 'Bebida', desc: 'Lotes, insumos, análises e destino.' },
+  { to: '/trabalhos', title: 'Trabalhos', desc: 'Agenda, hinários, igrejas e participantes.' }
 ];
 
 export function DashboardPage() {
