@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut
 } from 'firebase/auth';
 
@@ -21,7 +22,11 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+function isPopupBlockedError(error: unknown) {
+  return error instanceof Error && error.message.includes('block the window');
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,8 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await signInWithPopup(auth, googleProvider);
         } catch (err) {
           // Alguns navegadores/headers podem bloquear fechamento da popup; redireciona como fallback.
-          if (err instanceof Error && err.message.includes('block the window')) {
-            await import('firebase/auth').then(({ signInWithRedirect }) => signInWithRedirect(auth, googleProvider));
+          if (isPopupBlockedError(err)) {
+            await signInWithRedirect(auth, googleProvider);
             return;
           }
           throw err;

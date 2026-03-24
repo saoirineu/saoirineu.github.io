@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../providers/AuthProvider';
@@ -15,7 +15,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleEmail = async (event: React.FormEvent) => {
+  const handleEmail = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
     setError(null);

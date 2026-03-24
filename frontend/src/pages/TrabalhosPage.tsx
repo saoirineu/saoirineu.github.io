@@ -5,20 +5,36 @@ import { Timestamp } from 'firebase/firestore';
 import {
   fetchTrabalhos,
   Trabalho,
+  TrabalhoInput,
   createTrabalho,
   fetchIgrejas,
-  fetchBebidaLotes
+  fetchBebidaLotes,
+  updateTrabalho,
+  deleteTrabalho
 } from '../lib/trabalhos';
 import { useAuth } from '../providers/AuthProvider';
 
-function formatDate(ts?: Timestamp | null) {
-  if (!ts) return '—';
-  return ts.toDate().toLocaleDateString('pt-BR');
+function asDate(ts?: Timestamp | Date | string | null) {
+  if (!ts) return null;
+  if (typeof ts === 'string') {
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (ts instanceof Date) return ts;
+  if (typeof (ts as any).toDate === 'function') return (ts as Timestamp).toDate();
+  return null;
 }
 
-function formatTime(ts?: Timestamp | null) {
-  if (!ts) return '—';
-  return ts.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+function formatDate(ts?: Timestamp | Date | string | null) {
+  const d = asDate(ts);
+  if (!d) return '—';
+  return d.toLocaleDateString('pt-BR');
+}
+
+function formatTime(ts?: Timestamp | Date | string | null) {
+  const d = asDate(ts);
+  if (!d) return '—';
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 function totalParticipantes(p?: Trabalho['participantes']) {
@@ -43,6 +59,7 @@ export function TrabalhosPage() {
   const igrejasQuery = useQuery({ queryKey: ['igrejas'], queryFn: fetchIgrejas });
   const bebidaQuery = useQuery({ queryKey: ['bebidaLotes'], queryFn: fetchBebidaLotes });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     titulo: '',
     data: '',
@@ -90,7 +107,7 @@ export function TrabalhosPage() {
         (form.criancas ? Number(form.criancas) : 0) +
         (form.outros ? Number(form.outros) : 0);
 
-      return createTrabalho({
+      const payload: TrabalhoInput = {
         titulo: form.titulo || undefined,
         data: dataTs,
         horarioInicio: horarioTs,
@@ -123,7 +140,14 @@ export function TrabalhosPage() {
         },
         anotacoes: form.anotacoes || undefined,
         createdBy: user.uid
-      } as any);
+      } as TrabalhoInput;
+
+      if (editingId) {
+        const { createdBy, ...rest } = payload;
+        return updateTrabalho(editingId, rest);
+      }
+
+      return createTrabalho(payload);
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['trabalhos'] });
@@ -153,6 +177,18 @@ export function TrabalhosPage() {
         quantidadeLitros: '',
         anotacoes: ''
       });
+      setEditingId(null);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error('Sessão expirada');
+      return deleteTrabalho(id);
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['trabalhos'] });
+      if (editingId) setEditingId(null);
     }
   });
 
@@ -437,8 +473,45 @@ export function TrabalhosPage() {
             disabled={mutation.isPending}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
           >
-            {mutation.isPending ? 'Salvando...' : 'Salvar trabalho'}
+            {mutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Salvar trabalho'}
           </button>
+          {editingId && (
+            <button
+              type="button"
+              className="text-xs text-slate-600 underline"
+              onClick={() => {
+                setEditingId(null);
+                setForm({
+                  titulo: '',
+                  data: '',
+                  horario: '',
+                  duracaoEsperadaMin: '',
+                  duracaoEfetivaMin: '',
+                  hinarios: '',
+                  igrejaRespId: '',
+                  igrejaRespNome: '',
+                  igrejasTexto: '',
+                  localId: '',
+                  localNome: '',
+                  localTexto: '',
+                  total: '',
+                  fardados: '',
+                  homens: '',
+                  mulheres: '',
+                  criancas: '',
+                  outros: '',
+                  outrosDescricao: '',
+                  loteId: '',
+                  loteDescricao: '',
+                  loteTexto: '',
+                  quantidadeLitros: '',
+                  anotacoes: ''
+                });
+              }}
+            >
+              Cancelar edição
+            </button>
+          )}
           {mutation.isError ? (
             <span className="text-sm text-red-600">Erro ao salvar.</span>
           ) : null}
@@ -457,6 +530,40 @@ export function TrabalhosPage() {
 
         {data?.map(trabalho => {
           const participantes = totalParticipantes(trabalho.participantes);
+          const editPrefill = () => {
+            const d = asDate(trabalho.data);
+            const h = asDate(trabalho.horarioInicio);
+            setEditingId(trabalho.id);
+            setForm({
+              titulo: trabalho.titulo || '',
+              data: d ? d.toISOString().slice(0, 10) : '',
+              horario: h ? h.toISOString().slice(11, 16) : '',
+              duracaoEsperadaMin: trabalho.duracaoEsperadaMin?.toString() || '',
+              duracaoEfetivaMin: trabalho.duracaoEfetivaMin?.toString() || '',
+              hinarios: trabalho.hinarios?.join(', ') || '',
+              igrejaRespId: trabalho.igrejasResponsaveisIds?.[0] || '',
+              igrejaRespNome: trabalho.igrejasResponsaveisNomes?.[0] || '',
+              igrejasTexto: trabalho.igrejasResponsaveisTexto || '',
+              localId: trabalho.localId || '',
+              localNome: trabalho.localNome || '',
+              localTexto: trabalho.localTexto || '',
+              total: trabalho.participantes?.total?.toString() || '',
+              fardados: trabalho.participantes?.fardados?.toString() || '',
+              homens: trabalho.participantes?.homens?.toString() || '',
+              mulheres: trabalho.participantes?.mulheres?.toString() || '',
+              criancas: trabalho.participantes?.criancas?.toString() || '',
+              outros: trabalho.participantes?.outros?.toString() || '',
+              outrosDescricao: trabalho.participantes?.outrosDescricao || '',
+              loteId: trabalho.bebida?.loteId || '',
+              loteDescricao: trabalho.bebida?.loteDescricao || '',
+              loteTexto: trabalho.bebida?.loteTexto || '',
+              quantidadeLitros:
+                (trabalho.bebida?.quantidadeLitros ?? '') === ''
+                  ? ''
+                  : (trabalho.bebida?.quantidadeLitros ?? '').toString(),
+              anotacoes: trabalho.anotacoes || ''
+            });
+          };
 
           return (
             <div
@@ -471,12 +578,33 @@ export function TrabalhosPage() {
                     {trabalho.localNome || trabalho.localTexto || 'Local a definir'}
                   </div>
                 </div>
-                {trabalho.bebida?.loteId || trabalho.bebida?.loteDescricao || trabalho.bebida?.loteTexto ? (
-                  <div className="text-xs font-medium text-blue-700">
-                    Daime: {trabalho.bebida.loteDescricao || trabalho.bebida.loteId || trabalho.bebida.loteTexto}
-                    {trabalho.bebida.quantidadeLitros ? ` • ${trabalho.bebida.quantidadeLitros} L` : ''}
-                  </div>
-                ) : null}
+                <div className="flex items-center gap-2 text-xs">
+                  {trabalho.bebida?.loteId || trabalho.bebida?.loteDescricao || trabalho.bebida?.loteTexto ? (
+                    <div className="text-xs font-medium text-blue-700">
+                      Daime: {trabalho.bebida.loteDescricao || trabalho.bebida.loteId || trabalho.bebida.loteTexto}
+                      {trabalho.bebida.quantidadeLitros ? ` • ${trabalho.bebida.quantidadeLitros} L` : ''}
+                    </div>
+                  ) : null}
+                  <button
+                    className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm"
+                    onClick={editPrefill}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
+                    disabled={deleteMutation.isPending && deleteMutation.variables === trabalho.id}
+                    onClick={() => {
+                      const ok = window.confirm('Excluir este trabalho?');
+                      if (!ok) return;
+                      deleteMutation.mutate(trabalho.id);
+                    }}
+                  >
+                    {deleteMutation.isPending && deleteMutation.variables === trabalho.id
+                      ? 'Excluindo...'
+                      : 'Excluir'}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">

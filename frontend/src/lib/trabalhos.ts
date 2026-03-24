@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
+import { asOptionalTimestamp, asRecord, removeUndefinedDeep } from './firestoreData';
 
 export type Trabalho = {
   id: string;
@@ -49,21 +50,16 @@ export type Trabalho = {
 const trabalhosRef = collection(db, 'trabalhos');
 const igrejasRef = collection(db, 'igrejas');
 
-function cleanUndefined<T extends Record<string, unknown>>(obj: T): T {
-  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
-  return Object.fromEntries(entries) as T;
-}
-
 export async function fetchTrabalhos(): Promise<Trabalho[]> {
   const q = query(trabalhosRef, orderBy('data', 'desc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => {
-    const data = doc.data();
+  return snapshot.docs.map(docSnapshot => {
+    const data = asRecord(docSnapshot.data());
     return {
-      id: doc.id,
+      id: docSnapshot.id,
       ...data,
-      data: (data as any).data ?? null,
-      horarioInicio: (data as any).horarioInicio ?? null
+      data: asOptionalTimestamp(data.data),
+      horarioInicio: asOptionalTimestamp(data.horarioInicio)
     } as Trabalho;
   });
 }
@@ -121,18 +117,18 @@ export async function fetchIgrejas(): Promise<IgrejaInfo[]> {
   try {
     const q = query(igrejasRef);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => {
-      const d = doc.data() as any;
+    return snapshot.docs.map(docSnapshot => {
+      const data = asRecord(docSnapshot.data());
       return {
-        id: doc.id,
-        nome: d.nome || doc.id,
-        cidade: d.cidade,
-        estado: d.estado,
-        pais: d.pais,
-        linhagem: d.linhagem,
-        observacoes: d.observacoes,
-        lat: typeof d.lat === 'number' ? d.lat : undefined,
-        lng: typeof d.lng === 'number' ? d.lng : undefined
+        id: docSnapshot.id,
+        nome: typeof data.nome === 'string' && data.nome ? data.nome : docSnapshot.id,
+        cidade: typeof data.cidade === 'string' ? data.cidade : undefined,
+        estado: typeof data.estado === 'string' ? data.estado : undefined,
+        pais: typeof data.pais === 'string' ? data.pais : undefined,
+        linhagem: typeof data.linhagem === 'string' ? data.linhagem : undefined,
+        observacoes: typeof data.observacoes === 'string' ? data.observacoes : undefined,
+        lat: typeof data.lat === 'number' ? data.lat : undefined,
+        lng: typeof data.lng === 'number' ? data.lng : undefined
       };
     });
   } catch {
@@ -152,7 +148,7 @@ export type IgrejaInput = {
 };
 
 export async function createIgreja(input: IgrejaInput) {
-  const payload = cleanUndefined({
+  const payload = removeUndefinedDeep({
     nome: input.nome,
     cidade: input.cidade || undefined,
     estado: input.estado || undefined,
@@ -170,7 +166,7 @@ export async function createIgreja(input: IgrejaInput) {
 
 export async function updateIgreja(id: string, input: Partial<IgrejaInput>) {
   const ref = doc(igrejasRef, id);
-  const payload = cleanUndefined({
+  const payload = removeUndefinedDeep({
     ...input,
     lat: typeof input.lat === 'number' ? input.lat : undefined,
     lng: typeof input.lng === 'number' ? input.lng : undefined,
@@ -189,12 +185,13 @@ export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
   try {
     const q = query(collection(db, 'bebidaLotes'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => {
-      const d = doc.data() as any;
-      const desc = d.descricao
-        ? d.descricao
-        : `${d.grau ?? '?'}º grau, ${d.concentracao ?? ''} ${d.ano ?? ''} ${d.localidade ?? ''}`.trim();
-      return { id: doc.id, descricao: desc };
+    return snapshot.docs.map(docSnapshot => {
+      const data = asRecord(docSnapshot.data());
+      const descricao = typeof data.descricao === 'string' ? data.descricao : undefined;
+      const desc = descricao
+        ? descricao
+        : `${data.grau ?? '?'}º grau, ${data.concentracao ?? ''} ${data.ano ?? ''} ${data.localidade ?? ''}`.trim();
+      return { id: docSnapshot.id, descricao: desc };
     });
   } catch {
     return [];
@@ -202,7 +199,7 @@ export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
 }
 
 export async function createTrabalho(input: TrabalhoInput) {
-  const payload: Record<string, unknown> = {
+  const payload = removeUndefinedDeep({
     ...input,
     duracaoEsperadaMin: input.duracaoEsperadaMin ?? null,
     duracaoEfetivaMin: input.duracaoEfetivaMin ?? null,
@@ -210,17 +207,22 @@ export async function createTrabalho(input: TrabalhoInput) {
     horarioInicio: input.horarioInicio ?? null,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
-  };
+  });
 
-  return addDoc(trabalhosRef, payload);
+  return addDoc(trabalhosRef, payload as Record<string, unknown>);
 }
 
 export async function updateTrabalho(id: string, input: Partial<TrabalhoInput>) {
   const ref = doc(trabalhosRef, id);
-  const payload: Record<string, unknown> = {
+  const payload = removeUndefinedDeep({
     ...input,
     updatedAt: Timestamp.now()
-  };
+  });
 
-  return updateDoc(ref, payload);
+  return updateDoc(ref, payload as Record<string, unknown>);
+}
+
+export async function deleteTrabalho(id: string) {
+  const ref = doc(trabalhosRef, id);
+  return deleteDoc(ref);
 }
