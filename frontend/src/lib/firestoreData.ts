@@ -2,6 +2,19 @@ import { Timestamp } from 'firebase/firestore';
 
 type UnknownRecord = Record<string, unknown>;
 
+function isPlainRecord(value: unknown): value is UnknownRecord {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isFirestoreSentinel(value: unknown): boolean {
+  return isRecord(value) && typeof value._methodName === 'string';
+}
+
 export function isRecord(value: unknown): value is UnknownRecord {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -40,7 +53,11 @@ export function removeUndefinedDeep<T>(value: T): T {
     return value.map(item => removeUndefinedDeep(item)) as unknown as T;
   }
 
-  if (isRecord(value)) {
+  if (isFirestoreSentinel(value)) {
+    return value;
+  }
+
+  if (isPlainRecord(value)) {
     const entries = Object.entries(value)
       .map(([key, entryValue]) => [key, removeUndefinedDeep(entryValue)])
       .filter(([, entryValue]) => entryValue !== undefined);

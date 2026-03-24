@@ -1,3 +1,4 @@
+import { FirebaseError } from 'firebase/app';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 import { db } from './firebase';
@@ -32,13 +33,48 @@ export type EncontroEuropeuRegistrationInput = {
   status: 'pending-payment';
 };
 
+export type EncontroEuropeuRegistrationDebugInfo = {
+  code: string;
+  message: string;
+  payloadPreview: Record<string, unknown>;
+};
+
+export class EncontroEuropeuRegistrationError extends Error {
+  debugInfo: EncontroEuropeuRegistrationDebugInfo;
+
+  constructor(debugInfo: EncontroEuropeuRegistrationDebugInfo) {
+    super(debugInfo.message);
+    this.name = 'EncontroEuropeuRegistrationError';
+    this.debugInfo = debugInfo;
+  }
+}
+
 const registrationsRef = collection(db, 'encontroEuropeuInscricoes');
 
 export async function createEncontroEuropeuRegistration(input: EncontroEuropeuRegistrationInput) {
+  const payloadPreview = removeUndefinedDeep({
+    ...input,
+    submittedAt: 'serverTimestamp()'
+  });
+
   const payload = removeUndefinedDeep({
     ...input,
     submittedAt: serverTimestamp()
   });
 
-  return addDoc(registrationsRef, payload);
+  console.info('[EncontroEuropeu] submitting registration', payloadPreview);
+
+  try {
+    return await addDoc(registrationsRef, payload);
+  } catch (error) {
+    const firebaseError = error instanceof FirebaseError ? error : null;
+    const debugInfo: EncontroEuropeuRegistrationDebugInfo = {
+      code: firebaseError?.code ?? 'unknown',
+      message: firebaseError?.message ?? (error instanceof Error ? error.message : 'Unknown registration error'),
+      payloadPreview
+    };
+
+    console.error('[EncontroEuropeu] registration failed', debugInfo, error);
+    throw new EncontroEuropeuRegistrationError(debugInfo);
+  }
 }

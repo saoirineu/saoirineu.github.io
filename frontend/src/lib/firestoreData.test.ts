@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, serverTimestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -58,5 +58,16 @@ describe('firestoreData helpers', () => {
         list: [1, undefined, { ok: true }]
       }
     });
+  });
+
+  it('preserves firestore sentinel values', () => {
+    const sentinel = serverTimestamp();
+    const cleaned = removeUndefinedDeep({
+      submittedAt: sentinel,
+      drop: undefined
+    });
+
+    expect(cleaned).toEqual({ submittedAt: sentinel });
+    expect(cleaned.submittedAt).toBe(sentinel);
   });
 });

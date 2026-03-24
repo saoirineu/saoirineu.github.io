@@ -1,6 +1,6 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, setLogLevel } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,6 +16,18 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
 }
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+if (import.meta.env.DEV) {
+  setLogLevel('debug');
+  console.info('[Firebase] initialized', {
+    apiKeySuffix: firebaseConfig.apiKey?.slice(-6),
+    appId: firebaseConfig.appId,
+    authDomain: firebaseConfig.authDomain,
+    origin: typeof window === 'undefined' ? 'server' : window.location.origin,
+    projectId: firebaseConfig.projectId,
+    storageBucket: firebaseConfig.storageBucket
+  });
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
