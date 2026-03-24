@@ -145,15 +145,15 @@ const copyByLocale: Record<Locale, Copy> = {
     novice: 'Novizio / primeira vez',
     participationTitle: 'Participação e estadia',
     attendanceMode: 'Modalidade',
-    modeLodging: 'Vitto e alloggio',
-    modeMeals: 'Solo vitto',
-    modeSpiritual: 'Solo lavori spirituali',
+    modeLodging: 'Hospedagem e alimentação',
+    modeMeals: 'Somente alimentação',
+    modeSpiritual: 'Somente trabalhos espirituais',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
-    roomNumber: 'Número do quarto (opcional)',
+    roomNumber: 'Quarto desejado (opcional)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Quartos e vagas',
-    roomHelpIntro: 'Distribuição provisória para orientar o preenchimento do número do quarto.',
+    roomHelpIntro: 'Distribuição provisória para orientar o preenchimento do quarto desejado.',
     roomHelpCapacity: 'vagas',
     extraLinen: 'Quero segundo lençol superior e toalhas (+20 euro)',
     worksTitle: 'Lavori spirituali',
@@ -227,10 +227,10 @@ const copyByLocale: Record<Locale, Copy> = {
     modeSpiritual: 'Spiritual works only',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
-    roomNumber: 'Room number (optional)',
+    roomNumber: 'Preferred room (optional)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Rooms and available beds',
-    roomHelpIntro: 'Temporary room allocation to help you choose the room number.',
+    roomHelpIntro: 'Temporary room allocation to help you choose the preferred room.',
     roomHelpCapacity: 'beds',
     extraLinen: 'I need an extra top sheet and towels (+20 euro)',
     worksTitle: 'Spiritual works',
@@ -299,15 +299,15 @@ const copyByLocale: Record<Locale, Copy> = {
     novice: 'Novizio / primera vez',
     participationTitle: 'Participación y estancia',
     attendanceMode: 'Modalidad',
-    modeLodging: 'Vitto e alloggio',
-    modeMeals: 'Solo vitto',
-    modeSpiritual: 'Solo lavori spirituali',
+    modeLodging: 'Alojamiento y comidas',
+    modeMeals: 'Solo comidas',
+    modeSpiritual: 'Solo trabajos espirituales',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
-    roomNumber: 'Número de habitación (opcional)',
+    roomNumber: 'Habitación deseada (opcional)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Habitaciones y plazas',
-    roomHelpIntro: 'Distribución provisional para orientar la elección del número de habitación.',
+    roomHelpIntro: 'Distribución provisional para orientar la elección de la habitación deseada.',
     roomHelpCapacity: 'plazas',
     extraLinen: 'Quiero una sábana superior adicional y toallas (+20 euro)',
     worksTitle: 'Lavori spirituali',
@@ -381,10 +381,10 @@ const copyByLocale: Record<Locale, Copy> = {
     modeSpiritual: 'Solo lavori spirituali',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
-    roomNumber: 'Numero di camera (facoltativo)',
+    roomNumber: 'Camera desiderata (facoltativo)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Camere e posti disponibili',
-    roomHelpIntro: 'Distribuzione provvisoria delle camere per aiutarti a scegliere il numero.',
+    roomHelpIntro: 'Distribuzione provvisoria delle camere per aiutarti a scegliere la camera desiderata.',
     roomHelpCapacity: 'posti',
     extraLinen: 'Desidero un secondo lenzuolo superiore e asciugamani (+20 euro)',
     worksTitle: 'Lavori spirituali',
@@ -433,10 +433,20 @@ const copyByLocale: Record<Locale, Copy> = {
 
 const workIds: SpiritualWorkId[] = ['fri-11-19', 'sat-12-19', 'mon-14-11', 'tue-15-19'];
 
-function Field({ children, label }: { children: ReactNode; label: ReactNode }) {
+function Field({
+  children,
+  className,
+  label,
+  labelClassName
+}: {
+  children: ReactNode;
+  className?: string;
+  label: ReactNode;
+  labelClassName?: string;
+}) {
   return (
-    <label className="text-sm text-slate-700">
-      <span className="mb-1 block font-medium">{label}</span>
+    <label className={`text-sm text-slate-700 ${className ?? ''}`.trim()}>
+      <span className={`mb-1 block font-medium ${labelClassName ?? ''}`.trim()}>{label}</span>
       {children}
     </label>
   );
@@ -445,6 +455,8 @@ function Field({ children, label }: { children: ReactNode; label: ReactNode }) {
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
 }
+
+const fileInputClassName = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200';
 
 export default function EncontroEuropeuPage() {
   const [locale, setLocale] = useState<Locale>(() => resolveInitialLocale(typeof navigator === 'undefined' ? undefined : navigator.language));
@@ -718,16 +730,16 @@ export default function EncontroEuropeuPage() {
               <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
                 <h2 className="text-xl font-semibold text-slate-900">{copy.documentsTitle}</h2>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <Field label={copy.identityDocument}>
-                    <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, identityDocument: event.target.files?.[0] ?? null }))} />
+                  <Field className="flex h-full flex-col" label={copy.identityDocument} labelClassName="min-h-[2.5rem] leading-5">
+                    <input type="file" accept=".pdf,image/*" className={fileInputClassName} onChange={event => setDocuments(current => ({ ...current, identityDocument: event.target.files?.[0] ?? null }))} />
                   </Field>
-                  <Field label={copy.paymentProof}>
-                    <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, paymentProof: event.target.files?.[0] ?? null }))} />
+                  <Field className="flex h-full flex-col" label={copy.paymentProof} labelClassName="min-h-[2.5rem] leading-5">
+                    <input type="file" accept=".pdf,image/*" className={fileInputClassName} onChange={event => setDocuments(current => ({ ...current, paymentProof: event.target.files?.[0] ?? null }))} />
                   </Field>
                   {values.isNovice ? (
                     <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-                      <Field label={copy.consentDocument}>
-                        <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, consentDocument: event.target.files?.[0] ?? null }))} />
+                      <Field className="flex flex-col" label={copy.consentDocument} labelClassName="leading-5">
+                        <input type="file" accept=".pdf,image/*" className={fileInputClassName} onChange={event => setDocuments(current => ({ ...current, consentDocument: event.target.files?.[0] ?? null }))} />
                       </Field>
                       <a className="inline-flex rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">
                         {copy.consentDownloadInline}
