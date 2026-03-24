@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/useAuth';
 
 export function AuthGate() {
   const { user, loading } = useAuth();

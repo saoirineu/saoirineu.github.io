@@ -1,56 +1,23 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Timestamp } from 'firebase/firestore';
 
 import {
   fetchTrabalhos,
-  Trabalho,
-  TrabalhoInput,
   createTrabalho,
   fetchIgrejas,
   fetchBebidaLotes,
   updateTrabalho,
   deleteTrabalho
 } from '../lib/trabalhos';
-import { useAuth } from '../providers/AuthProvider';
-
-function asDate(ts?: Timestamp | Date | string | null) {
-  if (!ts) return null;
-  if (typeof ts === 'string') {
-    const d = new Date(ts);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (ts instanceof Date) return ts;
-  if (typeof (ts as any).toDate === 'function') return (ts as Timestamp).toDate();
-  return null;
-}
-
-function formatDate(ts?: Timestamp | Date | string | null) {
-  const d = asDate(ts);
-  if (!d) return '—';
-  return d.toLocaleDateString('pt-BR');
-}
-
-function formatTime(ts?: Timestamp | Date | string | null) {
-  const d = asDate(ts);
-  if (!d) return '—';
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function totalParticipantes(p?: Trabalho['participantes']) {
-  if (!p) return null;
-  const total =
-    (p.total ?? 0) || (p.homens ?? 0) + (p.mulheres ?? 0) + (p.criancas ?? 0) + (p.outros ?? 0);
-  return {
-    total,
-    fardados: p.fardados ?? null,
-    homens: p.homens ?? 0,
-    mulheres: p.mulheres ?? 0,
-    criancas: p.criancas ?? 0,
-    outros: p.outros ?? 0,
-    outrosDescricao: p.outrosDescricao
-  };
-}
+import { useAuth } from '../providers/useAuth';
+import {
+  buildTrabalhoPayload,
+  formatDate,
+  formatTime,
+  initialTrabalhoForm,
+  prefillTrabalhoForm,
+  totalParticipantes
+} from './trabalhos/form';
 
 export function TrabalhosPage() {
   const { user } = useAuth();
@@ -60,123 +27,28 @@ export function TrabalhosPage() {
   const bebidaQuery = useQuery({ queryKey: ['bebidaLotes'], queryFn: fetchBebidaLotes });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    titulo: '',
-    data: '',
-    horario: '',
-    duracaoEsperadaMin: '',
-    duracaoEfetivaMin: '',
-    hinarios: '',
-    igrejaRespId: '',
-    igrejaRespNome: '',
-    igrejasTexto: '',
-    localId: '',
-    localNome: '',
-    localTexto: '',
-    total: '',
-    fardados: '',
-    homens: '',
-    mulheres: '',
-    criancas: '',
-    outros: '',
-    outrosDescricao: '',
-    loteId: '',
-    loteDescricao: '',
-    loteTexto: '',
-    quantidadeLitros: '',
-    anotacoes: ''
-  });
+  const [form, setForm] = useState(initialTrabalhoForm);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sessão expirada');
 
-      const dataTs = form.data ? Timestamp.fromDate(new Date(form.data)) : null;
-      const horarioTs = form.horario && form.data
-        ? Timestamp.fromDate(new Date(`${form.data}T${form.horario}:00`))
-        : null;
-
-      const igrejaResp = igrejasQuery.data?.find(i => i.id === form.igrejaRespId);
-      const localSelecionado = igrejasQuery.data?.find(i => i.id === form.localId);
-      const loteSelecionado = bebidaQuery.data?.find(b => b.id === form.loteId);
-
-      const totalManual = form.total ? Number(form.total) : undefined;
-      const derivedTotal =
-        (form.homens ? Number(form.homens) : 0) +
-        (form.mulheres ? Number(form.mulheres) : 0) +
-        (form.criancas ? Number(form.criancas) : 0) +
-        (form.outros ? Number(form.outros) : 0);
-
-      const payload: TrabalhoInput = {
-        titulo: form.titulo || undefined,
-        data: dataTs,
-        horarioInicio: horarioTs,
-        duracaoEsperadaMin: form.duracaoEsperadaMin ? Number(form.duracaoEsperadaMin) : null,
-        duracaoEfetivaMin: form.duracaoEfetivaMin ? Number(form.duracaoEfetivaMin) : null,
-        localId: localSelecionado?.id,
-        localNome: localSelecionado?.nome,
-        localTexto: form.localTexto || undefined,
-        hinarios: form.hinarios
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean),
-        igrejasResponsaveisIds: igrejaResp ? [igrejaResp.id] : undefined,
-        igrejasResponsaveisNomes: igrejaResp ? [igrejaResp.nome] : undefined,
-        igrejasResponsaveisTexto: form.igrejasTexto || undefined,
-        participantes: {
-          total: totalManual ?? derivedTotal,
-          fardados: form.fardados ? Number(form.fardados) : undefined,
-          homens: form.homens ? Number(form.homens) : undefined,
-          mulheres: form.mulheres ? Number(form.mulheres) : undefined,
-          criancas: form.criancas ? Number(form.criancas) : undefined,
-          outros: form.outros ? Number(form.outros) : undefined,
-          outrosDescricao: form.outrosDescricao || undefined
-        },
-        bebida: {
-          loteId: loteSelecionado?.id || undefined,
-          loteDescricao: loteSelecionado?.descricao || form.loteDescricao || undefined,
-          loteTexto: form.loteTexto || undefined,
-          quantidadeLitros: form.quantidadeLitros ? Number(form.quantidadeLitros) : null
-        },
-        anotacoes: form.anotacoes || undefined,
-        createdBy: user.uid
-      } as TrabalhoInput;
+      const payload = buildTrabalhoPayload({
+        bebidaLotes: bebidaQuery.data,
+        form,
+        igrejas: igrejasQuery.data,
+        userId: user.uid
+      });
 
       if (editingId) {
-        const { createdBy, ...rest } = payload;
-        return updateTrabalho(editingId, rest);
+        return updateTrabalho(editingId, { ...payload, createdBy: undefined });
       }
 
       return createTrabalho(payload);
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['trabalhos'] });
-      setForm({
-        titulo: '',
-        data: '',
-        horario: '',
-        duracaoEsperadaMin: '',
-        duracaoEfetivaMin: '',
-        hinarios: '',
-        igrejaRespId: '',
-        igrejaRespNome: '',
-        igrejasTexto: '',
-        localId: '',
-        localNome: '',
-        localTexto: '',
-        total: '',
-        fardados: '',
-        homens: '',
-        mulheres: '',
-        criancas: '',
-        outros: '',
-        outrosDescricao: '',
-        loteId: '',
-        loteDescricao: '',
-        loteTexto: '',
-        quantidadeLitros: '',
-        anotacoes: ''
-      });
+      setForm(initialTrabalhoForm);
       setEditingId(null);
     }
   });
@@ -481,32 +353,7 @@ export function TrabalhosPage() {
               className="text-xs text-slate-600 underline"
               onClick={() => {
                 setEditingId(null);
-                setForm({
-                  titulo: '',
-                  data: '',
-                  horario: '',
-                  duracaoEsperadaMin: '',
-                  duracaoEfetivaMin: '',
-                  hinarios: '',
-                  igrejaRespId: '',
-                  igrejaRespNome: '',
-                  igrejasTexto: '',
-                  localId: '',
-                  localNome: '',
-                  localTexto: '',
-                  total: '',
-                  fardados: '',
-                  homens: '',
-                  mulheres: '',
-                  criancas: '',
-                  outros: '',
-                  outrosDescricao: '',
-                  loteId: '',
-                  loteDescricao: '',
-                  loteTexto: '',
-                  quantidadeLitros: '',
-                  anotacoes: ''
-                });
+                setForm(initialTrabalhoForm);
               }}
             >
               Cancelar edição
@@ -531,38 +378,8 @@ export function TrabalhosPage() {
         {data?.map(trabalho => {
           const participantes = totalParticipantes(trabalho.participantes);
           const editPrefill = () => {
-            const d = asDate(trabalho.data);
-            const h = asDate(trabalho.horarioInicio);
             setEditingId(trabalho.id);
-            setForm({
-              titulo: trabalho.titulo || '',
-              data: d ? d.toISOString().slice(0, 10) : '',
-              horario: h ? h.toISOString().slice(11, 16) : '',
-              duracaoEsperadaMin: trabalho.duracaoEsperadaMin?.toString() || '',
-              duracaoEfetivaMin: trabalho.duracaoEfetivaMin?.toString() || '',
-              hinarios: trabalho.hinarios?.join(', ') || '',
-              igrejaRespId: trabalho.igrejasResponsaveisIds?.[0] || '',
-              igrejaRespNome: trabalho.igrejasResponsaveisNomes?.[0] || '',
-              igrejasTexto: trabalho.igrejasResponsaveisTexto || '',
-              localId: trabalho.localId || '',
-              localNome: trabalho.localNome || '',
-              localTexto: trabalho.localTexto || '',
-              total: trabalho.participantes?.total?.toString() || '',
-              fardados: trabalho.participantes?.fardados?.toString() || '',
-              homens: trabalho.participantes?.homens?.toString() || '',
-              mulheres: trabalho.participantes?.mulheres?.toString() || '',
-              criancas: trabalho.participantes?.criancas?.toString() || '',
-              outros: trabalho.participantes?.outros?.toString() || '',
-              outrosDescricao: trabalho.participantes?.outrosDescricao || '',
-              loteId: trabalho.bebida?.loteId || '',
-              loteDescricao: trabalho.bebida?.loteDescricao || '',
-              loteTexto: trabalho.bebida?.loteTexto || '',
-              quantidadeLitros:
-                (trabalho.bebida?.quantidadeLitros ?? '') === ''
-                  ? ''
-                  : (trabalho.bebida?.quantidadeLitros ?? '').toString(),
-              anotacoes: trabalho.anotacoes || ''
-            });
+            setForm(prefillTrabalhoForm(trabalho));
           };
 
           return (

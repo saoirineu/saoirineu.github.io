@@ -5,6 +5,23 @@ import { VitePWA } from 'vite-plugin-pwa';
 var base = (_a = process.env.VITE_BASE_PATH) !== null && _a !== void 0 ? _a : '/';
 export default defineConfig({
     base: base,
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: function (id) {
+                    if (!id.includes('node_modules')) {
+                        return;
+                    }
+                    if (id.includes('firebase')) {
+                        return 'firebase-vendor';
+                    }
+                    if (id.includes('react') || id.includes('@tanstack/react-query') || id.includes('scheduler')) {
+                        return 'react-vendor';
+                    }
+                }
+            }
+        }
+    },
     plugins: [
         react(),
         VitePWA({

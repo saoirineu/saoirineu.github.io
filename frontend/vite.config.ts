@@ -6,6 +6,25 @@ const base = process.env.VITE_BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return;
+          }
+
+          if (id.includes('firebase')) {
+            return 'firebase-vendor';
+          }
+
+          if (id.includes('react') || id.includes('@tanstack/react-query') || id.includes('scheduler')) {
+            return 'react-vendor';
+          }
+        }
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({

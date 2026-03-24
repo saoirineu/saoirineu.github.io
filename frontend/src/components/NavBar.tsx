@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/useAuth';
 
 const links = [
   { to: '/', label: 'Início' },

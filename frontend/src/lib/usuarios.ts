@@ -1,7 +1,14 @@
 import { Timestamp, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 import { db } from './firebase';
-import { removeUndefinedDeep } from './firestoreData';
+import {
+  asOptionalBoolean,
+  asOptionalString,
+  asOptionalTimestamp,
+  asRecord,
+  asStringArray,
+  removeUndefinedDeep
+} from './firestoreData';
 
 export type UsuarioPerfil = {
   uid: string;
@@ -33,21 +40,46 @@ export type UsuarioPerfil = {
 
 const usuariosRef = collection(db, 'usuarios');
 
+function mapUsuarioPerfil(uid: string, value: unknown): UsuarioPerfil {
+  const data = asRecord(value);
+  return {
+    uid,
+    displayName: asOptionalString(data.displayName),
+    email: asOptionalString(data.email),
+    phone: asOptionalString(data.phone),
+    avatarUrl: asOptionalString(data.avatarUrl),
+    cidade: asOptionalString(data.cidade),
+    estado: asOptionalString(data.estado),
+    pais: asOptionalString(data.pais),
+    igrejaAtualId: asOptionalString(data.igrejaAtualId),
+    igrejaAtualNome: asOptionalString(data.igrejaAtualNome),
+    igrejaOrigemNome: asOptionalString(data.igrejaOrigemNome),
+    fardado: asOptionalBoolean(data.fardado),
+    fardamentoData: asOptionalString(data.fardamentoData),
+    fardamentoLocal: asOptionalString(data.fardamentoLocal),
+    fardamentoIgrejaId: asOptionalString(data.fardamentoIgrejaId),
+    fardamentoIgrejaNome: asOptionalString(data.fardamentoIgrejaNome),
+    fardadorNome: asOptionalString(data.fardadorNome),
+    fardadoComQuem: asOptionalString(data.fardadoComQuem),
+    padrinhoMadrinha: asOptionalBoolean(data.padrinhoMadrinha),
+    padrinhoIgrejasIds: asStringArray(data.padrinhoIgrejasIds),
+    padrinhoIgrejasNomes: asStringArray(data.padrinhoIgrejasNomes),
+    papeisDoutrina: asStringArray(data.papeisDoutrina),
+    observacoes: asOptionalString(data.observacoes),
+    updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
+    createdAt: asOptionalTimestamp(data.createdAt) ?? undefined
+  };
+}
+
 export async function fetchUsuarios(): Promise<UsuarioPerfil[]> {
   const snapshot = await getDocs(usuariosRef);
-  return snapshot.docs.map(docSnap => {
-    const data = docSnap.data() as UsuarioPerfil;
-    const { uid: _, ...rest } = data;
-    return { uid: docSnap.id, ...rest };
-  });
+  return snapshot.docs.map(docSnap => mapUsuarioPerfil(docSnap.id, docSnap.data()));
 }
 
 export async function fetchUsuario(uid: string): Promise<UsuarioPerfil | null> {
   const snap = await getDoc(doc(usuariosRef, uid));
   if (!snap.exists()) return null;
-  const data = snap.data() as UsuarioPerfil;
-  const { uid: _ignored, ...rest } = data;
-  return { uid, ...rest };
+  return mapUsuarioPerfil(uid, snap.data());
 }
 
 export async function upsertUsuario(uid: string, data: Partial<UsuarioPerfil>) {

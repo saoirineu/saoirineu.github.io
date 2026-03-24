@@ -19,3 +19,6 @@ yarn-error.log*
 # Frontend outputs
 frontend/node_modules
 frontend/dist
+
+# claude
+.claude/

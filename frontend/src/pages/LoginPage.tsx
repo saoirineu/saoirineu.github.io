@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/useAuth';
 
 export function LoginPage() {
   const { signInWithGoogle, emailSignIn, emailSignUp } = useAuth();

@@ -11,7 +11,14 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
-import { asOptionalTimestamp, asRecord, removeUndefinedDeep } from './firestoreData';
+import {
+  asOptionalNumber,
+  asOptionalString,
+  asOptionalTimestamp,
+  asRecord,
+  asStringArray,
+  removeUndefinedDeep
+} from './firestoreData';
 
 export type Trabalho = {
   id: string;
@@ -50,18 +57,57 @@ export type Trabalho = {
 const trabalhosRef = collection(db, 'trabalhos');
 const igrejasRef = collection(db, 'igrejas');
 
+function mapParticipantes(value: unknown): Trabalho['participantes'] {
+  const data = asRecord(value);
+  return {
+    total: asOptionalNumber(data.total),
+    fardados: asOptionalNumber(data.fardados),
+    homens: asOptionalNumber(data.homens),
+    mulheres: asOptionalNumber(data.mulheres),
+    criancas: asOptionalNumber(data.criancas),
+    outros: asOptionalNumber(data.outros),
+    outrosDescricao: asOptionalString(data.outrosDescricao)
+  };
+}
+
+function mapBebida(value: unknown): Trabalho['bebida'] {
+  const data = asRecord(value);
+  return {
+    loteRef: asOptionalString(data.loteRef),
+    loteId: asOptionalString(data.loteId),
+    loteDescricao: asOptionalString(data.loteDescricao),
+    loteTexto: asOptionalString(data.loteTexto),
+    quantidadeLitros: asOptionalNumber(data.quantidadeLitros)
+  };
+}
+
+function mapTrabalho(id: string, value: unknown): Trabalho {
+  const data = asRecord(value);
+  return {
+    id,
+    titulo: asOptionalString(data.titulo),
+    data: asOptionalTimestamp(data.data),
+    horarioInicio: asOptionalTimestamp(data.horarioInicio),
+    duracaoEsperadaMin: asOptionalNumber(data.duracaoEsperadaMin),
+    duracaoEfetivaMin: asOptionalNumber(data.duracaoEfetivaMin),
+    anotacoes: asOptionalString(data.anotacoes),
+    participantes: mapParticipantes(data.participantes),
+    hinarios: asStringArray(data.hinarios),
+    igrejasResponsaveisIds: asStringArray(data.igrejasResponsaveisIds),
+    igrejasResponsaveisNomes: asStringArray(data.igrejasResponsaveisNomes),
+    igrejasResponsaveisTexto: asOptionalString(data.igrejasResponsaveisTexto),
+    localId: asOptionalString(data.localId),
+    localNome: asOptionalString(data.localNome),
+    localTexto: asOptionalString(data.localTexto),
+    bebida: mapBebida(data.bebida),
+    createdBy: asOptionalString(data.createdBy)
+  };
+}
+
 export async function fetchTrabalhos(): Promise<Trabalho[]> {
   const q = query(trabalhosRef, orderBy('data', 'desc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(docSnapshot => {
-    const data = asRecord(docSnapshot.data());
-    return {
-      id: docSnapshot.id,
-      ...data,
-      data: asOptionalTimestamp(data.data),
-      horarioInicio: asOptionalTimestamp(data.horarioInicio)
-    } as Trabalho;
-  });
+  return snapshot.docs.map(docSnapshot => mapTrabalho(docSnapshot.id, docSnapshot.data()));
 }
 
 export type TrabalhoInput = {

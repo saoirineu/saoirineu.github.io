@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   User,
   createUserWithEmailAndPassword,
@@ -10,17 +10,7 @@ import {
 } from 'firebase/auth';
 
 import { auth, googleProvider } from '../lib/firebase';
-
-type AuthContextValue = {
-  user: User | null;
-  loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  emailSignIn: (email: string, password: string) => Promise<void>;
-  emailSignUp: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+import { AuthContext, type AuthContextValue } from './auth-context';
 
 function isPopupBlockedError(error: unknown) {
   return error instanceof Error && error.message.includes('block the window');
@@ -63,14 +53,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-
-  if (!ctx) {
-    throw new Error('useAuth deve ser usado dentro de AuthProvider');
-  }
-
-  return ctx;
 }
