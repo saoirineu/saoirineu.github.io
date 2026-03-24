@@ -45,8 +45,8 @@ export const initialEncontroEuropeuFormValues: EncontroEuropeuFormValues = {
   isIcefluMember: false,
   isNovice: false,
   attendanceMode: 'lodging',
-  checkIn: '',
-  checkOut: '',
+  checkIn: '2026-09-10',
+  checkOut: '2026-09-16',
   selectedWorks: [],
   needsExtraLinen: false,
   roomNumber: ''

@@ -1,10 +1,11 @@
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const base = process.env.VITE_BASE_PATH ?? '/';
+const staticRoutes = ['encontro-europeu'];
 
 function copyIndexTo404() {
   return {
@@ -12,6 +13,12 @@ function copyIndexTo404() {
     closeBundle() {
       const distDir = resolve(__dirname, 'dist');
       copyFileSync(resolve(distDir, 'index.html'), resolve(distDir, '404.html'));
+
+      for (const route of staticRoutes) {
+        const routeDir = resolve(distDir, route);
+        mkdirSync(routeDir, { recursive: true });
+        copyFileSync(resolve(distDir, 'index.html'), resolve(routeDir, 'index.html'));
+      }
     }
   };
 }

@@ -46,6 +46,10 @@ type Copy = {
   checkIn: string;
   checkOut: string;
   roomNumber: string;
+  roomHelpTrigger: string;
+  roomHelpTitle: string;
+  roomHelpIntro: string;
+  roomHelpCapacity: string;
   extraLinen: string;
   worksTitle: string;
   worksHint: string;
@@ -53,6 +57,7 @@ type Copy = {
   identityDocument: string;
   paymentProof: string;
   consentDocument: string;
+  consentDownloadInline: string;
   documentsHint: string;
   contributionTitle: string;
   nights: string;
@@ -70,6 +75,7 @@ type Copy = {
   sendProof: string;
   registrationId: string;
   restart: string;
+  close: string;
   errors: Record<string, string>;
   workLabels: Record<SpiritualWorkId, string>;
 };
@@ -85,6 +91,11 @@ type SuccessState = {
   registrationId: string;
 };
 
+type RoomOption = {
+  name: string;
+  capacity: number;
+};
+
 const paymentInfo = {
   iban: 'IBAN A PREENCHER',
   causale: 'donazione per l\'incontro europeo',
@@ -97,6 +108,16 @@ const localeOptions: Array<{ value: Locale; label: string }> = [
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Español' },
   { value: 'it', label: 'Italiano' }
+];
+
+const roomOptions: RoomOption[] = [
+  { name: 'Cedro', capacity: 6 },
+  { name: 'Luce', capacity: 8 },
+  { name: 'Aurora', capacity: 10 },
+  { name: 'Bosco', capacity: 12 },
+  { name: 'Fonte', capacity: 14 },
+  { name: 'Monte', capacity: 16 },
+  { name: 'Stella', capacity: 18 }
 ];
 
 const copyByLocale: Record<Locale, Copy> = {
@@ -130,6 +151,10 @@ const copyByLocale: Record<Locale, Copy> = {
     checkIn: 'Check-in',
     checkOut: 'Check-out',
     roomNumber: 'Número do quarto (opcional)',
+    roomHelpTrigger: '?',
+    roomHelpTitle: 'Quartos e vagas',
+    roomHelpIntro: 'Distribuição provisória para orientar o preenchimento do número do quarto.',
+    roomHelpCapacity: 'vagas',
     extraLinen: 'Quero segundo lençol superior e toalhas (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Selecione um ou mais trabalhos. O valor é calculado automaticamente.',
@@ -137,6 +162,7 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Cópia do documento de identidade',
     paymentProof: 'Comprovante de pagamento',
     consentDocument: 'Consentimento informado assinado',
+    consentDownloadInline: 'Baixar PDF do consentimento informado',
     documentsHint: 'Nesta primeira versão, os nomes dos arquivos ficam registrados junto com a inscrição. O comprovante final continua sendo esperado por WhatsApp ou email.',
     contributionTitle: 'Resumo da contribuição',
     nights: 'Noites',
@@ -154,6 +180,7 @@ const copyByLocale: Record<Locale, Copy> = {
     sendProof: 'Envie o comprovante para WhatsApp XXX ou email YYY.',
     registrationId: 'Número da inscrição',
     restart: 'Fazer nova inscrição',
+    close: 'Fechar',
     errors: {
       firstName: 'Preencha o nome.',
       lastName: 'Preencha o sobrenome.',
@@ -201,6 +228,10 @@ const copyByLocale: Record<Locale, Copy> = {
     checkIn: 'Check-in',
     checkOut: 'Check-out',
     roomNumber: 'Room number (optional)',
+    roomHelpTrigger: '?',
+    roomHelpTitle: 'Rooms and available beds',
+    roomHelpIntro: 'Temporary room allocation to help you choose the room number.',
+    roomHelpCapacity: 'beds',
     extraLinen: 'I need an extra top sheet and towels (+20 euro)',
     worksTitle: 'Spiritual works',
     worksHint: 'Select one or more works. The contribution is calculated automatically.',
@@ -208,6 +239,7 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Identity document copy',
     paymentProof: 'Payment proof',
     consentDocument: 'Signed informed consent',
+    consentDownloadInline: 'Download the informed consent PDF',
     documentsHint: 'In this first version, only the selected file names are stored with the registration. The final proof is still expected by WhatsApp or email.',
     contributionTitle: 'Contribution summary',
     nights: 'Nights',
@@ -225,6 +257,7 @@ const copyByLocale: Record<Locale, Copy> = {
     sendProof: 'Send the proof to WhatsApp XXX or email YYY.',
     registrationId: 'Registration number',
     restart: 'Start a new registration',
+    close: 'Close',
     errors: {
       firstName: 'Please fill in the first name.',
       lastName: 'Please fill in the last name.',
@@ -272,6 +305,10 @@ const copyByLocale: Record<Locale, Copy> = {
     checkIn: 'Check-in',
     checkOut: 'Check-out',
     roomNumber: 'Número de habitación (opcional)',
+    roomHelpTrigger: '?',
+    roomHelpTitle: 'Habitaciones y plazas',
+    roomHelpIntro: 'Distribución provisional para orientar la elección del número de habitación.',
+    roomHelpCapacity: 'plazas',
     extraLinen: 'Quiero una sábana superior adicional y toallas (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleccione uno o más trabajos. El valor se calcula automáticamente.',
@@ -279,6 +316,7 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Copia del documento de identidad',
     paymentProof: 'Comprobante de pago',
     consentDocument: 'Consentimiento informado firmado',
+    consentDownloadInline: 'Descargar el PDF del consentimiento informado',
     documentsHint: 'En esta primera versión, solo se registran los nombres de los archivos seleccionados. El comprobante final sigue siendo esperado por WhatsApp o correo electrónico.',
     contributionTitle: 'Resumen de la contribución',
     nights: 'Noches',
@@ -296,6 +334,7 @@ const copyByLocale: Record<Locale, Copy> = {
     sendProof: 'Envíe el comprobante a WhatsApp XXX o al correo YYY.',
     registrationId: 'Número de inscripción',
     restart: 'Hacer una nueva inscripción',
+    close: 'Cerrar',
     errors: {
       firstName: 'Complete el nombre.',
       lastName: 'Complete el apellido.',
@@ -343,6 +382,10 @@ const copyByLocale: Record<Locale, Copy> = {
     checkIn: 'Check-in',
     checkOut: 'Check-out',
     roomNumber: 'Numero di camera (facoltativo)',
+    roomHelpTrigger: '?',
+    roomHelpTitle: 'Camere e posti disponibili',
+    roomHelpIntro: 'Distribuzione provvisoria delle camere per aiutarti a scegliere il numero.',
+    roomHelpCapacity: 'posti',
     extraLinen: 'Desidero un secondo lenzuolo superiore e asciugamani (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleziona uno o più lavori. Il contributo viene calcolato automaticamente.',
@@ -350,6 +393,7 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Copia del documento di identità',
     paymentProof: 'Contabile bonifico pagamento',
     consentDocument: 'Consenso informato firmato',
+    consentDownloadInline: 'Scarica il PDF del consenso informato',
     documentsHint: 'In questa prima versione, insieme all\'iscrizione vengono registrati solo i nomi dei file selezionati. La contabile finale resta comunque attesa via WhatsApp o email.',
     contributionTitle: 'Riepilogo del contributo',
     nights: 'Notti',
@@ -367,6 +411,7 @@ const copyByLocale: Record<Locale, Copy> = {
     sendProof: 'Invia la contabile via WhatsApp XXX o email YYY.',
     registrationId: 'Numero iscrizione',
     restart: 'Compila una nuova iscrizione',
+    close: 'Chiudi',
     errors: {
       firstName: 'Compila il nome.',
       lastName: 'Compila il cognome.',
@@ -388,7 +433,7 @@ const copyByLocale: Record<Locale, Copy> = {
 
 const workIds: SpiritualWorkId[] = ['fri-11-19', 'sat-12-19', 'mon-14-11', 'tue-15-19'];
 
-function Field({ children, label }: { children: ReactNode; label: string }) {
+function Field({ children, label }: { children: ReactNode; label: ReactNode }) {
   return (
     <label className="text-sm text-slate-700">
       <span className="mb-1 block font-medium">{label}</span>
@@ -411,6 +456,7 @@ export default function EncontroEuropeuPage() {
   });
   const [submitError, setSubmitError] = useState<string>('');
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
 
   const copy = copyByLocale[locale];
   const contribution = useMemo(() => calculateContribution(values), [values]);
@@ -462,6 +508,7 @@ export default function EncontroEuropeuPage() {
     setDocuments({ identityDocument: null, paymentProof: null, consentDocument: null });
     setSubmitError('');
     setSuccessState(null);
+    setIsRoomModalOpen(false);
     mutation.reset();
   };
 
@@ -534,54 +581,7 @@ export default function EncontroEuropeuPage() {
             </div>
           </section>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
-            <aside className="space-y-6">
-              <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-                <h2 className="text-xl font-semibold text-slate-900">{copy.resourcesTitle}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{copy.resourcesIntro}</p>
-
-                <div className="mt-5 grid gap-3">
-                  <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={generalProgramPaths[locale]} target="_blank" rel="noreferrer">
-                    {copy.generalProgram}
-                  </a>
-                  <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={directionsPaths[locale]} target="_blank" rel="noreferrer">
-                    {copy.directions}
-                  </a>
-                  <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">
-                    {copy.consentDownload}
-                  </a>
-                </div>
-
-                <p className="mt-4 text-xs leading-5 text-slate-500">{copy.consentHint}</p>
-              </section>
-
-              <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-                <h2 className="text-xl font-semibold text-slate-900">{copy.contributionTitle}</h2>
-                <dl className="mt-5 grid gap-3 text-sm">
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                    <dt className="text-slate-600">{copy.nights}</dt>
-                    <dd className="font-semibold text-slate-900">{contribution.nights}</dd>
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                    <dt className="text-slate-600">{copy.lodging}</dt>
-                    <dd className="font-semibold text-slate-900">{formatCurrency(contribution.lodging)}</dd>
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                    <dt className="text-slate-600">{copy.spiritualWorks}</dt>
-                    <dd className="font-semibold text-slate-900">{formatCurrency(contribution.spiritualWorks)}</dd>
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                    <dt className="text-slate-600">{copy.extras}</dt>
-                    <dd className="font-semibold text-slate-900">{formatCurrency(contribution.extras)}</dd>
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-950 px-4 py-4 text-white">
-                    <dt className="font-medium">{copy.total}</dt>
-                    <dd className="text-xl font-semibold text-amber-300">{formatCurrency(contribution.total)}</dd>
-                  </div>
-                </dl>
-              </section>
-            </aside>
-
+          <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
             <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
               <h2 className="text-xl font-semibold text-slate-900">{copy.formTitle}</h2>
 
@@ -654,7 +654,21 @@ export default function EncontroEuropeuPage() {
 
                   {values.attendanceMode === 'lodging' ? (
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label={copy.roomNumber}>
+                      <Field
+                        label={
+                          <span className="inline-flex items-center gap-2">
+                            <span>{copy.roomNumber}</span>
+                            <button
+                              type="button"
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white"
+                              aria-label={copy.roomHelpTitle}
+                              onClick={() => setIsRoomModalOpen(true)}
+                            >
+                              {copy.roomHelpTrigger}
+                            </button>
+                          </span>
+                        }
+                      >
                         <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.roomNumber} onChange={event => setField('roomNumber', event.target.value)} />
                       </Field>
                       <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 sm:mt-7">
@@ -678,24 +692,6 @@ export default function EncontroEuropeuPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{copy.documentsTitle}</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label={copy.identityDocument}>
-                      <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, identityDocument: event.target.files?.[0] ?? null }))} />
-                    </Field>
-                    <Field label={copy.paymentProof}>
-                      <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, paymentProof: event.target.files?.[0] ?? null }))} />
-                    </Field>
-                    {values.isNovice ? (
-                      <Field label={copy.consentDocument}>
-                        <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, consentDocument: event.target.files?.[0] ?? null }))} />
-                      </Field>
-                    ) : null}
-                  </div>
-                  <p className="text-xs leading-5 text-slate-500">{copy.documentsHint}</p>
-                </div>
-
                 {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
 
                 <button type="submit" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
@@ -703,9 +699,102 @@ export default function EncontroEuropeuPage() {
                 </button>
               </form>
             </section>
+
+            <aside className="space-y-6">
+              <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+                <h2 className="text-xl font-semibold text-slate-900">{copy.resourcesTitle}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{copy.resourcesIntro}</p>
+
+                <div className="mt-5 grid gap-3">
+                  <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={generalProgramPaths[locale]} target="_blank" rel="noreferrer">
+                    {copy.generalProgram}
+                  </a>
+                  <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={directionsPaths[locale]} target="_blank" rel="noreferrer">
+                    {copy.directions}
+                  </a>
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+                <h2 className="text-xl font-semibold text-slate-900">{copy.documentsTitle}</h2>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <Field label={copy.identityDocument}>
+                    <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, identityDocument: event.target.files?.[0] ?? null }))} />
+                  </Field>
+                  <Field label={copy.paymentProof}>
+                    <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, paymentProof: event.target.files?.[0] ?? null }))} />
+                  </Field>
+                  {values.isNovice ? (
+                    <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                      <Field label={copy.consentDocument}>
+                        <input type="file" accept=".pdf,image/*" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" onChange={event => setDocuments(current => ({ ...current, consentDocument: event.target.files?.[0] ?? null }))} />
+                      </Field>
+                      <a className="inline-flex rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">
+                        {copy.consentDownloadInline}
+                      </a>
+                      <p className="text-xs leading-5 text-slate-600">{copy.consentHint}</p>
+                    </div>
+                  ) : null}
+                </div>
+                <p className="mt-4 text-xs leading-5 text-slate-500">{copy.documentsHint}</p>
+              </section>
+
+              <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+                <h2 className="text-xl font-semibold text-slate-900">{copy.contributionTitle}</h2>
+                <dl className="mt-5 grid gap-3 text-sm">
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                    <dt className="text-slate-600">{copy.nights}</dt>
+                    <dd className="font-semibold text-slate-900">{contribution.nights}</dd>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                    <dt className="text-slate-600">{copy.lodging}</dt>
+                    <dd className="font-semibold text-slate-900">{formatCurrency(contribution.lodging)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                    <dt className="text-slate-600">{copy.spiritualWorks}</dt>
+                    <dd className="font-semibold text-slate-900">{formatCurrency(contribution.spiritualWorks)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                    <dt className="text-slate-600">{copy.extras}</dt>
+                    <dd className="font-semibold text-slate-900">{formatCurrency(contribution.extras)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-950 px-4 py-4 text-white">
+                    <dt className="font-medium">{copy.total}</dt>
+                    <dd className="text-xl font-semibold text-amber-300">{formatCurrency(contribution.total)}</dd>
+                  </div>
+                </dl>
+              </section>
+            </aside>
           </div>
         )}
       </main>
+
+      {isRoomModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-label={copy.roomHelpTitle}>
+          <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">{copy.roomHelpTitle}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{copy.roomHelpIntro}</p>
+              </div>
+              <button type="button" className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600" onClick={() => setIsRoomModalOpen(false)}>
+                {copy.close}
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {roomOptions.map(room => (
+                <div key={room.name} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  <span className="font-medium text-slate-900">{room.name}</span>
+                  <span>
+                    {room.capacity} {copy.roomHelpCapacity}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

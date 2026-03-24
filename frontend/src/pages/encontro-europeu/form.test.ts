@@ -39,6 +39,11 @@ describe('encontro europeu helpers', () => {
     });
   });
 
+  it('starts with september check-in and check-out defaults', () => {
+    expect(initialEncontroEuropeuFormValues.checkIn).toBe('2026-09-10');
+    expect(initialEncontroEuropeuFormValues.checkOut).toBe('2026-09-16');
+  });
+
   it('builds normalized payload', () => {
     const payload = buildEncontroEuropeuPayload({
       values: {
