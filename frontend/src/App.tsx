@@ -7,6 +7,7 @@ import { NavBar } from './components/NavBar';
 const BeveragePage = lazy(() => import('./pages/BeveragePage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const EncontroEuropeuPage = lazy(() => import('./pages/EncontroEuropeuPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -38,6 +39,7 @@ function App() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/encontro-europeu" element={<EncontroEuropeuPage />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />

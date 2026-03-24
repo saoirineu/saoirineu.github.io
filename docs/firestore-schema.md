@@ -76,6 +76,23 @@
 - id (URI ou slug)
 - label, definition, scopeNote, broader, narrower, related
 
+### encontroEuropeuInscricoes
+- locale: `pt` | `en` | `es` | `it`
+- firstName, lastName, country
+- church, centerLeader
+- isFardado: bool
+- isIcefluMember: bool
+- isNovice: bool
+- attendanceMode: `lodging` | `meals` | `spiritual`
+- checkIn, checkOut: string ISO curta (`YYYY-MM-DD`), opcionais quando a modalidade nao envolve permanencia
+- selectedWorks: string[] com ids dos trabalhos espirituais selecionados
+- needsExtraLinen: bool
+- roomNumber: string?
+- identityDocumentName, paymentProofName, consentDocumentName: string? com nomes dos arquivos selecionados no cliente
+- contribution: { nights, lodging, spiritualWorks, extras, total }
+- status: `pending-payment`
+- submittedAt
+
 ## Indices compostos sugeridos
 - pessoas: papeis+status; igrejaRef+status
 - igrejas: localizacao.cidade+localizacao.uf
@@ -83,6 +100,7 @@
 - hinos: hinarioRef; autorRef; tema+hinarioRef
 - bebidaLotes: ano+localidade; grau+ano; responsaveis
 - trabalhos: data+igrejasResponsaveis; data+createdBy; hinarios+data
+- encontroEuropeuInscricoes: status+submittedAt; attendanceMode+submittedAt
 
 ## Regras (esboco)
 - Leitura: `allow read: if true;` (ou restrita a auth conforme politicas de privacidade).
@@ -96,3 +114,4 @@
 - Campos que referenciam taxonomias (papel, temas) devem usar labels/ids SKOS para alinhar UI/tooltips.
 - `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
+- `encontroEuropeuInscricoes` foi pensado para receber inscricoes anonimas via pagina publica; leitura fica restrita a admins e a primeira versao guarda apenas os nomes dos anexos selecionados, nao os binarios.

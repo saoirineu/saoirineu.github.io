@@ -31,6 +31,14 @@ Atualize os documentos quando houver mudanca em pelo menos um destes pontos:
 - Para performance, preferir lazy loading por rota e chunking controlado no Vite.
 - Para dados, preferir funcoes de normalizacao compartilhadas a casts inline.
 
+## Backlog de customizacoes
+
+Guardar estes proximos passos para fazer depois:
+
+- Criar uma instrucao especifica para mudancas de dados e regras do Firestore, apontando explicitamente quando consultar `docs/firestore-schema.md` e `firestore.rules`.
+- Criar uma instrucao especifica de testes para frontend, padronizando quando exigir `cd frontend && npm run test`, `cd frontend && npm run lint` e `cd frontend && npm run build`.
+- Revisar `AGENTS.md` para deixa-lo ainda mais enxuto e prescritivo, sem duplicar detalhes que ja estao nos docs de apoio.
+
 ## Comandos uteis
 
 - `make serve`
