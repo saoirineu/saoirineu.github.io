@@ -4,10 +4,47 @@
 
 :root {
   color-scheme: light;
+  --brand-white: #f7f4ea;
+  --brand-blue: #3f84c2;
+  --brand-blue-deep: #2a628f;
+  --brand-green: #0f6f57;
+  --brand-green-deep: #0b5a46;
+  --brand-gold: #e8c24c;
+  --brand-gold-soft: #f3df8c;
+  --brand-ink: #24364d;
+  --brand-sand: #e5dcc7;
+  --brand-mist: #edf3f6;
+  --brand-shadow: rgba(36, 54, 77, 0.16);
+}
+
+html {
+  background: var(--brand-mist);
 }
 
 body {
   min-height: 100vh;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(232, 194, 76, 0.28), transparent 16%),
+    linear-gradient(
+      180deg,
+      #fbfaf5 0%,
+      var(--brand-mist) 34%,
+      #e5f0f8 34%,
+      #dcecf8 65%,
+      #e8f2ed 65%,
+      var(--brand-white) 100%
+    );
+  color: var(--brand-ink);
+}
+
+::selection {
+  background: rgba(63, 132, 194, 0.24);
+  color: var(--brand-ink);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(232, 194, 76, 0.9);
+  outline-offset: 2px;
 }
 
 a {

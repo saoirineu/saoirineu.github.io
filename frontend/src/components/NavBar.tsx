@@ -97,19 +97,19 @@ export function NavBar() {
   ];
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.9)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <BrandMark className="h-9 w-9 shrink-0" decorative />
-          <div className="text-lg font-semibold tracking-tight text-slate-900">São Irineu</div>
+          <div className="text-lg font-semibold tracking-tight text-[color:var(--brand-ink)]">São Irineu</div>
         </div>
-        <nav className="hidden items-center gap-4 text-sm font-medium text-slate-700 sm:flex">
+        <nav className="hidden items-center gap-4 text-sm font-medium text-[color:var(--brand-ink)] sm:flex">
           {navigationLinks.map(link => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) =>
-                `rounded px-3 py-2 transition hover:bg-slate-100 ${isActive ? 'bg-slate-900 text-white' : ''}`
+                `rounded-full px-3 py-2 transition hover:bg-[rgba(63,132,194,0.12)] ${isActive ? 'bg-[color:var(--brand-blue-deep)] text-[color:var(--brand-white)] shadow-sm' : ''}`
               }
             >
               {link.label}
@@ -118,9 +118,9 @@ export function NavBar() {
         </nav>
         <div className="flex items-center gap-3">
           <label className="hidden items-center gap-2 md:flex">
-            <span className="text-xs font-medium text-slate-600">{copy.language}</span>
+            <span className="text-xs font-medium text-[color:var(--brand-blue-deep)]">{copy.language}</span>
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className="rounded-full border border-[color:var(--brand-sand)] bg-white/90 px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm"
               value={locale}
               onChange={event => setLocale(event.target.value as typeof locale)}
             >
@@ -132,14 +132,14 @@ export function NavBar() {
             </select>
           </label>
           {canToggleDevMode ? (
-            <label className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 md:flex">
+            <label className="hidden items-center gap-2 rounded-full border border-[color:var(--brand-sand)] bg-white/70 px-3 py-2 text-xs font-medium text-[color:var(--brand-ink)] md:flex">
               <span>{copy.dev}</span>
               <button
                 type="button"
                 role="switch"
                 aria-checked={devModeEnabled}
                 onClick={() => setDevModeEnabled(!devModeEnabled)}
-                className={`relative h-6 w-11 rounded-full transition ${devModeEnabled ? 'bg-slate-900' : 'bg-slate-300'}`}
+                className={`relative h-6 w-11 rounded-full transition ${devModeEnabled ? 'bg-[color:var(--brand-green)]' : 'bg-[rgba(42,98,143,0.24)]'}`}
               >
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${devModeEnabled ? 'left-5' : 'left-0.5'}`} />
               </button>
@@ -148,7 +148,7 @@ export function NavBar() {
           <button
             type="button"
             onClick={() => signOut()}
-            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            className="rounded-full bg-[color:var(--brand-green)] px-3 py-2 text-sm font-semibold text-[color:var(--brand-white)] shadow-sm transition hover:bg-[color:var(--brand-green-deep)]"
           >
             {copy.signOut}
           </button>

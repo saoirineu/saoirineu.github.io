@@ -1,29 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="São Irineu favicon">
-  <defs>
-    <linearGradient id="bg" x1="7" x2="53" y1="58" y2="7" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#08111f" />
-      <stop offset="55%" stop-color="#153c89" />
-      <stop offset="100%" stop-color="#2563eb" />
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="18" fill="url(#bg)" />
-  <path
-    d="M17 50V33.5C17 23.835 24.835 16 34.5 16C44.165 16 52 23.835 52 33.5V50"
-    fill="none"
-    stroke="#f8f4ea"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    stroke-width="5.5"
-  />
-  <path
-    d="M27 42C30.8 36.9 35.1 32.9 40.5 29.8C43.5 28.1 46.3 26.8 49.4 25.6"
-    fill="none"
-    stroke="#93c5fd"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    stroke-width="3.6"
-  />
-  <circle cx="27" cy="42" r="3.3" fill="#34d399" />
-  <circle cx="40.5" cy="29.8" r="2.4" fill="#dbeafe" />
-  <circle cx="49.4" cy="25.6" r="3.8" fill="#fbbf24" />
+  <rect width="64" height="64" rx="16" fill="#f7f4ea" />
+  <path d="M0 21.33h64v21.34H0z" fill="#3f84c2" />
+  <path d="M0 42.67h64v21.33H0z" fill="#0f6f57" />
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="none" stroke="#d7ceb8" stroke-width="2" />
+  <circle cx="31" cy="32" r="10" fill="#e8c24c" />
+  <circle cx="36.2" cy="30.7" r="9.2" fill="#3f84c2" />
 </svg>

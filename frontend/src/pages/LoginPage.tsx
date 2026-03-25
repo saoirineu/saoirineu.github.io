@@ -120,15 +120,17 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-900 to-blue-700 p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#fbfaf5_0%,#fbfaf5_34%,#dcebf7_34%,#c4def2_67%,#dbece4_67%,#c7dfd3_100%)] p-6">
+      <div className="pointer-events-none absolute left-[8%] top-[8%] h-40 w-40 rounded-full bg-[rgba(232,194,76,0.22)] blur-3xl" aria-hidden />
+      <div className="pointer-events-none absolute right-[10%] top-[28%] h-48 w-48 rounded-full bg-[rgba(63,132,194,0.15)] blur-3xl" aria-hidden />
+      <div className="relative w-full max-w-md rounded-[28px] border border-[color:var(--brand-sand)] bg-[rgba(255,255,255,0.92)] p-8 shadow-[0_24px_80px_var(--brand-shadow)]">
         <div className="mb-6 text-center">
-          <BrandMark className="mx-auto mb-4 h-14 w-14" decorative />
+          <BrandMark className="mx-auto mb-4 h-16 w-16" decorative />
           <div className="mb-4 flex justify-center">
-            <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+            <label className="flex items-center gap-2 text-xs font-medium text-[color:var(--brand-blue-deep)]">
               <span>{copy.language}</span>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                className="rounded-full border border-[color:var(--brand-sand)] bg-white px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm"
                 value={locale}
                 onChange={event => setLocale(event.target.value as typeof locale)}
               >
@@ -140,59 +142,60 @@ export function LoginPage() {
               </select>
             </label>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{copy.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[color:var(--brand-ink)]">{copy.title}</h1>
+          <p className="mt-2 text-sm text-[color:rgba(36,54,77,0.72)]">Branco, azul, verde e dourado como base visual do site.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleEmail}>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-[color:var(--brand-ink)]">
             {copy.email}
             <input
               type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              className="mt-1 w-full rounded-2xl border border-[color:var(--brand-sand)] bg-white/90 px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm focus:border-[color:var(--brand-blue-deep)] focus:outline-none"
             />
           </label>
 
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-[color:var(--brand-ink)]">
             {copy.password}
             <input
               type="password"
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              className="mt-1 w-full rounded-2xl border border-[color:var(--brand-sand)] bg-white/90 px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm focus:border-[color:var(--brand-blue-deep)] focus:outline-none"
             />
           </label>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+            className="w-full rounded-2xl bg-[color:var(--brand-blue-deep)] px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-white)] transition hover:bg-[color:var(--brand-green)] disabled:opacity-70"
           >
             {mode === 'signin' ? copy.signIn : copy.signUp}
           </button>
         </form>
 
-        <div className="my-4 text-center text-xs text-slate-500">{copy.or}</div>
+        <div className="my-4 text-center text-xs text-[color:rgba(36,54,77,0.56)]">{copy.or}</div>
 
         <button
           type="button"
           onClick={handleGoogle}
           disabled={submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--brand-sand)] bg-white/80 px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-ink)] transition hover:bg-[rgba(247,244,234,0.95)] disabled:opacity-70"
         >
           <span>{copy.google}</span>
         </button>
 
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-        <div className="mt-6 text-center text-sm text-slate-600">
+        <div className="mt-6 text-center text-sm text-[color:rgba(36,54,77,0.72)]">
           {mode === 'signin' ? copy.newHere : copy.alreadyHave}
           <button
             type="button"
-            className="ml-2 font-semibold text-blue-700 underline"
+            className="ml-2 font-semibold text-[color:var(--brand-blue-deep)] underline decoration-[color:var(--brand-gold)] underline-offset-4"
             onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
           >
             {mode === 'signin' ? copy.switchToSignUp : copy.switchToSignIn}

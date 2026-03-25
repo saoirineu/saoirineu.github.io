@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
@@ -54,6 +54,7 @@ type Copy = {
   modeSpiritual: string;
   checkIn: string;
   checkOut: string;
+  datePlaceholder: string;
   roomNumber: string;
   roomHelpTrigger: string;
   roomHelpTitle: string;
@@ -126,6 +127,13 @@ const paymentInfo = {
   email: 'YYY'
 };
 
+const monthLabelsByLocale: Record<Locale, string[]> = {
+  pt: ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'],
+  en: ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'],
+  es: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+  it: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+};
+
 const copyByLocale: Record<Locale, Copy> = {
   pt: {
     pageTitle: 'Inscrição no Encontro Europeu',
@@ -157,6 +165,7 @@ const copyByLocale: Record<Locale, Copy> = {
     modeSpiritual: 'Somente trabalhos espirituais',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
+    datePlaceholder: 'dd/mmm/aaaa',
     roomNumber: 'Quarto desejado (opcional)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Quartos e vagas',
@@ -243,6 +252,7 @@ const copyByLocale: Record<Locale, Copy> = {
     modeSpiritual: 'Spiritual works only',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
+    datePlaceholder: 'dd/mmm/yyyy',
     roomNumber: 'Preferred room (optional)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Rooms and available beds',
@@ -329,6 +339,7 @@ const copyByLocale: Record<Locale, Copy> = {
     modeSpiritual: 'Solo trabajos espirituales',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
+    datePlaceholder: 'dd/mmm/aaaa',
     roomNumber: 'Habitación deseada (opcional)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Habitaciones y plazas',
@@ -415,6 +426,7 @@ const copyByLocale: Record<Locale, Copy> = {
     modeSpiritual: 'Solo lavori spirituali',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
+    datePlaceholder: 'gg/mmm/aaaa',
     roomNumber: 'Camera desiderata (facoltativo)',
     roomHelpTrigger: '?',
     roomHelpTitle: 'Camere e posti disponibili',
@@ -496,6 +508,94 @@ function Field({
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
+}
+
+function formatLocalizedShortDate(value: string, locale: Locale) {
+  if (!value) {
+    return '';
+  }
+
+  const [year, month, day] = value.split('-').map(part => Number(part));
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return `${String(day).padStart(2, '0')}/${monthLabelsByLocale[locale][month - 1]}/${year}`;
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 text-slate-500">
+      <path
+        d="M7 2v3M17 2v3M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function LocalizedDateField({
+  label,
+  locale,
+  onChange,
+  onOpen,
+  placeholder,
+  suggestedValue,
+  value
+}: {
+  label: string;
+  locale: Locale;
+  onChange: (value: string) => void;
+  onOpen: () => void;
+  placeholder: string;
+  suggestedValue: string;
+  value: string;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="date"
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
+          value={value || suggestedValue}
+          onChange={event => onChange(event.target.value)}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+        <button
+          type="button"
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm shadow-sm transition hover:border-slate-300"
+          onClick={() => {
+            onOpen();
+            const picker = inputRef.current;
+            if (!picker) {
+              return;
+            }
+
+            if (typeof picker.showPicker === 'function') {
+              picker.showPicker();
+              return;
+            }
+
+            picker.focus();
+            picker.click();
+          }}
+        >
+          <span className={value ? 'text-slate-900' : 'text-slate-400'}>
+            {value ? formatLocalizedShortDate(value, locale) : placeholder}
+          </span>
+          <CalendarIcon />
+        </button>
+      </div>
+    </Field>
+  );
 }
 
 const fileInputClassName = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200';
@@ -831,12 +931,40 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
 
                   {values.attendanceMode !== 'spiritual' ? (
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label={copy.checkIn}>
-                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkIn} onFocus={() => { setDraftDateSelections(current => ({ ...current, checkIn: true })); if (!values.checkIn) setField('checkIn', suggestedCheckInDate); }} onChange={event => { setDraftDateSelections(current => ({ ...current, checkIn: true })); setField('checkIn', event.target.value); }} />
-                      </Field>
-                      <Field label={copy.checkOut}>
-                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkOut} onFocus={() => { setDraftDateSelections(current => ({ ...current, checkOut: true })); if (!values.checkOut) setField('checkOut', suggestedCheckOutDate); }} onChange={event => { setDraftDateSelections(current => ({ ...current, checkOut: true })); setField('checkOut', event.target.value); }} />
-                      </Field>
+                      <LocalizedDateField
+                        label={copy.checkIn}
+                        locale={locale}
+                        onChange={nextValue => {
+                          setDraftDateSelections(current => ({ ...current, checkIn: true }));
+                          setField('checkIn', nextValue);
+                        }}
+                        onOpen={() => {
+                          setDraftDateSelections(current => ({ ...current, checkIn: true }));
+                          if (!values.checkIn) {
+                            setField('checkIn', suggestedCheckInDate);
+                          }
+                        }}
+                        placeholder={copy.datePlaceholder}
+                        suggestedValue={suggestedCheckInDate}
+                        value={values.checkIn}
+                      />
+                      <LocalizedDateField
+                        label={copy.checkOut}
+                        locale={locale}
+                        onChange={nextValue => {
+                          setDraftDateSelections(current => ({ ...current, checkOut: true }));
+                          setField('checkOut', nextValue);
+                        }}
+                        onOpen={() => {
+                          setDraftDateSelections(current => ({ ...current, checkOut: true }));
+                          if (!values.checkOut) {
+                            setField('checkOut', suggestedCheckOutDate);
+                          }
+                        }}
+                        placeholder={copy.datePlaceholder}
+                        suggestedValue={suggestedCheckOutDate}
+                        value={values.checkOut}
+                      />
                     </div>
                   ) : null}
 

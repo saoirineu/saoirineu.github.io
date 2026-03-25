@@ -3,8 +3,8 @@
   "short_name": "São Irineu",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#0f172a",
+  "background_color": "#f7f4ea",
+  "theme_color": "#3f84c2",
   "description": "PWA para navegação das ontologias e dados do Santo Daime.",
   "icons": [
     {

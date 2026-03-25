@@ -1,34 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="São Irineu icon">
-  <defs>
-    <linearGradient id="bg" x1="12" x2="108" y1="118" y2="14" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#08111f" />
-      <stop offset="55%" stop-color="#153c89" />
-      <stop offset="100%" stop-color="#2563eb" />
-    </linearGradient>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(92 32) rotate(90) scale(28)">
-      <stop offset="0%" stop-color="#fcd34d" stop-opacity="0.95" />
-      <stop offset="100%" stop-color="#fcd34d" stop-opacity="0" />
-    </radialGradient>
-  </defs>
-  <rect width="128" height="128" rx="32" fill="url(#bg)" />
-  <circle cx="92" cy="32" r="28" fill="url(#glow)" opacity="0.72" />
-  <path
-    d="M34 100V62C34 45.431 47.431 32 64 32C80.569 32 94 45.431 94 62V100"
-    fill="none"
-    stroke="#f8f4ea"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    stroke-width="10"
-  />
-  <path
-    d="M52 84C58.5 75 66 68 75.5 63C80.5 60.5 85 58.5 89.5 56.8"
-    fill="none"
-    stroke="#93c5fd"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    stroke-width="6"
-  />
-  <circle cx="52" cy="84" r="5.5" fill="#34d399" />
-  <circle cx="75.5" cy="63" r="4.2" fill="#dbeafe" />
-  <circle cx="89.5" cy="56.8" r="6" fill="#fbbf24" />
+  <rect width="128" height="128" rx="32" fill="#f7f4ea" />
+  <path d="M0 42.67h128v42.66H0z" fill="#3f84c2" />
+  <path d="M0 85.33h128v42.67H0z" fill="#0f6f57" />
+  <rect x="1.5" y="1.5" width="125" height="125" rx="30.5" fill="none" stroke="#d7ceb8" stroke-width="3" />
+  <circle cx="29" cy="23" r="9" fill="#e8c24c" />
+  <path d="M64 18v28M49 25h30M52.5 34.5h23" fill="none" stroke="#2a628f" stroke-linecap="round" stroke-width="5.5" />
+  <circle cx="62" cy="64" r="19" fill="#e8c24c" />
+  <circle cx="72" cy="60.5" r="17.5" fill="#3f84c2" />
+  <path d="M95 94l9.2 15.8H85.8z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" />
+  <path d="M95 112.2 85.8 96.4H104.2Z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" />
 </svg>
