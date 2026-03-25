@@ -8,7 +8,7 @@ const storageKey = 'saoirineu-dev-mode';
 
 export function DevModeProvider({ children }: { children: ReactNode }) {
   const { role } = useSystemRole();
-  const canToggleDevMode = hasRequiredRole(role, 'admin');
+  const canToggleDevMode = hasRequiredRole(role, 'superadmin');
   const [storedDevModeEnabled, setStoredDevModeEnabled] = useState(false);
 
   useEffect(() => {
