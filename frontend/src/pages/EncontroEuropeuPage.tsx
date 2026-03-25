@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -713,8 +713,97 @@ function LocalizedDateField({
   );
 }
 
+function InfoTooltip({
+  body,
+  title,
+  triggerLabel
+}: {
+  body: string;
+  title: string;
+  triggerLabel: string;
+}) {
+  const tooltipId = useId();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [supportsHover, setSupportsHover] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const updateMode = () => {
+      const nextSupportsHover = mediaQuery.matches;
+      setSupportsHover(nextSupportsHover);
+      if (nextSupportsHover) {
+        setIsOpen(false);
+      }
+    };
+
+    updateMode();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateMode);
+      return () => mediaQuery.removeEventListener('change', updateMode);
+    }
+
+    mediaQuery.addListener(updateMode);
+    return () => mediaQuery.removeListener(updateMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || supportsHover || typeof document === 'undefined') {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (containerRef.current?.contains(event.target as Node)) {
+        return;
+      }
+
+      setIsOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isOpen, supportsHover]);
+
+  const tooltipClassName = supportsHover
+    ? 'pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-64 max-w-[min(18rem,calc(100vw-4rem))] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-normal leading-5 text-amber-950 shadow-lg group-hover:block'
+    : `absolute left-0 top-full z-20 mt-2 w-64 max-w-[min(18rem,calc(100vw-4rem))] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-normal leading-5 text-amber-950 shadow-lg ${isOpen ? 'block' : 'hidden'}`;
+
+  return (
+    <div ref={containerRef} className="group relative inline-flex shrink-0">
+      <button
+        type="button"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus:border-amber-300 focus:bg-amber-50 focus:text-amber-900 focus:outline-none"
+        aria-label={title}
+        aria-describedby={tooltipId}
+        aria-expanded={!supportsHover ? isOpen : undefined}
+        title={title}
+        onClick={event => {
+          if (!supportsHover) {
+            setIsOpen(current => !current);
+            return;
+          }
+
+          event.currentTarget.blur();
+        }}
+      >
+        {triggerLabel === 'i' ? <InfoIcon /> : triggerLabel}
+      </button>
+      <div id={tooltipId} role="tooltip" className={tooltipClassName}>
+        <div className="font-semibold">{title}</div>
+        <p className="mt-1">{body}</p>
+      </div>
+    </div>
+  );
+}
+
 function FileUploadField({
   accept,
+  className,
   file,
   closeLabel,
   compressedSizeLabel,
@@ -722,11 +811,10 @@ function FileUploadField({
   compressionError,
   compressionTitle,
   downloadLabel,
-  infoBody,
-  infoTitle,
-  infoTriggerLabel,
   invalidTypeError,
   keepOriginalLabel,
+  label,
+  labelClassName,
   openInNewTabLabel,
   originalSizeLabel,
   onChange,
@@ -739,6 +827,7 @@ function FileUploadField({
   useCompressedLabel
 }: {
   accept: string;
+  className?: string;
   file: File | null;
   closeLabel: string;
   compressedSizeLabel: string;
@@ -746,11 +835,10 @@ function FileUploadField({
   compressionError: string;
   compressionTitle: string;
   downloadLabel: string;
-  infoBody: string;
-  infoTitle: string;
-  infoTriggerLabel: string;
   invalidTypeError: string;
   keepOriginalLabel: string;
+  label: ReactNode;
+  labelClassName?: string;
   openInNewTabLabel: string;
   originalSizeLabel: string;
   onChange: (file: File | null) => void;
@@ -764,7 +852,6 @@ function FileUploadField({
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -984,112 +1071,97 @@ function FileUploadField({
 
   return (
     <>
-      <div
-        className={`rounded-[26px] border bg-white p-4 shadow-sm transition ${isDragOver ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200'}`}
-        onDragOver={event => {
-          event.preventDefault();
-          if (!isProcessing) {
-            setIsDragOver(true);
-          }
-        }}
-        onDragEnter={event => {
-          event.preventDefault();
-          if (!isProcessing) {
-            setIsDragOver(true);
-          }
-        }}
-        onDragLeave={event => {
-          event.preventDefault();
-          if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            return;
-          }
-          setIsDragOver(false);
-        }}
-        onDrop={event => {
-          event.preventDefault();
-          setIsDragOver(false);
-          void handleDroppedFiles(event.dataTransfer.files);
-        }}
-      >
-        <div className="mb-3 flex items-start justify-end">
-          <button
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900"
-            aria-label={infoTitle}
-            title={infoTitle}
-            onClick={() => setIsHelpOpen(current => !current)}
-          >
-            {infoTriggerLabel === 'i' ? <InfoIcon /> : infoTriggerLabel}
-          </button>
-        </div>
+      <div className={`text-sm text-slate-700 ${className ?? ''}`.trim()}>
+        <div className={`mb-1 block font-medium ${labelClassName ?? ''}`.trim()}>{label}</div>
 
-        {isHelpOpen ? (
-          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-950">
-            <div className="font-semibold">{infoTitle}</div>
-            <p className="mt-1">{infoBody}</p>
-          </div>
-        ) : null}
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept={accept}
-          className="hidden"
-          onChange={event => {
-            const files = event.target.files;
-            event.target.value = '';
-            void handleDroppedFiles(files);
+        <div
+          className={`rounded-[26px] border bg-white p-4 shadow-sm transition ${isDragOver ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200'}`}
+          onDragOver={event => {
+            event.preventDefault();
+            if (!isProcessing) {
+              setIsDragOver(true);
+            }
           }}
-        />
+          onDragEnter={event => {
+            event.preventDefault();
+            if (!isProcessing) {
+              setIsDragOver(true);
+            }
+          }}
+          onDragLeave={event => {
+            event.preventDefault();
+            if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              return;
+            }
+            setIsDragOver(false);
+          }}
+          onDrop={event => {
+            event.preventDefault();
+            setIsDragOver(false);
+            void handleDroppedFiles(event.dataTransfer.files);
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept={accept}
+            className="hidden"
+            onChange={event => {
+              const files = event.target.files;
+              event.target.value = '';
+              void handleDroppedFiles(files);
+            }}
+          />
 
-        {file ? (
-          <>
-            <div className="min-w-0 text-center text-sm text-slate-700">
-              <div className="truncate text-center font-medium text-slate-900" title={file.name}>
-                {file.name}
+          {file ? (
+            <>
+              <div className="min-w-0 text-center text-sm text-slate-700">
+                <div className="truncate text-center font-medium text-slate-900" title={file.name}>
+                  {file.name}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{formatFileSize(file.size)}</div>
               </div>
-              <div className="mt-1 text-xs text-slate-500">{formatFileSize(file.size)}</div>
-            </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {previewUrl ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {previewUrl ? (
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    onClick={() => setIsPreviewOpen(true)}
+                  >
+                    {previewLabel}
+                  </button>
+                ) : null}
+
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  onClick={() => setIsPreviewOpen(true)}
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                  onClick={() => {
+                    resetPicker();
+                    setErrorMessage('');
+                    setCompressionCandidate(null);
+                    onChange(null);
+                  }}
                 >
-                  {previewLabel}
+                  {removeLabel}
                 </button>
-              ) : null}
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="flex min-h-[112px] w-full items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-wait disabled:opacity-70"
+              onClick={openPicker}
+              disabled={isProcessing}
+            >
+              {isProcessing ? processingLabel : selectLabel}
+            </button>
+          )}
 
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
-                onClick={() => {
-                  resetPicker();
-                  setErrorMessage('');
-                  setCompressionCandidate(null);
-                  onChange(null);
-                }}
-              >
-                {removeLabel}
-              </button>
-            </div>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="flex min-h-[112px] w-full items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-wait disabled:opacity-70"
-            onClick={openPicker}
-            disabled={isProcessing}
-          >
-            {isProcessing ? processingLabel : selectLabel}
-          </button>
-        )}
-
-        {errorMessage ? (
-          <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">{errorMessage}</p>
-        ) : null}
+          {errorMessage ? (
+            <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">{errorMessage}</p>
+          ) : null}
+        </div>
       </div>
 
       {compressionReviewModal}
@@ -1540,91 +1612,88 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
               </section>
 
               <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-                <h2 className="text-xl font-semibold text-slate-900">{copy.documentsTitle}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">{copy.documentsTitle}</h2>
+                  <InfoTooltip body={uploadInfoBody} title={copy.fileInfoTitle} triggerLabel={copy.fileInfoTrigger} />
+                </div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <Field className="flex h-full flex-col" label={copy.identityDocument} labelClassName="min-h-[2.5rem] leading-5">
-                    <FileUploadField
-                      accept={encontroEuropeuUploadAccept}
-                      closeLabel={copy.close}
-                      compressedSizeLabel={copy.fileCompressedSize}
-                      compressionBody={copy.fileCompressionBody}
-                      compressionError={copy.fileCompressionError}
-                      compressionTitle={copy.fileCompressionTitle}
-                      downloadLabel={copy.fileDownload}
-                      file={documents.identityDocument}
-                      infoBody={uploadInfoBody}
-                      infoTitle={copy.fileInfoTitle}
-                      infoTriggerLabel={copy.fileInfoTrigger}
-                      invalidTypeError={copy.fileInvalidType}
-                      keepOriginalLabel={copy.fileKeepOriginal}
-                      openInNewTabLabel={copy.fileOpenNewTab}
-                      onChange={file => setDocuments(current => ({ ...current, identityDocument: file }))}
-                      originalSizeLabel={copy.fileOriginalSize}
-                      previewLabel={copy.filePreview}
-                      previewTitle={copy.filePreviewTitle}
-                      processingLabel={copy.fileProcessing}
-                      removeLabel={copy.fileRemove}
-                      selectLabel={copy.fileSelect}
-                      tooLargeError={uploadTooLargeError}
-                      useCompressedLabel={copy.fileApproveCompressed}
-                    />
-                  </Field>
-                  <Field className="flex h-full flex-col" label={copy.paymentProof} labelClassName="min-h-[2.5rem] leading-5">
-                    <FileUploadField
-                      accept={encontroEuropeuUploadAccept}
-                      closeLabel={copy.close}
-                      compressedSizeLabel={copy.fileCompressedSize}
-                      compressionBody={copy.fileCompressionBody}
-                      compressionError={copy.fileCompressionError}
-                      compressionTitle={copy.fileCompressionTitle}
-                      downloadLabel={copy.fileDownload}
-                      file={documents.paymentProof}
-                      infoBody={uploadInfoBody}
-                      infoTitle={copy.fileInfoTitle}
-                      infoTriggerLabel={copy.fileInfoTrigger}
-                      invalidTypeError={copy.fileInvalidType}
-                      keepOriginalLabel={copy.fileKeepOriginal}
-                      openInNewTabLabel={copy.fileOpenNewTab}
-                      onChange={file => setDocuments(current => ({ ...current, paymentProof: file }))}
-                      originalSizeLabel={copy.fileOriginalSize}
-                      previewLabel={copy.filePreview}
-                      previewTitle={copy.filePreviewTitle}
-                      processingLabel={copy.fileProcessing}
-                      removeLabel={copy.fileRemove}
-                      selectLabel={copy.fileSelect}
-                      tooLargeError={uploadTooLargeError}
-                      useCompressedLabel={copy.fileApproveCompressed}
-                    />
-                  </Field>
+                  <FileUploadField
+                    accept={encontroEuropeuUploadAccept}
+                    className="flex h-full flex-col"
+                    closeLabel={copy.close}
+                    compressedSizeLabel={copy.fileCompressedSize}
+                    compressionBody={copy.fileCompressionBody}
+                    compressionError={copy.fileCompressionError}
+                    compressionTitle={copy.fileCompressionTitle}
+                    downloadLabel={copy.fileDownload}
+                    file={documents.identityDocument}
+                    invalidTypeError={copy.fileInvalidType}
+                    keepOriginalLabel={copy.fileKeepOriginal}
+                    label={copy.identityDocument}
+                    labelClassName="min-h-[2.5rem] leading-5"
+                    openInNewTabLabel={copy.fileOpenNewTab}
+                    onChange={file => setDocuments(current => ({ ...current, identityDocument: file }))}
+                    originalSizeLabel={copy.fileOriginalSize}
+                    previewLabel={copy.filePreview}
+                    previewTitle={copy.filePreviewTitle}
+                    processingLabel={copy.fileProcessing}
+                    removeLabel={copy.fileRemove}
+                    selectLabel={copy.fileSelect}
+                    tooLargeError={uploadTooLargeError}
+                    useCompressedLabel={copy.fileApproveCompressed}
+                  />
+                  <FileUploadField
+                    accept={encontroEuropeuUploadAccept}
+                    className="flex h-full flex-col"
+                    closeLabel={copy.close}
+                    compressedSizeLabel={copy.fileCompressedSize}
+                    compressionBody={copy.fileCompressionBody}
+                    compressionError={copy.fileCompressionError}
+                    compressionTitle={copy.fileCompressionTitle}
+                    downloadLabel={copy.fileDownload}
+                    file={documents.paymentProof}
+                    invalidTypeError={copy.fileInvalidType}
+                    keepOriginalLabel={copy.fileKeepOriginal}
+                    label={copy.paymentProof}
+                    labelClassName="min-h-[2.5rem] leading-5"
+                    openInNewTabLabel={copy.fileOpenNewTab}
+                    onChange={file => setDocuments(current => ({ ...current, paymentProof: file }))}
+                    originalSizeLabel={copy.fileOriginalSize}
+                    previewLabel={copy.filePreview}
+                    previewTitle={copy.filePreviewTitle}
+                    processingLabel={copy.fileProcessing}
+                    removeLabel={copy.fileRemove}
+                    selectLabel={copy.fileSelect}
+                    tooLargeError={uploadTooLargeError}
+                    useCompressedLabel={copy.fileApproveCompressed}
+                  />
                   {values.isNovice ? (
                     <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-                      <Field className="flex flex-col" label={copy.consentDocument} labelClassName="leading-5">
-                        <FileUploadField
-                          accept={encontroEuropeuUploadAccept}
-                          closeLabel={copy.close}
-                          compressedSizeLabel={copy.fileCompressedSize}
-                          compressionBody={copy.fileCompressionBody}
-                          compressionError={copy.fileCompressionError}
-                          compressionTitle={copy.fileCompressionTitle}
-                          downloadLabel={copy.fileDownload}
-                          file={documents.consentDocument}
-                          infoBody={uploadInfoBody}
-                          infoTitle={copy.fileInfoTitle}
-                          infoTriggerLabel={copy.fileInfoTrigger}
-                          invalidTypeError={copy.fileInvalidType}
-                          keepOriginalLabel={copy.fileKeepOriginal}
-                          openInNewTabLabel={copy.fileOpenNewTab}
-                          onChange={file => setDocuments(current => ({ ...current, consentDocument: file }))}
-                          originalSizeLabel={copy.fileOriginalSize}
-                          previewLabel={copy.filePreview}
-                          previewTitle={copy.filePreviewTitle}
-                          processingLabel={copy.fileProcessing}
-                          removeLabel={copy.fileRemove}
-                          selectLabel={copy.fileSelect}
-                          tooLargeError={uploadTooLargeError}
-                          useCompressedLabel={copy.fileApproveCompressed}
-                        />
-                      </Field>
+                      <FileUploadField
+                        accept={encontroEuropeuUploadAccept}
+                        className="flex flex-col"
+                        closeLabel={copy.close}
+                        compressedSizeLabel={copy.fileCompressedSize}
+                        compressionBody={copy.fileCompressionBody}
+                        compressionError={copy.fileCompressionError}
+                        compressionTitle={copy.fileCompressionTitle}
+                        downloadLabel={copy.fileDownload}
+                        file={documents.consentDocument}
+                        invalidTypeError={copy.fileInvalidType}
+                        keepOriginalLabel={copy.fileKeepOriginal}
+                        label={copy.consentDocument}
+                        labelClassName="leading-5"
+                        openInNewTabLabel={copy.fileOpenNewTab}
+                        onChange={file => setDocuments(current => ({ ...current, consentDocument: file }))}
+                        originalSizeLabel={copy.fileOriginalSize}
+                        previewLabel={copy.filePreview}
+                        previewTitle={copy.filePreviewTitle}
+                        processingLabel={copy.fileProcessing}
+                        removeLabel={copy.fileRemove}
+                        selectLabel={copy.fileSelect}
+                        tooLargeError={uploadTooLargeError}
+                        useCompressedLabel={copy.fileApproveCompressed}
+                      />
                       <a className="inline-flex rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">
                         {copy.consentDownloadInline}
                       </a>
