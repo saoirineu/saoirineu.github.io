@@ -15,6 +15,7 @@ const copyByLocale = {
     stableHint: 'O modo estável mantém visíveis somente perfil, igrejas, inscrição do encontro e páginas administrativas já prontas.',
     enter: 'Entrar →',
     devCards: {
+      profile: { title: 'Perfil', desc: 'Atualize seus dados de acesso e referência pessoal.' },
       people: { title: 'Pessoas', desc: 'Daimistas, papéis e perfis.' },
       churches: { title: 'Igrejas', desc: 'Casas, linhagens e vínculos.' },
       hymns: { title: 'Hinários / Hinos', desc: 'Taxonomia, autores, gravações.' },
@@ -37,6 +38,7 @@ const copyByLocale = {
     stableHint: 'Stable mode keeps only profile, churches, meeting registration, and ready admin pages visible.',
     enter: 'Open →',
     devCards: {
+      profile: { title: 'Profile', desc: 'Update your access and personal reference data.' },
       people: { title: 'People', desc: 'Daimistas, roles, and profiles.' },
       churches: { title: 'Churches', desc: 'Houses, lineages, and links.' },
       hymns: { title: 'Hymns', desc: 'Taxonomy, authors, recordings.' },
@@ -59,6 +61,7 @@ const copyByLocale = {
     stableHint: 'El modo estable mantiene visibles solo perfil, iglesias, inscripción al encuentro y páginas administrativas ya listas.',
     enter: 'Entrar →',
     devCards: {
+      profile: { title: 'Perfil', desc: 'Actualice sus datos de acceso y referencia personal.' },
       people: { title: 'Personas', desc: 'Daimistas, papeles y perfiles.' },
       churches: { title: 'Iglesias', desc: 'Casas, linajes y vínculos.' },
       hymns: { title: 'Himnarios / Himnos', desc: 'Taxonomía, autores y grabaciones.' },
@@ -81,6 +84,7 @@ const copyByLocale = {
     stableHint: 'La modalità stabile mantiene visibili solo profilo, chiese, iscrizione all\'incontro e pagine amministrative già pronte.',
     enter: 'Apri →',
     devCards: {
+      profile: { title: 'Profilo', desc: 'Aggiorna i tuoi dati di accesso e di riferimento personale.' },
       people: { title: 'Persone', desc: 'Daimisti, ruoli e profili.' },
       churches: { title: 'Chiese', desc: 'Case, linee e collegamenti.' },
       hymns: { title: 'Inni', desc: 'Tassonomia, autori e registrazioni.' },
@@ -110,6 +114,7 @@ export function DashboardPage() {
   ];
 
   const devCards = [
+    { to: '/perfil', ...copy.devCards.profile },
     { to: '/pessoas', ...copy.devCards.people },
     { to: '/igrejas', ...copy.devCards.churches },
     { to: '/hinarios', ...copy.devCards.hymns },

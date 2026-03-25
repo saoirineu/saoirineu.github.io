@@ -3,12 +3,10 @@
 hi
 
 ## todo
-
-modulo de inscrição:
-melhorar o botão de enviar inscrição para quando for mobile
-Checkin e checkout sem data selecionada. Quando o usuário clica para escolher a data, as data são aquelas 10/Set, 16/Set.
+we should feed the database with the churches. Before that, we need to derive a better way to describe the churches and addresses. Most delicate: A Church is linked to people (e.g. leaders), at the same time people are linked to churches (fardado here, participates there, etc). Which comes first? How to deal with such ambiguity?
 
 ### priority medium
+paleta de cores do site
 make site mobile friendly
 
 ### priority low

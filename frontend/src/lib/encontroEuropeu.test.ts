@@ -29,4 +29,18 @@ describe('encontroEuropeu room availability helpers', () => {
       ])
     );
   });
+
+  it('ignores invalid legacy room ids in aggregate snapshots', () => {
+    expect(
+      buildEncontroEuropeuRoomAvailabilitySnapshot([
+        { id: 'Au', reserved: 1, available: 0 },
+        { id: 'Cedro', reserved: 1, available: 5 }
+      ])
+    ).toEqual(
+      expect.arrayContaining([
+        { name: 'Cedro', capacity: 6, reserved: 1, available: 5 },
+        { name: 'Aurora', capacity: 10, reserved: 0, available: 10 }
+      ])
+    );
+  });
 });

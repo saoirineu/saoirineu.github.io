@@ -143,7 +143,6 @@ export function LoginPage() {
             </label>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[color:var(--brand-ink)]">{copy.title}</h1>
-          <p className="mt-2 text-sm text-[color:rgba(36,54,77,0.72)]">Branco, azul, verde e dourado como base visual do site.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleEmail}>

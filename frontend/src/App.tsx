@@ -69,7 +69,7 @@ function DevOnlyRoute() {
   const { devModeEnabled } = useDevMode();
 
   if (!devModeEnabled) {
-    return <Navigate to="/perfil" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
@@ -84,9 +84,9 @@ function App() {
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />
-            <Route path="/igrejas" element={<ChurchesPage />} />
-            <Route path="/perfil" element={<PerfilPage />} />
             <Route element={<DevOnlyRoute />}>
+              <Route path="/igrejas" element={<ChurchesPage />} />
+              <Route path="/perfil" element={<PerfilPage />} />
               <Route path="/pessoas" element={<PeoplePage />} />
               <Route path="/hinarios" element={<HymnsPage />} />
               <Route path="/bebida" element={<BeveragePage />} />

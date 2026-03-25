@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
 import {
   resolveInitialSiteLocale,
@@ -12,17 +12,19 @@ export function SiteLocaleProvider({ children }: { children: ReactNode }) {
     resolveInitialSiteLocale(typeof window === 'undefined' ? undefined : window.localStorage.getItem(siteLocaleStorageKey) ?? navigator.language)
   );
 
+  const setLocale = useCallback((nextLocale: SiteLocale) => {
+    setLocaleState(nextLocale);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(siteLocaleStorageKey, nextLocale);
+    }
+  }, []);
+
   const value = useMemo<SiteLocaleContextValue>(
     () => ({
       locale: localeState,
-      setLocale: nextLocale => {
-        setLocaleState(nextLocale);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(siteLocaleStorageKey, nextLocale);
-        }
-      }
+      setLocale
     }),
-    [localeState]
+    [localeState, setLocale]
   );
 
   return <SiteLocaleContext.Provider value={value}>{children}</SiteLocaleContext.Provider>;

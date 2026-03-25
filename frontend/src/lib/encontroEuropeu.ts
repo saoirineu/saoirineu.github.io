@@ -144,8 +144,24 @@ function getRoomCapacity(roomName: string) {
   return roomCapacityMap.get(roomName) ?? null;
 }
 
+function hasKnownRoomCapacity(roomName?: string | null) {
+  return typeof roomName === 'string' && getRoomCapacity(roomName) != null;
+}
+
 export function statusBlocksRoomCapacity(status: EncontroEuropeuRegistrationStatus) {
   return roomBlockingStatuses.includes(status);
+}
+
+async function deleteStoredDocumentIfPresent(path: string) {
+  try {
+    await deleteObject(ref(storage, path));
+  } catch (error) {
+    if (error instanceof FirebaseError && error.code === 'storage/object-not-found') {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 export function buildEncontroEuropeuRoomAvailabilitySnapshot(
@@ -215,7 +231,7 @@ export async function uploadEncontroEuropeuDocuments(args: { documents: Encontro
 
     return Object.fromEntries(entries.filter((entry): entry is readonly [string, EncontroEuropeuStoredDocument] => entry !== null));
   } catch (error) {
-    await Promise.all(uploadedFiles.map(file => deleteObject(ref(storage, file.path)).catch(() => undefined)));
+    await Promise.all(uploadedFiles.map(file => deleteStoredDocumentIfPresent(file.path).catch(() => undefined)));
     throw error;
   }
 }
@@ -295,7 +311,7 @@ export async function createEncontroEuropeuRegistration(args: {
     return registrationRef;
   } catch (error) {
     await Promise.all(
-      Object.values(uploadedDocuments).map(document => deleteObject(ref(storage, document.path)).catch(() => undefined))
+      Object.values(uploadedDocuments).map(document => deleteStoredDocumentIfPresent(document.path).catch(() => undefined))
     );
 
     if (error instanceof FirebaseError) {
@@ -325,7 +341,7 @@ export async function rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(
   const reservedByRoom = new Map<string, number>();
 
   registrations.forEach(registration => {
-    if (!registration.roomNumber || !statusBlocksRoomCapacity(registration.status)) {
+    if (!hasKnownRoomCapacity(registration.roomNumber) || !statusBlocksRoomCapacity(registration.status)) {
       return;
     }
 
@@ -361,7 +377,7 @@ export async function updateEncontroEuropeuRegistrationStatus(args: { id: string
 
     const registration = mapRegistration(args.id, registrationSnapshot.data());
 
-    if (registration.roomNumber) {
+    if (hasKnownRoomCapacity(registration.roomNumber)) {
       const currentlyBlocking = statusBlocksRoomCapacity(registration.status);
       const nextBlocking = statusBlocksRoomCapacity(args.status);
 
@@ -386,10 +402,10 @@ export async function deleteEncontroEuropeuRegistration(registration: Pick<
     (value): value is string => typeof value === 'string' && value.length > 0
   );
 
-  await Promise.all(documentPaths.map(path => deleteObject(ref(storage, path)).catch(() => undefined)));
+  await Promise.all(documentPaths.map(path => deleteStoredDocumentIfPresent(path).catch(() => undefined)));
 
   await runTransaction(db, async transaction => {
-    if (registration.roomNumber && statusBlocksRoomCapacity(registration.status)) {
+    if (hasKnownRoomCapacity(registration.roomNumber) && statusBlocksRoomCapacity(registration.status)) {
       await adjustRoomAvailability(registration.roomNumber, -1, transaction);
     }
 

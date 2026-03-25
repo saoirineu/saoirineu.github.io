@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="São Irineu logo mark">
+  <defs>
+    <clipPath id="logo-mark-frame">
+      <rect x="3" y="3" width="122" height="122" rx="29" />
+    </clipPath>
+  </defs>
   <rect width="128" height="128" rx="32" fill="#f7f4ea" />
-  <path d="M0 42.67h128v42.66H0z" fill="#3f84c2" />
-  <path d="M0 85.33h128v42.67H0z" fill="#0f6f57" />
+  <g clip-path="url(#logo-mark-frame)">
+    <path d="M0 42.67h128v42.66H0z" fill="#3f84c2" />
+    <path d="M0 85.33h128v42.67H0z" fill="#0f6f57" />
+    <circle cx="29" cy="23" r="9" fill="#e8c24c" />
+    <circle cx="62" cy="64" r="19" fill="#e8c24c" />
+    <circle cx="72" cy="60.5" r="17.5" fill="#3f84c2" />
+    <path d="M95 94l9.2 15.8H85.8z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" />
+    <path d="M95 112.2 85.8 96.4H104.2Z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" />
+    <path d="M64 14v24M50 19.5h28M53 27h22" fill="none" stroke="#2a628f" stroke-linecap="round" stroke-width="5.5" />
+  </g>
   <rect x="1.5" y="1.5" width="125" height="125" rx="30.5" fill="none" stroke="#d7ceb8" stroke-width="3" />
-  <circle cx="62" cy="64" r="19" fill="#e8c24c" />
-  <circle cx="72" cy="60.5" r="17.5" fill="#3f84c2" />
-  <path d="M95 94l9.2 15.8H85.8z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" />
-  <path d="M95 112.2 85.8 96.4H104.2Z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" />
-  <path d="M64 18v28M49 25h30M52.5 34.5h23" fill="none" stroke="#2a628f" stroke-linecap="round" stroke-width="5.5" />
 </svg>

@@ -137,6 +137,18 @@ function formatWorkDays(selectedWorks: string[]) {
     .join(', ');
 }
 
+function formatMembershipSummary(registration: EncontroEuropeuRegistrationRecord) {
+  return [
+    registration.isFardado ? 'Fardado' : 'Não fardado',
+    registration.isIcefluMember ? 'ICEFLU em dia' : 'ICEFLU não informado',
+    registration.isNovice ? 'Primeira vez' : 'Não é primeira vez'
+  ].join(' · ');
+}
+
+function formatExtraItems(registration: EncontroEuropeuRegistrationRecord) {
+  return registration.needsExtraLinen ? 'Lençol extra + toalhas' : 'Sem extras';
+}
+
 export default function EncontroEuropeuAdminPage() {
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState('');
@@ -297,6 +309,8 @@ export default function EncontroEuropeuAdminPage() {
                 <th className="px-4 py-3 font-medium">Data</th>
                 <th className="px-4 py-3 font-medium">Pessoa</th>
                 <th className="px-4 py-3 font-medium">Modalidade</th>
+                <th className="px-4 py-3 font-medium">Vínculo</th>
+                <th className="px-4 py-3 font-medium">Extras</th>
                 <th className="px-4 py-3 font-medium">Permanência</th>
                 <th className="px-4 py-3 font-medium">Trabalhos</th>
                 <th className="px-4 py-3 font-medium">Total</th>
@@ -315,6 +329,8 @@ export default function EncontroEuropeuAdminPage() {
                     <div className="text-slate-500">{registration.church}</div>
                   </td>
                   <td className="px-4 py-3 text-slate-700">{attendanceModeLabels[registration.attendanceMode]}</td>
+                  <td className="px-4 py-3 text-slate-700">{formatMembershipSummary(registration)}</td>
+                  <td className="px-4 py-3 text-slate-700">{formatExtraItems(registration)}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{formatCompactStay(registration.checkIn, registration.checkOut)}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{formatWorkDays(registration.selectedWorks)}</td>
                   <td className="px-4 py-3 text-slate-700">{formatCurrency(registration.contribution.total)}</td>
@@ -419,6 +435,21 @@ function RegistrationCard({
           <div className="font-medium text-slate-900">Contribuição</div>
           <div>{formatCurrency(registration.contribution.total)}</div>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.isFardado ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+          {registration.isFardado ? 'Fardado' : 'Não fardado'}
+        </span>
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.isIcefluMember ? 'bg-sky-50 text-sky-800' : 'bg-slate-100 text-slate-600'}`}>
+          {registration.isIcefluMember ? 'ICEFLU em dia' : 'ICEFLU não informado'}
+        </span>
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.isNovice ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+          {registration.isNovice ? 'Primeira vez' : 'Não é primeira vez'}
+        </span>
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.needsExtraLinen ? 'bg-violet-50 text-violet-800' : 'bg-slate-100 text-slate-600'}`}>
+          {registration.needsExtraLinen ? 'Lençol extra + toalhas' : 'Sem extras'}
+        </span>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
