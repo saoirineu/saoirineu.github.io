@@ -62,6 +62,7 @@ type Copy = {
   roomRemaining: string;
   roomSelectPlaceholder: string;
   noRoomsAvailable: string;
+  noRoomsAvailableDetail: string;
   extraLinen: string;
   worksTitle: string;
   worksHint: string;
@@ -105,6 +106,17 @@ type DocumentState = {
 type SuccessState = {
   contributionTotal: number;
   registrationId: string;
+};
+
+type DraftDateSelections = {
+  checkIn: boolean;
+  checkOut: boolean;
+};
+
+type EncontroEuropeuDraft = {
+  locale?: Locale;
+  values?: Partial<EncontroEuropeuFormValues>;
+  dateSelections?: Partial<DraftDateSelections>;
 };
 
 const paymentInfo = {
@@ -153,6 +165,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomRemaining: 'restantes',
     roomSelectPlaceholder: 'Selecione um quarto',
     noRoomsAvailable: 'Sem vagas disponíveis no momento',
+    noRoomsAvailableDetail: 'Todos os quartos estão ocupados no momento. Tente novamente mais tarde ou fale com a organização.',
     extraLinen: 'Quero segundo lençol superior e toalhas (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Selecione um ou mais trabalhos. O valor é calculado automaticamente.',
@@ -238,6 +251,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomRemaining: 'remaining',
     roomSelectPlaceholder: 'Select a room',
     noRoomsAvailable: 'No rooms currently available',
+    noRoomsAvailableDetail: 'All rooms are currently occupied. Please try again later or contact the organizers.',
     extraLinen: 'I need an extra top sheet and towels (+20 euro)',
     worksTitle: 'Spiritual works',
     worksHint: 'Select one or more works. The contribution is calculated automatically.',
@@ -323,6 +337,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomRemaining: 'disponibles',
     roomSelectPlaceholder: 'Seleccione una habitación',
     noRoomsAvailable: 'No hay plazas disponibles por ahora',
+    noRoomsAvailableDetail: 'Todas las habitaciones están ocupadas en este momento. Inténtelo más tarde o contacte a la organización.',
     extraLinen: 'Quiero una sábana superior adicional y toallas (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleccione uno o más trabajos. El valor se calcula automáticamente.',
@@ -408,6 +423,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomRemaining: 'disponibili',
     roomSelectPlaceholder: 'Seleziona una camera',
     noRoomsAvailable: 'Nessuna camera disponibile al momento',
+    noRoomsAvailableDetail: 'Tutte le camere sono occupate al momento. Riprova più tardi o contatta l\'organizzazione.',
     extraLinen: 'Desidero un secondo lenzuolo superiore e asciugamani (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleziona uno o più lavori. Il contributo viene calcolato automaticamente.',
@@ -485,6 +501,33 @@ function formatCurrency(value: number) {
 const fileInputClassName = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200';
 const encontroEuropeuDraftKey = 'encontro-europeu-draft-v1';
 const fallbackDraftLocale = resolveInitialLocale(undefined);
+const initialDraftDateSelections: DraftDateSelections = {
+  checkIn: false,
+  checkOut: false
+};
+
+function normalizeDraftValues(
+  draft: EncontroEuropeuDraft
+): { values: Partial<EncontroEuropeuFormValues>; dateSelections: DraftDateSelections } {
+  const values = { ...(draft.values ?? {}) };
+  const dateSelections: DraftDateSelections = {
+    checkIn: draft.dateSelections?.checkIn ?? false,
+    checkOut: draft.dateSelections?.checkOut ?? false
+  };
+
+  // Migrate legacy drafts created before date interaction flags existed.
+  if (!draft.dateSelections) {
+    if (values.checkIn === suggestedCheckInDate) {
+      values.checkIn = '';
+    }
+
+    if (values.checkOut === suggestedCheckOutDate) {
+      values.checkOut = '';
+    }
+  }
+
+  return { values, dateSelections };
+}
 
 type EncontroEuropeuPageProps = {
   showPublicHero?: boolean;
@@ -502,6 +545,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
   const [draftMessage, setDraftMessage] = useState('');
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [draftDateSelections, setDraftDateSelections] = useState<DraftDateSelections>(initialDraftDateSelections);
 
   const copy = copyByLocale[locale];
   const contribution = useMemo(() => calculateContribution(values), [values]);
@@ -524,15 +568,15 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     }
 
     try {
-      const parsedDraft = JSON.parse(rawDraft) as { locale?: Locale; values?: Partial<EncontroEuropeuFormValues> };
+      const parsedDraft = JSON.parse(rawDraft) as EncontroEuropeuDraft;
+      const normalizedDraft = normalizeDraftValues(parsedDraft);
 
       if (parsedDraft.locale) {
         setLocale(parsedDraft.locale);
       }
 
-      if (parsedDraft.values) {
-        setValues(current => ({ ...current, ...parsedDraft.values }));
-      }
+      setValues(current => ({ ...current, ...normalizedDraft.values }));
+      setDraftDateSelections(normalizedDraft.dateSelections);
 
       setDraftMessage(copyByLocale[parsedDraft.locale ?? fallbackDraftLocale].draftLoaded);
     } catch {
@@ -612,6 +656,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     setDraftMessage('');
     setSuccessState(null);
     setIsRoomModalOpen(false);
+    setDraftDateSelections(initialDraftDateSelections);
     mutation.reset();
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(encontroEuropeuDraftKey);
@@ -627,7 +672,8 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
       encontroEuropeuDraftKey,
       JSON.stringify({
         locale,
-        values
+        values,
+        dateSelections: draftDateSelections
       })
     );
 
@@ -786,10 +832,10 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                   {values.attendanceMode !== 'spiritual' ? (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label={copy.checkIn}>
-                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkIn} onFocus={() => { if (!values.checkIn) setField('checkIn', suggestedCheckInDate); }} onChange={event => setField('checkIn', event.target.value)} />
+                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkIn} onFocus={() => { setDraftDateSelections(current => ({ ...current, checkIn: true })); if (!values.checkIn) setField('checkIn', suggestedCheckInDate); }} onChange={event => { setDraftDateSelections(current => ({ ...current, checkIn: true })); setField('checkIn', event.target.value); }} />
                       </Field>
                       <Field label={copy.checkOut}>
-                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkOut} onFocus={() => { if (!values.checkOut) setField('checkOut', suggestedCheckOutDate); }} onChange={event => setField('checkOut', event.target.value)} />
+                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkOut} onFocus={() => { setDraftDateSelections(current => ({ ...current, checkOut: true })); if (!values.checkOut) setField('checkOut', suggestedCheckOutDate); }} onChange={event => { setDraftDateSelections(current => ({ ...current, checkOut: true })); setField('checkOut', event.target.value); }} />
                       </Field>
                     </div>
                   ) : null}
@@ -811,14 +857,19 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                           </span>
                         }
                       >
-                        <select className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.roomNumber} onChange={event => setField('roomNumber', event.target.value)} disabled={roomAvailabilityQuery.isLoading || availableRooms.length === 0}>
+                        <select className={`w-full rounded-2xl bg-white px-4 py-3 text-sm shadow-sm ${availableRooms.length === 0 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border border-slate-200'}`} value={values.roomNumber} onChange={event => setField('roomNumber', event.target.value)} disabled={roomAvailabilityQuery.isLoading || availableRooms.length === 0}>
                           <option value="">{availableRooms.length > 0 ? copy.roomSelectPlaceholder : copy.noRoomsAvailable}</option>
                           {availableRooms.map(room => (
                             <option key={room.name} value={room.name}>
-                              {room.name} ({room.available} {copy.roomHelpCapacity})
+                              {room.name} — {room.available} {copy.roomHelpCapacity} {copy.roomRemaining}
                             </option>
                           ))}
                         </select>
+                        {availableRooms.length === 0 ? (
+                          <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            {copy.noRoomsAvailableDetail}
+                          </p>
+                        ) : null}
                       </Field>
                       <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 sm:mt-7">
                         <input type="checkbox" checked={values.needsExtraLinen} onChange={event => setField('needsExtraLinen', event.target.checked)} />

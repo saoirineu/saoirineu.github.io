@@ -47,8 +47,8 @@ export default defineConfig({
             registerType: 'prompt',
             includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
             manifest: {
-                name: 'Saoirineu',
-                short_name: 'Saoirineu',
+                name: 'São Irineu',
+                short_name: 'São Irineu',
                 description: 'PWA para navegação das ontologias e dados do Santo Daime.',
                 theme_color: '#0f172a',
                 background_color: '#f8fafc',
