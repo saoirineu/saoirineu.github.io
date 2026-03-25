@@ -6,13 +6,13 @@ import { useAuth } from '../providers/useAuth';
 import { useSystemRole } from '../providers/useSystemRole';
 
 const stableLinks = [
+  { to: '/', label: 'Início' },
   { to: '/igrejas', label: 'Igrejas' },
   { to: '/encontro-europeu', label: 'Encontro Europeu' },
   { to: '/perfil', label: 'Perfil' }
 ];
 
 const devLinks = [
-  { to: '/', label: 'Início' },
   { to: '/pessoas', label: 'Pessoas' },
   { to: '/hinarios', label: 'Hinários/Hinos' },
   { to: '/bebida', label: 'Bebida' },

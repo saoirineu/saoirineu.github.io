@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
 import { createEncontroEuropeuRegistration } from '../lib/encontroEuropeu';
+import { useAuth } from '../providers/useAuth';
 import {
   buildEncontroEuropeuPayload,
   calculateContribution,
@@ -19,6 +20,7 @@ import {
 type Copy = {
   pageTitle: string;
   pageIntro: string;
+  loggedIntro: string;
   languageLabel: string;
   anonymousNote: string;
   resourcesTitle: string;
@@ -128,6 +130,7 @@ const copyByLocale: Record<Locale, Copy> = {
   pt: {
     pageTitle: 'Inscrição no Encontro Europeu',
     pageIntro: 'Preencha o formulário abaixo para registrar sua participação. Não é necessário fazer login.',
+    loggedIntro: 'Preencha ou retome seu rascunho e envie a inscrição quando estiver completa.',
     languageLabel: 'Idioma',
     anonymousNote: 'Esta inscrição é pública e pode ser enviada sem conta no site.',
     resourcesTitle: 'Documentos e informações',
@@ -209,6 +212,7 @@ const copyByLocale: Record<Locale, Copy> = {
   en: {
     pageTitle: 'European Meeting Registration',
     pageIntro: 'Fill in the form below to register for the event. No sign-in is required.',
+    loggedIntro: 'Fill in or resume your draft and submit the registration once it is complete.',
     languageLabel: 'Language',
     anonymousNote: 'This registration is public and can be submitted without an account.',
     resourcesTitle: 'Documents and information',
@@ -290,6 +294,7 @@ const copyByLocale: Record<Locale, Copy> = {
   es: {
     pageTitle: 'Inscripción al Encuentro Europeo',
     pageIntro: 'Complete el siguiente formulario para registrar su participación. No es necesario iniciar sesión.',
+    loggedIntro: 'Complete o retome su borrador y envíe la inscripción cuando esté completa.',
     languageLabel: 'Idioma',
     anonymousNote: 'Esta inscripción es pública y puede enviarse sin cuenta en el sitio.',
     resourcesTitle: 'Documentos e información',
@@ -371,6 +376,7 @@ const copyByLocale: Record<Locale, Copy> = {
   it: {
     pageTitle: 'Iscrizione all\'Incontro Europeo',
     pageIntro: 'Compila il modulo qui sotto per registrare la tua partecipazione. Non è necessario effettuare il login.',
+    loggedIntro: 'Compila o riprendi la tua bozza e invia l\'iscrizione quando è completa.',
     languageLabel: 'Lingua',
     anonymousNote: 'Questa iscrizione è pubblica e può essere inviata senza un account.',
     resourcesTitle: 'Documenti e informazioni',
@@ -480,7 +486,12 @@ const fileInputClassName = 'w-full rounded-2xl border border-slate-200 bg-white 
 const encontroEuropeuDraftKey = 'encontro-europeu-draft-v1';
 const fallbackDraftLocale = resolveInitialLocale(undefined);
 
-export default function EncontroEuropeuPage() {
+type EncontroEuropeuPageProps = {
+  showPublicHero?: boolean;
+};
+
+export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroEuropeuPageProps) {
+  const { user } = useAuth();
   const [locale, setLocale] = useState<Locale>(() => resolveInitialLocale(typeof navigator === 'undefined' ? undefined : navigator.language));
   const [values, setValues] = useState<EncontroEuropeuFormValues>(initialEncontroEuropeuFormValues);
   const [documents, setDocuments] = useState<DocumentState>({
@@ -495,6 +506,7 @@ export default function EncontroEuropeuPage() {
 
   const copy = copyByLocale[locale];
   const contribution = useMemo(() => calculateContribution(values), [values]);
+  const isAuthenticatedView = Boolean(user) && !showPublicHero;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -606,30 +618,54 @@ export default function EncontroEuropeuPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#f8fafc_50%,_#e2e8f0)]">
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-3xl space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Encontro Europeu</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{copy.pageTitle}</h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-600">{copy.pageIntro}</p>
-            <p className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">{copy.anonymousNote}</p>
-          </div>
+    <div className={showPublicHero ? 'min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#f8fafc_50%,_#e2e8f0)]' : ''}>
+      <main className={showPublicHero ? 'mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8' : 'space-y-6'}>
+        {showPublicHero ? (
+          <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-3xl space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Encontro Europeu</p>
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{copy.pageTitle}</h1>
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">{copy.pageIntro}</p>
+              <p className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">{copy.anonymousNote}</p>
+            </div>
 
-          <Field label={copy.languageLabel}>
-            <select
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm sm:w-48"
-              value={locale}
-              onChange={event => setLocale(event.target.value as Locale)}
-            >
-              {localeOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+            <Field label={copy.languageLabel}>
+              <select
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm sm:w-48"
+                value={locale}
+                onChange={event => setLocale(event.target.value as Locale)}
+              >
+                {localeOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">{copy.pageTitle}</h1>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                {isAuthenticatedView ? copy.loggedIntro : copy.pageIntro}
+              </p>
+            </div>
+            <Field label={copy.languageLabel} className="sm:w-52">
+              <select
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm"
+                value={locale}
+                onChange={event => setLocale(event.target.value as Locale)}
+              >
+                {localeOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        )}
 
         {successState ? (
           <section className="rounded-[28px] border border-emerald-200 bg-white p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">

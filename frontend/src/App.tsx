@@ -1,9 +1,10 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, type ReactNode } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 
 import { AuthGate } from './components/AuthGate';
 import { NavBar } from './components/NavBar';
 import { RoleGate } from './components/RoleGate';
+import { useAuth } from './providers/useAuth';
 import { useDevMode } from './providers/useDevMode';
 
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
@@ -29,13 +30,39 @@ function RouteFallback() {
 
 function Shell() {
   return (
+    <ShellFrame>
+      <Outlet />
+    </ShellFrame>
+  );
+}
+
+function ShellFrame({ children }: { children: ReactNode }) {
+  return (
     <div className="min-h-screen bg-slate-50">
       <NavBar />
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <Outlet />
+        {children}
       </main>
     </div>
   );
+}
+
+function EncontroEuropeuRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <RouteFallback />;
+  }
+
+  if (user) {
+    return (
+      <ShellFrame>
+        <EncontroEuropeuPage showPublicHero={false} />
+      </ShellFrame>
+    );
+  }
+
+  return <EncontroEuropeuPage showPublicHero />;
 }
 
 function DevOnlyRoute() {
@@ -49,16 +76,14 @@ function DevOnlyRoute() {
 }
 
 function App() {
-  const { devModeEnabled } = useDevMode();
-
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/encontro-europeu" element={<EncontroEuropeuPage />} />
+        <Route path="/encontro-europeu" element={<EncontroEuropeuRoute />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
-            <Route index element={devModeEnabled ? <DashboardPage /> : <Navigate to="/perfil" replace />} />
+            <Route index element={<DashboardPage />} />
             <Route path="/igrejas" element={<ChurchesPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
             <Route element={<DevOnlyRoute />}>
