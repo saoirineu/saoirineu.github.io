@@ -71,6 +71,9 @@ type Copy = {
   identityDocument: string;
   paymentProof: string;
   consentDocument: string;
+  fileSelect: string;
+  fileRemove: string;
+  filePreview: string;
   consentDownloadInline: string;
   documentsHint: string;
   contributionTitle: string;
@@ -146,7 +149,7 @@ const copyByLocale: Record<Locale, Copy> = {
     generalProgram: 'Programa geral',
     directions: 'Como chegar',
     consentDownload: 'Consentimento informado',
-    consentHint: 'Se você marcar que é novizio, baixe, assine e tenha o arquivo pronto.',
+    consentHint: 'Se você marcar que é novizio, baixe, assine e envie o arquivo.',
     formTitle: 'Formulário de inscrição',
     personalTitle: 'Dados pessoais',
     firstName: 'Nome',
@@ -182,8 +185,11 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Cópia do documento de identidade',
     paymentProof: 'Comprovante de pagamento',
     consentDocument: 'Consentimento informado assinado',
+    fileSelect: 'Escolher ou soltar arquivo',
+    fileRemove: 'Remover',
+    filePreview: 'Ver',
     consentDownloadInline: 'Baixar PDF do consentimento informado',
-    documentsHint: 'Nesta primeira versão, os nomes dos arquivos ficam registrados junto com a inscrição. O comprovante final continua sendo esperado por WhatsApp ou email.',
+    documentsHint: 'Os arquivos enviados ficam associados à inscrição e armazenados com segurança.',
     contributionTitle: 'Resumo da contribuição',
     nights: 'Noites',
     lodging: 'Hospedagem / alimentação',
@@ -233,7 +239,7 @@ const copyByLocale: Record<Locale, Copy> = {
     generalProgram: 'General program',
     directions: 'How to get there',
     consentDownload: 'Informed consent',
-    consentHint: 'If you mark yourself as a novice, download it, sign it, and keep the file ready.',
+    consentHint: 'If you mark yourself as a novice, download it, sign it, and upload it.',
     formTitle: 'Registration form',
     personalTitle: 'Personal details',
     firstName: 'First name',
@@ -269,8 +275,11 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Identity document copy',
     paymentProof: 'Payment proof',
     consentDocument: 'Signed informed consent',
+    fileSelect: 'Choose or drop file',
+    fileRemove: 'Remove',
+    filePreview: 'View',
     consentDownloadInline: 'Download the informed consent PDF',
-    documentsHint: 'In this first version, only the selected file names are stored with the registration. The final proof is still expected by WhatsApp or email.',
+    documentsHint: 'Uploaded files are attached to the registration and stored securely.',
     contributionTitle: 'Contribution summary',
     nights: 'Nights',
     lodging: 'Lodging / meals',
@@ -320,7 +329,7 @@ const copyByLocale: Record<Locale, Copy> = {
     generalProgram: 'Programa general',
     directions: 'Cómo llegar',
     consentDownload: 'Consentimiento informado',
-    consentHint: 'Si marca que es novizio, descárguelo, fírmelo y tenga el archivo listo.',
+    consentHint: 'Si marca que es novizio, descárguelo, fírmelo y súbalo.',
     formTitle: 'Formulario de inscripción',
     personalTitle: 'Datos personales',
     firstName: 'Nombre',
@@ -356,8 +365,11 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Copia del documento de identidad',
     paymentProof: 'Comprobante de pago',
     consentDocument: 'Consentimiento informado firmado',
+    fileSelect: 'Elegir o soltar archivo',
+    fileRemove: 'Quitar',
+    filePreview: 'Ver',
     consentDownloadInline: 'Descargar el PDF del consentimiento informado',
-    documentsHint: 'En esta primera versión, solo se registran los nombres de los archivos seleccionados. El comprobante final sigue siendo esperado por WhatsApp o correo electrónico.',
+    documentsHint: 'Los archivos enviados quedan asociados a la inscripción y almacenados de forma segura.',
     contributionTitle: 'Resumen de la contribución',
     nights: 'Noches',
     lodging: 'Alojamiento / comidas',
@@ -407,7 +419,7 @@ const copyByLocale: Record<Locale, Copy> = {
     generalProgram: 'Programma generale',
     directions: 'Come arrivare',
     consentDownload: 'Consenso informato',
-    consentHint: 'Se indichi che sei novizio, scaricalo, firmalo e tieni il file pronto.',
+    consentHint: 'Se indichi che sei novizio, scaricalo, firmalo e caricalo.',
     formTitle: 'Modulo di iscrizione',
     personalTitle: 'Dati personali',
     firstName: 'Nome',
@@ -443,8 +455,11 @@ const copyByLocale: Record<Locale, Copy> = {
     identityDocument: 'Copia del documento di identità',
     paymentProof: 'Contabile bonifico pagamento',
     consentDocument: 'Consenso informato firmato',
+    fileSelect: 'Scegli o trascina file',
+    fileRemove: 'Rimuovi',
+    filePreview: 'Apri',
     consentDownloadInline: 'Scarica il PDF del consenso informato',
-    documentsHint: 'In questa prima versione, insieme all\'iscrizione vengono registrati solo i nomi dei file selezionati. La contabile finale resta comunque attesa via WhatsApp o email.',
+    documentsHint: 'I file inviati restano associati all\'iscrizione e vengono archiviati in modo sicuro.',
     contributionTitle: 'Riepilogo del contributo',
     nights: 'Notti',
     lodging: 'Alloggio / vitto',
@@ -598,7 +613,121 @@ function LocalizedDateField({
   );
 }
 
-const fileInputClassName = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200';
+function FileUploadField({
+  accept,
+  file,
+  onChange,
+  previewLabel,
+  removeLabel,
+  selectLabel
+}: {
+  accept: string;
+  file: File | null;
+  onChange: (file: File | null) => void;
+  previewLabel: string;
+  removeLabel: string;
+  selectLabel: string;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+
+  const openPicker = () => {
+    inputRef.current?.click();
+  };
+
+  const handleDroppedFiles = (files: FileList | null) => {
+    const nextFile = files?.[0] ?? null;
+    onChange(nextFile);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  return (
+    <div
+      className={`rounded-[26px] border bg-white p-4 shadow-sm transition ${isDragOver ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200'}`}
+      onDragOver={event => {
+        event.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragEnter={event => {
+        event.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={event => {
+        event.preventDefault();
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          return;
+        }
+        setIsDragOver(false);
+      }}
+      onDrop={event => {
+        event.preventDefault();
+        setIsDragOver(false);
+        handleDroppedFiles(event.dataTransfer.files);
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={event => handleDroppedFiles(event.target.files)}
+      />
+
+      {file ? (
+        <>
+          <div className="min-w-0 text-center text-sm text-slate-700">
+            <div className="truncate text-center font-medium text-slate-900" title={file.name}>
+              {file.name}
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {previewUrl ? (
+              <a
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                href={previewUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {previewLabel}
+              </a>
+            ) : null}
+
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+              onClick={() => {
+                if (inputRef.current) {
+                  inputRef.current.value = '';
+                }
+                onChange(null);
+              }}
+            >
+              {removeLabel}
+            </button>
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="flex min-h-[112px] w-full items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+          onClick={openPicker}
+        >
+          {selectLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 const encontroEuropeuDraftKey = 'encontro-europeu-draft-v1';
 const fallbackDraftLocale = resolveInitialLocale(undefined);
 const initialDraftDateSelections: DraftDateSelections = {
@@ -803,9 +932,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
         {showPublicHero ? (
           <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-3xl space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Encontro Europeu</p>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{copy.pageTitle}</h1>
-              <p className="max-w-2xl text-sm leading-6 text-slate-600">{copy.pageIntro}</p>
               <p className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">{copy.anonymousNote}</p>
             </div>
 
@@ -1042,15 +1169,36 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                 <h2 className="text-xl font-semibold text-slate-900">{copy.documentsTitle}</h2>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <Field className="flex h-full flex-col" label={copy.identityDocument} labelClassName="min-h-[2.5rem] leading-5">
-                    <input type="file" accept=".pdf,image/*" className={fileInputClassName} onChange={event => setDocuments(current => ({ ...current, identityDocument: event.target.files?.[0] ?? null }))} />
+                    <FileUploadField
+                      accept=".pdf,image/*"
+                      file={documents.identityDocument}
+                      onChange={file => setDocuments(current => ({ ...current, identityDocument: file }))}
+                      previewLabel={copy.filePreview}
+                      removeLabel={copy.fileRemove}
+                      selectLabel={copy.fileSelect}
+                    />
                   </Field>
                   <Field className="flex h-full flex-col" label={copy.paymentProof} labelClassName="min-h-[2.5rem] leading-5">
-                    <input type="file" accept=".pdf,image/*" className={fileInputClassName} onChange={event => setDocuments(current => ({ ...current, paymentProof: event.target.files?.[0] ?? null }))} />
+                    <FileUploadField
+                      accept=".pdf,image/*"
+                      file={documents.paymentProof}
+                      onChange={file => setDocuments(current => ({ ...current, paymentProof: file }))}
+                      previewLabel={copy.filePreview}
+                      removeLabel={copy.fileRemove}
+                      selectLabel={copy.fileSelect}
+                    />
                   </Field>
                   {values.isNovice ? (
                     <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                       <Field className="flex flex-col" label={copy.consentDocument} labelClassName="leading-5">
-                        <input type="file" accept=".pdf,image/*" className={fileInputClassName} onChange={event => setDocuments(current => ({ ...current, consentDocument: event.target.files?.[0] ?? null }))} />
+                        <FileUploadField
+                          accept=".pdf,image/*"
+                          file={documents.consentDocument}
+                          onChange={file => setDocuments(current => ({ ...current, consentDocument: file }))}
+                          previewLabel={copy.filePreview}
+                          removeLabel={copy.fileRemove}
+                          selectLabel={copy.fileSelect}
+                        />
                       </Field>
                       <a className="inline-flex rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">
                         {copy.consentDownloadInline}
