@@ -491,7 +491,14 @@ export default function EncontroEuropeuPage() {
         }
       });
 
-      return createEncontroEuropeuRegistration(payload);
+      return createEncontroEuropeuRegistration({
+        input: payload,
+        documents: {
+          identityDocument: documents.identityDocument,
+          paymentProof: documents.paymentProof,
+          consentDocument: values.isNovice ? documents.consentDocument : null
+        }
+      });
     },
     onSuccess: result => {
       setSuccessState({ contributionTotal: contribution.total, registrationId: result.id });

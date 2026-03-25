@@ -39,6 +39,10 @@ service cloud.firestore {
         || request.resource.data.systemRole in ['user', 'admin', 'superadmin'];
     }
 
+    function hasValidEncontroEuropeuStatus() {
+      return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue'];
+    }
+
     match /usuarios/{uid} {
       allow read: if true;
       allow create: if hasValidUserSystemRole() && (
@@ -137,9 +141,13 @@ service cloud.firestore {
       && request.resource.data.contribution.spiritualWorks is number
       && request.resource.data.contribution.extras is number
       && request.resource.data.contribution.total is number
-      && request.resource.data.status == 'pending-payment'
+      && (!request.resource.data.keys().hasAny(['identityDocumentPath']) || request.resource.data.identityDocumentPath is string)
+      && (!request.resource.data.keys().hasAny(['paymentProofPath']) || request.resource.data.paymentProofPath is string)
+      && (!request.resource.data.keys().hasAny(['consentDocumentPath']) || request.resource.data.consentDocumentPath is string)
+      && request.resource.data.status == 'pending'
       && request.resource.data.submittedAt == request.time;
-      allow read, update, delete: if isAdmin();
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin() && hasValidEncontroEuropeuStatus();
     }
 
     // Default deny anything not matched above.

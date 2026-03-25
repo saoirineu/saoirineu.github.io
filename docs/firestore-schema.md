@@ -89,9 +89,10 @@
 - selectedWorks: string[] com ids dos trabalhos espirituais selecionados
 - needsExtraLinen: bool
 - roomNumber: string?
-- identityDocumentName, paymentProofName, consentDocumentName: string? com nomes dos arquivos selecionados no cliente
+- identityDocumentName, paymentProofName, consentDocumentName: string?
+- identityDocumentPath, paymentProofPath, consentDocumentPath: string? com path no Firebase Storage para download administrativo
 - contribution: { nights, lodging, spiritualWorks, extras, total }
-- status: `pending-payment`
+- status: `pending` | `approved` | `under-review` | `payment-overdue`
 - submittedAt
 
 ## Indices compostos sugeridos
@@ -116,5 +117,5 @@
 - Campos que referenciam taxonomias (papel, temas) devem usar labels/ids SKOS para alinhar UI/tooltips.
 - `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
-- `encontroEuropeuInscricoes` foi pensado para receber inscricoes anonimas via pagina publica; leitura fica restrita a admins e a primeira versao guarda apenas os nomes dos anexos selecionados, nao os binarios.
+- `encontroEuropeuInscricoes` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
 - Ha dois niveis administrativos no app: `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia papeis de usuarios.

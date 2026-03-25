@@ -12,3 +12,6 @@ aup:
 
 firestore-rules:
 	firebase deploy --only firestore:rules --project $(FIREBASE_PROJECT)
+
+storage-rules:
+	firebase deploy --only storage --project $(FIREBASE_PROJECT)

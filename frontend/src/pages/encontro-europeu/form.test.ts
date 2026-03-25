@@ -66,6 +66,7 @@ describe('encontro europeu helpers', () => {
       },
       documents: {
         identityDocumentName: 'id.pdf',
+        identityDocumentPath: 'encontroEuropeuInscricoes/abc/identity-id.pdf',
         consentDocumentName: 'consent.pdf'
       }
     });
@@ -74,8 +75,9 @@ describe('encontro europeu helpers', () => {
     expect(payload.lastName).toBe('Silva');
     expect(payload.country).toBe('Italia');
     expect(payload.identityDocumentName).toBe('id.pdf');
+    expect(payload.identityDocumentPath).toBe('encontroEuropeuInscricoes/abc/identity-id.pdf');
     expect(payload.consentDocumentName).toBe('consent.pdf');
-    expect(payload.status).toBe('pending-payment');
+    expect(payload.status).toBe('pending');
   });
 
   it('validates required fields and date logic', () => {

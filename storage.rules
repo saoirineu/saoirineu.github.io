@@ -1,0 +1,42 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasStoredRole(role) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.systemRole == role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true
+        || request.auth.token.role == 'admin'
+        || request.auth.token.role == 'superadmin'
+        || request.auth.token.email == 'renato.fabbri@gmail.com'
+        || hasStoredRole('admin')
+        || hasStoredRole('superadmin')
+      );
+    }
+
+    function isAllowedDocument() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/.*');
+    }
+
+    match /encontroEuropeuInscricoes/{registrationId}/{fileName} {
+      allow read: if isAdmin();
+      allow create: if isAllowedDocument();
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

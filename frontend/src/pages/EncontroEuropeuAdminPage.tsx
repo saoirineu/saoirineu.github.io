@@ -1,7 +1,19 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { fetchEncontroEuropeuRegistrations } from '../lib/encontroEuropeu';
+import {
+  fetchEncontroEuropeuRegistrations,
+  resolveEncontroEuropeuDocumentUrl,
+  updateEncontroEuropeuRegistrationStatus,
+  type EncontroEuropeuRegistrationStatus
+} from '../lib/encontroEuropeu';
+
+const statusOptions: Array<{ value: EncontroEuropeuRegistrationStatus; label: string }> = [
+  { value: 'approved', label: 'Aprovado' },
+  { value: 'pending', label: 'Pendente' },
+  { value: 'under-review', label: 'Em revisão' },
+  { value: 'payment-overdue', label: 'Prazo expirado' }
+];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
@@ -16,9 +28,23 @@ function formatTimestamp(value?: Date | null) {
 }
 
 export default function EncontroEuropeuAdminPage() {
+  const queryClient = useQueryClient();
+  const [errorMessage, setErrorMessage] = useState('');
+
   const query = useQuery({
     queryKey: ['encontro-europeu-inscricoes'],
     queryFn: fetchEncontroEuropeuRegistrations
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: updateEncontroEuropeuRegistrationStatus,
+    onSuccess: () => {
+      setErrorMessage('');
+      queryClient.invalidateQueries({ queryKey: ['encontro-europeu-inscricoes'] });
+    },
+    onError: error => {
+      setErrorMessage(error instanceof Error ? error.message : 'Falha ao atualizar status.');
+    }
   });
 
   const registrations = useMemo(
@@ -33,6 +59,7 @@ export default function EncontroEuropeuAdminPage() {
         <p className="text-sm text-slate-600">Visualização restrita a administradores.</p>
       </div>
 
+      {errorMessage ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div> : null}
       {query.isLoading ? <div className="text-sm text-slate-600">Carregando inscrições...</div> : null}
       {query.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Falha ao carregar inscrições.</div> : null}
 
@@ -48,7 +75,29 @@ export default function EncontroEuropeuAdminPage() {
                   {registration.country} · {registration.church} · {registration.centerLeader}
                 </p>
               </div>
-              <div className="text-sm text-slate-500">{formatTimestamp(registration.submittedAt)}</div>
+              <div className="space-y-2">
+                <div className="text-sm text-slate-500">{formatTimestamp(registration.submittedAt)}</div>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-slate-900">Status</span>
+                  <select
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={registration.status}
+                    disabled={statusMutation.isPending}
+                    onChange={event => {
+                      statusMutation.mutate({
+                        id: registration.id,
+                        status: event.target.value as EncontroEuropeuRegistrationStatus
+                      });
+                    }}
+                  >
+                    {statusOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -84,9 +133,18 @@ export default function EncontroEuropeuAdminPage() {
               <div className="rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
                 <div className="font-medium text-slate-900">Arquivos informados</div>
                 <ul className="mt-2 space-y-1">
-                  <li>Documento: {registration.identityDocumentName ?? 'Não informado'}</li>
-                  <li>Pagamento: {registration.paymentProofName ?? 'Não informado'}</li>
-                  <li>Consenso: {registration.consentDocumentName ?? 'Não informado'}</li>
+                  <li>
+                    Documento:{' '}
+                    <DocumentDownloadLink name={registration.identityDocumentName} path={registration.identityDocumentPath} />
+                  </li>
+                  <li>
+                    Pagamento:{' '}
+                    <DocumentDownloadLink name={registration.paymentProofName} path={registration.paymentProofPath} />
+                  </li>
+                  <li>
+                    Consenso:{' '}
+                    <DocumentDownloadLink name={registration.consentDocumentName} path={registration.consentDocumentPath} />
+                  </li>
                 </ul>
               </div>
             </div>
@@ -100,5 +158,48 @@ export default function EncontroEuropeuAdminPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function DocumentDownloadLink({ name, path }: { name?: string; path?: string }) {
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!name || !path) {
+    return <span>Não informado</span>;
+  }
+
+  return (
+    <span>
+      <a
+        href={downloadUrl ?? '#'}
+        target="_blank"
+        rel="noreferrer"
+        className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2"
+        onClick={async event => {
+          if (downloadUrl || loading) {
+            return;
+          }
+
+          event.preventDefault();
+          setLoading(true);
+          setError('');
+
+          try {
+            const resolvedUrl = await resolveEncontroEuropeuDocumentUrl(path);
+            setDownloadUrl(resolvedUrl);
+            window.open(resolvedUrl, '_blank', 'noopener,noreferrer');
+          } catch (requestError) {
+            setError(requestError instanceof Error ? requestError.message : 'Falha ao carregar arquivo');
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        {loading ? 'Gerando link...' : name}
+      </a>
+      {error ? <span className="ml-2 text-xs text-red-600">{error}</span> : null}
+    </span>
   );
 }

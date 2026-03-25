@@ -31,8 +31,11 @@ export type ContributionBreakdown = {
 
 export type RegistrationDocumentNames = {
   identityDocumentName?: string;
+  identityDocumentPath?: string;
   paymentProofName?: string;
+  paymentProofPath?: string;
   consentDocumentName?: string;
+  consentDocumentPath?: string;
 };
 
 export const initialEncontroEuropeuFormValues: EncontroEuropeuFormValues = {
@@ -152,10 +155,13 @@ export function buildEncontroEuropeuPayload(args: {
     needsExtraLinen: values.attendanceMode === 'lodging' ? values.needsExtraLinen : false,
     roomNumber: values.roomNumber.trim() || undefined,
     identityDocumentName: documents.identityDocumentName,
+    identityDocumentPath: documents.identityDocumentPath,
     paymentProofName: documents.paymentProofName,
+    paymentProofPath: documents.paymentProofPath,
     consentDocumentName: values.isNovice ? documents.consentDocumentName : undefined,
+    consentDocumentPath: values.isNovice ? documents.consentDocumentPath : undefined,
     contribution,
-    status: 'pending-payment' as const
+    status: 'pending' as const
   };
 }
 
