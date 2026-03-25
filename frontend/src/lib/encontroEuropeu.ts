@@ -144,7 +144,7 @@ function getRoomCapacity(roomName: string) {
   return roomCapacityMap.get(roomName) ?? null;
 }
 
-function hasKnownRoomCapacity(roomName?: string | null) {
+function hasKnownRoomCapacity(roomName?: string | null): roomName is string {
   return typeof roomName === 'string' && getRoomCapacity(roomName) != null;
 }
 
