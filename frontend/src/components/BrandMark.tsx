@@ -27,7 +27,7 @@ export function BrandMark({ className, decorative = false }: BrandMarkProps) {
         <path d="M0 21.33h64v21.34H0z" fill="#3f84c2" />
         <path d="M0 42.67h64v21.33H0z" fill="#0f6f57" />
         <circle cx="14.5" cy="11.5" r="4.5" fill="#e8c24c" />
-        <path d="M32 7v14M24.5 10.5h15M26.5 15h11" fill="none" stroke="#2a628f" strokeLinecap="round" strokeWidth="2.6" />
+        <path d="M32 7v14M27 10.5h10M24.5 15h15" fill="none" stroke="#2a628f" strokeLinecap="round" strokeWidth="2.6" />
         <circle cx="31" cy="32" r="9.5" fill="#e8c24c" />
         <circle cx="35.8" cy="30.5" r="8.8" fill="#3f84c2" />
         <path d="M47.5 46.8 51.2 53H43.8Z" fill="none" stroke="#e8c24c" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />

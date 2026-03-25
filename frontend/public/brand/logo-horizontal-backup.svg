@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 128" role="img" aria-label="São Irineu logo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 128" role="img" aria-label="São Irineu logo backup">
   <defs>
     <clipPath id="logo-horizontal-frame">
       <rect x="19" y="19" width="90" height="90" rx="25" />
@@ -13,7 +13,7 @@
     <circle cx="71" cy="61.5" r="13" fill="#3f84c2" />
     <path d="M87 90l6.8 11.5H80.2z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" />
     <path d="M87 103.4l-6.8-11.5H93.8z" fill="none" stroke="#e8c24c" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" />
-    <path d="M64 22v22M55.5 28h17M52 35h24" fill="none" stroke="#2a628f" stroke-linecap="round" stroke-width="4.5" />
+    <path d="M64 22v22M52 28h24M54.5 35h19" fill="none" stroke="#2a628f" stroke-linecap="round" stroke-width="4.5" />
   </g>
   <rect x="17.5" y="17.5" width="93" height="93" rx="26.5" fill="none" stroke="#d7ceb8" stroke-width="3" />
   <text x="138" y="58" fill="#24364d" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700">São Irineu</text>
