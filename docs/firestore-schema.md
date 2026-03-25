@@ -92,7 +92,7 @@
 - identityDocumentName, paymentProofName, consentDocumentName: string?
 - identityDocumentPath, paymentProofPath, consentDocumentPath: string? com path no Firebase Storage para download administrativo
 - contribution: { nights, lodging, spiritualWorks, extras, total }
-- status: `pending` | `approved` | `under-review` | `payment-overdue`
+- status: `pending` | `approved` | `under-review` | `payment-overdue` | `rejected` | `archived`
 - submittedAt
 
 ## Indices compostos sugeridos

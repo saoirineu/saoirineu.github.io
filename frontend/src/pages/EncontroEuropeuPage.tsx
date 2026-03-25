@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
 import { createEncontroEuropeuRegistration } from '../lib/encontroEuropeu';
@@ -66,6 +66,10 @@ type Copy = {
   extras: string;
   total: string;
   submit: string;
+  saveDraft: string;
+  draftSaved: string;
+  draftLoaded: string;
+  draftHint: string;
   submitting: string;
   successTitle: string;
   successIntro: string;
@@ -171,6 +175,10 @@ const copyByLocale: Record<Locale, Copy> = {
     extras: 'Extras',
     total: 'Total',
     submit: 'Enviar inscrição',
+    saveDraft: 'Salvar rascunho',
+    draftSaved: 'Rascunho salvo neste navegador.',
+    draftLoaded: 'Rascunho carregado automaticamente.',
+    draftHint: 'Os arquivos anexados não podem ser guardados no rascunho; será preciso selecioná-los novamente antes do envio.',
     submitting: 'Enviando...',
     successTitle: 'Inscrição recebida',
     successIntro: 'Sua inscrição foi registrada. A organização agora aguarda a transferência e o envio do comprovante.',
@@ -248,6 +256,10 @@ const copyByLocale: Record<Locale, Copy> = {
     extras: 'Extras',
     total: 'Total',
     submit: 'Submit registration',
+    saveDraft: 'Save draft',
+    draftSaved: 'Draft saved in this browser.',
+    draftLoaded: 'Draft loaded automatically.',
+    draftHint: 'Attached files cannot be stored in the draft; you will need to select them again before submitting.',
     submitting: 'Submitting...',
     successTitle: 'Registration received',
     successIntro: 'Your registration has been recorded. The organization is now waiting for the transfer and the payment proof.',
@@ -325,6 +337,10 @@ const copyByLocale: Record<Locale, Copy> = {
     extras: 'Extras',
     total: 'Total',
     submit: 'Enviar inscripción',
+    saveDraft: 'Guardar borrador',
+    draftSaved: 'Borrador guardado en este navegador.',
+    draftLoaded: 'Borrador cargado automáticamente.',
+    draftHint: 'Los archivos adjuntos no se pueden guardar en el borrador; tendrás que seleccionarlos de nuevo antes de enviar.',
     submitting: 'Enviando...',
     successTitle: 'Inscripción recibida',
     successIntro: 'Su inscripción ha sido registrada. La organización ahora espera la transferencia y el envío del comprobante.',
@@ -402,6 +418,10 @@ const copyByLocale: Record<Locale, Copy> = {
     extras: 'Extra',
     total: 'Totale',
     submit: 'Invia iscrizione',
+    saveDraft: 'Salva bozza',
+    draftSaved: 'Bozza salvata in questo browser.',
+    draftLoaded: 'Bozza caricata automaticamente.',
+    draftHint: 'I file allegati non possono essere salvati nella bozza; dovrai selezionarli di nuovo prima dell’invio.',
     submitting: 'Invio in corso...',
     successTitle: 'Iscrizione ricevuta',
     successIntro: 'La tua iscrizione è stata registrata. L\'organizzazione attende ora il bonifico e la contabile.',
@@ -457,6 +477,8 @@ function formatCurrency(value: number) {
 }
 
 const fileInputClassName = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-xl file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200';
+const encontroEuropeuDraftKey = 'encontro-europeu-draft-v1';
+const fallbackDraftLocale = resolveInitialLocale(undefined);
 
 export default function EncontroEuropeuPage() {
   const [locale, setLocale] = useState<Locale>(() => resolveInitialLocale(typeof navigator === 'undefined' ? undefined : navigator.language));
@@ -467,11 +489,39 @@ export default function EncontroEuropeuPage() {
     consentDocument: null
   });
   const [submitError, setSubmitError] = useState<string>('');
+  const [draftMessage, setDraftMessage] = useState('');
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
 
   const copy = copyByLocale[locale];
   const contribution = useMemo(() => calculateContribution(values), [values]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const rawDraft = window.localStorage.getItem(encontroEuropeuDraftKey);
+    if (!rawDraft) {
+      return;
+    }
+
+    try {
+      const parsedDraft = JSON.parse(rawDraft) as { locale?: Locale; values?: Partial<EncontroEuropeuFormValues> };
+
+      if (parsedDraft.locale) {
+        setLocale(parsedDraft.locale);
+      }
+
+      if (parsedDraft.values) {
+        setValues(current => ({ ...current, ...parsedDraft.values }));
+      }
+
+      setDraftMessage(copyByLocale[parsedDraft.locale ?? fallbackDraftLocale].draftLoaded);
+    } catch {
+      window.localStorage.removeItem(encontroEuropeuDraftKey);
+    }
+  }, []);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -503,6 +553,10 @@ export default function EncontroEuropeuPage() {
     onSuccess: result => {
       setSuccessState({ contributionTotal: contribution.total, registrationId: result.id });
       setSubmitError('');
+      setDraftMessage('');
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(encontroEuropeuDraftKey);
+      }
     },
     onError: error => {
       setSubmitError(error.message);
@@ -526,9 +580,29 @@ export default function EncontroEuropeuPage() {
     setValues(initialEncontroEuropeuFormValues);
     setDocuments({ identityDocument: null, paymentProof: null, consentDocument: null });
     setSubmitError('');
+    setDraftMessage('');
     setSuccessState(null);
     setIsRoomModalOpen(false);
     mutation.reset();
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(encontroEuropeuDraftKey);
+    }
+  };
+
+  const saveDraft = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(
+      encontroEuropeuDraftKey,
+      JSON.stringify({
+        locale,
+        values
+      })
+    );
+
+    setDraftMessage(copy.draftSaved);
   };
 
   return (
@@ -712,10 +786,17 @@ export default function EncontroEuropeuPage() {
                 </div>
 
                 {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
+                {draftMessage ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{draftMessage}</p> : null}
+                <p className="text-xs leading-5 text-slate-500">{copy.draftHint}</p>
 
-                <button type="submit" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
-                  {mutation.isPending ? copy.submitting : copy.submit}
-                </button>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button type="button" className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={saveDraft}>
+                    {copy.saveDraft}
+                  </button>
+                  <button type="submit" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
+                    {mutation.isPending ? copy.submitting : copy.submit}
+                  </button>
+                </div>
               </form>
             </section>
 

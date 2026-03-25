@@ -1,5 +1,5 @@
 import { FirebaseError } from 'firebase/app';
-import { Timestamp, collection, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { Timestamp, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
@@ -13,7 +13,7 @@ import {
   removeUndefinedDeep
 } from './firestoreData';
 
-export type EncontroEuropeuRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue';
+export type EncontroEuropeuRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
 
 type EncontroEuropeuDocumentKey = 'identityDocument' | 'paymentProof' | 'consentDocument';
 
@@ -100,6 +100,10 @@ function normalizeStatus(value: unknown): EncontroEuropeuRegistrationStatus {
       return 'under-review';
     case 'payment-overdue':
       return 'payment-overdue';
+    case 'rejected':
+      return 'rejected';
+    case 'archived':
+      return 'archived';
     case 'pending-payment':
     case 'pending':
     default:
@@ -231,4 +235,16 @@ export async function resolveEncontroEuropeuDocumentUrl(path: string) {
 
 export async function updateEncontroEuropeuRegistrationStatus(args: { id: string; status: EncontroEuropeuRegistrationStatus }) {
   await updateDoc(doc(registrationsRef, args.id), { status: args.status });
+}
+
+export async function deleteEncontroEuropeuRegistration(registration: Pick<
+  EncontroEuropeuRegistrationRecord,
+  'id' | 'identityDocumentPath' | 'paymentProofPath' | 'consentDocumentPath'
+>) {
+  const documentPaths = [registration.identityDocumentPath, registration.paymentProofPath, registration.consentDocumentPath].filter(
+    (value): value is string => typeof value === 'string' && value.length > 0
+  );
+
+  await Promise.all(documentPaths.map(path => deleteObject(ref(storage, path)).catch(() => undefined)));
+  await deleteDoc(doc(registrationsRef, registration.id));
 }

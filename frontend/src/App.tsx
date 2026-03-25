@@ -1,9 +1,10 @@
 import { Suspense, lazy } from 'react';
-import { Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 
 import { AuthGate } from './components/AuthGate';
 import { NavBar } from './components/NavBar';
 import { RoleGate } from './components/RoleGate';
+import { useDevMode } from './providers/useDevMode';
 
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const BeveragePage = lazy(() => import('./pages/BeveragePage'));
@@ -37,7 +38,19 @@ function Shell() {
   );
 }
 
+function DevOnlyRoute() {
+  const { devModeEnabled } = useDevMode();
+
+  if (!devModeEnabled) {
+    return <Navigate to="/perfil" replace />;
+  }
+
+  return <Outlet />;
+}
+
 function App() {
+  const { devModeEnabled } = useDevMode();
+
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
@@ -45,18 +58,22 @@ function App() {
         <Route path="/encontro-europeu" element={<EncontroEuropeuPage />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="/pessoas" element={<PeoplePage />} />
+            <Route index element={devModeEnabled ? <DashboardPage /> : <Navigate to="/perfil" replace />} />
             <Route path="/igrejas" element={<ChurchesPage />} />
-            <Route path="/hinarios" element={<HymnsPage />} />
-            <Route path="/bebida" element={<BeveragePage />} />
-            <Route path="/trabalhos" element={<TrabalhosPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
+            <Route element={<DevOnlyRoute />}>
+              <Route path="/pessoas" element={<PeoplePage />} />
+              <Route path="/hinarios" element={<HymnsPage />} />
+              <Route path="/bebida" element={<BeveragePage />} />
+              <Route path="/trabalhos" element={<TrabalhosPage />} />
+            </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
               <Route path="/admin/inscricoes-encontro" element={<EncontroEuropeuAdminPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="superadmin" />}>
-              <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+              <Route element={<DevOnlyRoute />}>
+                <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+              </Route>
             </Route>
           </Route>
         </Route>

@@ -1,27 +1,34 @@
 import { NavLink } from 'react-router-dom';
 
 import { hasRequiredRole } from '../lib/systemRole';
+import { useDevMode } from '../providers/useDevMode';
 import { useAuth } from '../providers/useAuth';
 import { useSystemRole } from '../providers/useSystemRole';
 
-const links = [
+const stableLinks = [
+  { to: '/igrejas', label: 'Igrejas' },
+  { to: '/encontro-europeu', label: 'Encontro Europeu' },
+  { to: '/perfil', label: 'Perfil' }
+];
+
+const devLinks = [
   { to: '/', label: 'Início' },
   { to: '/pessoas', label: 'Pessoas' },
-  { to: '/igrejas', label: 'Igrejas' },
   { to: '/hinarios', label: 'Hinários/Hinos' },
   { to: '/bebida', label: 'Bebida' },
-  { to: '/trabalhos', label: 'Trabalhos' },
-  { to: '/perfil', label: 'Perfil' }
+  { to: '/trabalhos', label: 'Trabalhos' }
 ];
 
 export function NavBar() {
   const { signOut } = useAuth();
   const { role } = useSystemRole();
+  const { canToggleDevMode, devModeEnabled, setDevModeEnabled } = useDevMode();
 
   const navigationLinks = [
-    ...links,
+    ...stableLinks,
+    ...(devModeEnabled ? devLinks : []),
     ...(hasRequiredRole(role, 'admin') ? [{ to: '/admin/inscricoes-encontro', label: 'Inscrições' }] : []),
-    ...(hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/usuarios', label: 'Usuários' }] : [])
+    ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/usuarios', label: 'Usuários' }] : [])
   ];
 
   return (
@@ -44,13 +51,29 @@ export function NavBar() {
             </NavLink>
           ))}
         </nav>
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-        >
-          Sair
-        </button>
+        <div className="flex items-center gap-3">
+          {canToggleDevMode ? (
+            <label className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 md:flex">
+              <span>Dev</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={devModeEnabled}
+                onClick={() => setDevModeEnabled(!devModeEnabled)}
+                className={`relative h-6 w-11 rounded-full transition ${devModeEnabled ? 'bg-slate-900' : 'bg-slate-300'}`}
+              >
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${devModeEnabled ? 'left-5' : 'left-0.5'}`} />
+              </button>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          >
+            Sair
+          </button>
+        </div>
       </div>
     </header>
   );

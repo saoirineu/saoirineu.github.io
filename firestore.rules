@@ -40,7 +40,7 @@ service cloud.firestore {
     }
 
     function hasValidEncontroEuropeuStatus() {
-      return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue'];
+      return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue', 'rejected', 'archived'];
     }
 
     match /usuarios/{uid} {

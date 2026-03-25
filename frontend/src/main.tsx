@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import App from './App';
 import { AuthProvider } from './providers/AuthProvider';
+import { DevModeProvider } from './providers/DevModeProvider';
 import './styles/index.css';
 
 const queryClient = new QueryClient({
@@ -66,9 +67,11 @@ async function bootstrap() {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <BrowserRouter basename={basePath} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <App />
-          </BrowserRouter>
+          <DevModeProvider>
+            <BrowserRouter basename={basePath} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <App />
+            </BrowserRouter>
+          </DevModeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </StrictMode>
