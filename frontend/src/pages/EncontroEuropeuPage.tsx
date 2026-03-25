@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
@@ -7,6 +8,15 @@ import {
   encontroEuropeuRoomOptions,
   fetchEncontroEuropeuRoomAvailability
 } from '../lib/encontroEuropeu';
+import {
+  compressEncontroEuropeuImage,
+  encontroEuropeuImageCompressionThresholdBytes,
+  encontroEuropeuUploadAccept,
+  encontroEuropeuUploadMaxBytes,
+  formatFileSize,
+  shouldOfferEncontroEuropeuImageCompression,
+  validateEncontroEuropeuUploadFile
+} from '../lib/encontroEuropeuUpload';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import {
   buildEncontroEuropeuPayload,
@@ -74,6 +84,22 @@ type Copy = {
   fileSelect: string;
   fileRemove: string;
   filePreview: string;
+  fileInfoTrigger: string;
+  fileInfoTitle: string;
+  fileInfoBody: string;
+  fileInvalidType: string;
+  fileTooLarge: string;
+  fileCompressionError: string;
+  fileProcessing: string;
+  fileCompressionTitle: string;
+  fileCompressionBody: string;
+  fileOriginalSize: string;
+  fileCompressedSize: string;
+  fileApproveCompressed: string;
+  fileKeepOriginal: string;
+  filePreviewTitle: string;
+  fileDownload: string;
+  fileOpenNewTab: string;
   consentDownloadInline: string;
   documentsHint: string;
   contributionTitle: string;
@@ -188,6 +214,22 @@ const copyByLocale: Record<Locale, Copy> = {
     fileSelect: 'Escolher ou soltar arquivo',
     fileRemove: 'Remover',
     filePreview: 'Ver',
+    fileInfoTrigger: 'i',
+    fileInfoTitle: 'Formatos e tamanho',
+    fileInfoBody: 'Aceitamos PDF, JPG, JPEG e PNG. Tamanho maximo: XXX. Imagens acima de YYY podem ser reduzidas neste navegador antes do envio, e voce podera revisar o resultado antes de aprovar.',
+    fileInvalidType: 'Envie um arquivo PDF, JPG, JPEG ou PNG.',
+    fileTooLarge: 'O arquivo precisa ter no maximo XXX.',
+    fileCompressionError: 'Nao foi possivel reduzir a imagem automaticamente. Voce pode manter o arquivo original se ele estiver dentro do limite.',
+    fileProcessing: 'Preparando imagem...',
+    fileCompressionTitle: 'Revisar imagem reduzida',
+    fileCompressionBody: 'A imagem foi reduzida antes do envio. Verifique o resultado e escolha se deseja usar a versao reduzida ou manter o arquivo original.',
+    fileOriginalSize: 'Tamanho original',
+    fileCompressedSize: 'Tamanho reduzido',
+    fileApproveCompressed: 'Usar imagem reduzida',
+    fileKeepOriginal: 'Manter original',
+    filePreviewTitle: 'Visualizar arquivo',
+    fileDownload: 'Baixar',
+    fileOpenNewTab: 'Abrir em nova aba',
     consentDownloadInline: 'Baixar PDF do consentimento informado',
     documentsHint: 'Os arquivos enviados ficam associados à inscrição e armazenados com segurança.',
     contributionTitle: 'Resumo da contribuição',
@@ -278,6 +320,22 @@ const copyByLocale: Record<Locale, Copy> = {
     fileSelect: 'Choose or drop file',
     fileRemove: 'Remove',
     filePreview: 'View',
+    fileInfoTrigger: 'i',
+    fileInfoTitle: 'Formats and size',
+    fileInfoBody: 'Accepted files: PDF, JPG, JPEG, and PNG. Maximum size: XXX. Images larger than YYY may be reduced in this browser before upload, and you will be able to review the result before approving it.',
+    fileInvalidType: 'Please upload a PDF, JPG, JPEG, or PNG file.',
+    fileTooLarge: 'The file must be at most XXX.',
+    fileCompressionError: 'The image could not be reduced automatically. You may keep the original file if it is within the limit.',
+    fileProcessing: 'Preparing image...',
+    fileCompressionTitle: 'Review reduced image',
+    fileCompressionBody: 'This image was reduced before upload. Review the result and choose whether to use the reduced version or keep the original file.',
+    fileOriginalSize: 'Original size',
+    fileCompressedSize: 'Reduced size',
+    fileApproveCompressed: 'Use reduced image',
+    fileKeepOriginal: 'Keep original',
+    filePreviewTitle: 'Preview file',
+    fileDownload: 'Download',
+    fileOpenNewTab: 'Open in new tab',
     consentDownloadInline: 'Download the informed consent PDF',
     documentsHint: 'Uploaded files are attached to the registration and stored securely.',
     contributionTitle: 'Contribution summary',
@@ -368,6 +426,22 @@ const copyByLocale: Record<Locale, Copy> = {
     fileSelect: 'Elegir o soltar archivo',
     fileRemove: 'Quitar',
     filePreview: 'Ver',
+    fileInfoTrigger: 'i',
+    fileInfoTitle: 'Formatos y tamano',
+    fileInfoBody: 'Se aceptan PDF, JPG, JPEG y PNG. Tamano maximo: XXX. Las imagenes mayores que YYY pueden reducirse en este navegador antes del envio, y podras revisar el resultado antes de aprobarlo.',
+    fileInvalidType: 'Suba un archivo PDF, JPG, JPEG o PNG.',
+    fileTooLarge: 'El archivo debe tener como maximo XXX.',
+    fileCompressionError: 'No fue posible reducir la imagen automaticamente. Puede mantener el archivo original si esta dentro del limite.',
+    fileProcessing: 'Preparando imagen...',
+    fileCompressionTitle: 'Revisar imagen reducida',
+    fileCompressionBody: 'La imagen se redujo antes del envio. Revise el resultado y elija si desea usar la version reducida o mantener el archivo original.',
+    fileOriginalSize: 'Tamano original',
+    fileCompressedSize: 'Tamano reducido',
+    fileApproveCompressed: 'Usar imagen reducida',
+    fileKeepOriginal: 'Mantener original',
+    filePreviewTitle: 'Ver archivo',
+    fileDownload: 'Descargar',
+    fileOpenNewTab: 'Abrir en una pestaña nueva',
     consentDownloadInline: 'Descargar el PDF del consentimiento informado',
     documentsHint: 'Los archivos enviados quedan asociados a la inscripción y almacenados de forma segura.',
     contributionTitle: 'Resumen de la contribución',
@@ -458,6 +532,22 @@ const copyByLocale: Record<Locale, Copy> = {
     fileSelect: 'Scegli o trascina file',
     fileRemove: 'Rimuovi',
     filePreview: 'Apri',
+    fileInfoTrigger: 'i',
+    fileInfoTitle: 'Formati e dimensione',
+    fileInfoBody: 'Sono accettati PDF, JPG, JPEG e PNG. Dimensione massima: XXX. Le immagini piu grandi di YYY possono essere ridotte in questo browser prima del caricamento, e potrai controllare il risultato prima di approvarlo.',
+    fileInvalidType: 'Carica un file PDF, JPG, JPEG o PNG.',
+    fileTooLarge: 'Il file deve essere al massimo di XXX.',
+    fileCompressionError: 'Non e stato possibile ridurre automaticamente l\'immagine. Puoi mantenere il file originale se rientra nel limite.',
+    fileProcessing: 'Preparazione immagine...',
+    fileCompressionTitle: 'Controlla immagine ridotta',
+    fileCompressionBody: 'L\'immagine e stata ridotta prima del caricamento. Controlla il risultato e scegli se usare la versione ridotta o mantenere il file originale.',
+    fileOriginalSize: 'Dimensione originale',
+    fileCompressedSize: 'Dimensione ridotta',
+    fileApproveCompressed: 'Usa immagine ridotta',
+    fileKeepOriginal: 'Mantieni originale',
+    filePreviewTitle: 'Anteprima file',
+    fileDownload: 'Scarica',
+    fileOpenNewTab: 'Apri in una nuova scheda',
     consentDownloadInline: 'Scarica il PDF del consenso informato',
     documentsHint: 'I file inviati restano associati all\'iscrizione e vengono archiviati in modo sicuro.',
     contributionTitle: 'Riepilogo del contributo',
@@ -553,6 +643,16 @@ function CalendarIcon() {
   );
 }
 
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 10.5v5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <circle cx="12" cy="7.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 function LocalizedDateField({
   label,
   locale,
@@ -616,29 +716,127 @@ function LocalizedDateField({
 function FileUploadField({
   accept,
   file,
+  closeLabel,
+  compressedSizeLabel,
+  compressionBody,
+  compressionError,
+  compressionTitle,
+  downloadLabel,
+  infoBody,
+  infoTitle,
+  infoTriggerLabel,
+  invalidTypeError,
+  keepOriginalLabel,
+  openInNewTabLabel,
+  originalSizeLabel,
   onChange,
   previewLabel,
+  previewTitle,
+  processingLabel,
   removeLabel,
-  selectLabel
+  selectLabel,
+  tooLargeError,
+  useCompressedLabel
 }: {
   accept: string;
   file: File | null;
+  closeLabel: string;
+  compressedSizeLabel: string;
+  compressionBody: string;
+  compressionError: string;
+  compressionTitle: string;
+  downloadLabel: string;
+  infoBody: string;
+  infoTitle: string;
+  infoTriggerLabel: string;
+  invalidTypeError: string;
+  keepOriginalLabel: string;
+  openInNewTabLabel: string;
+  originalSizeLabel: string;
   onChange: (file: File | null) => void;
   previewLabel: string;
+  previewTitle: string;
+  processingLabel: string;
   removeLabel: string;
   selectLabel: string;
+  tooLargeError: string;
+  useCompressedLabel: string;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [compressionCandidate, setCompressionCandidate] = useState<{ compressed: File; original: File } | null>(null);
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const compressionPreviewUrl = useMemo(
+    () => (compressionCandidate ? URL.createObjectURL(compressionCandidate.compressed) : null),
+    [compressionCandidate]
+  );
 
   const openPicker = () => {
+    if (isProcessing) {
+      return;
+    }
+
     inputRef.current?.click();
   };
 
-  const handleDroppedFiles = (files: FileList | null) => {
-    const nextFile = files?.[0] ?? null;
+  const resetPicker = () => {
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  };
+
+  const handleSelectedFile = async (nextFile: File | null) => {
+    if (!nextFile) {
+      setErrorMessage('');
+      setCompressionCandidate(null);
+      onChange(null);
+      return;
+    }
+
+    const validationError = validateEncontroEuropeuUploadFile(nextFile);
+    if (validationError === 'invalid-type') {
+      setErrorMessage(invalidTypeError);
+      setCompressionCandidate(null);
+      resetPicker();
+      return;
+    }
+
+    if (validationError === 'file-too-large') {
+      setErrorMessage(tooLargeError);
+      setCompressionCandidate(null);
+      resetPicker();
+      return;
+    }
+
+    setErrorMessage('');
+
+    if (shouldOfferEncontroEuropeuImageCompression(nextFile)) {
+      setIsProcessing(true);
+
+      try {
+        const compressed = await compressEncontroEuropeuImage(nextFile);
+        if (compressed !== nextFile) {
+          setCompressionCandidate({ compressed, original: nextFile });
+          return;
+        }
+      } catch {
+        setErrorMessage(compressionError);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
+    setCompressionCandidate(null);
     onChange(nextFile);
+  };
+
+  const handleDroppedFiles = async (files: FileList | null) => {
+    const nextFile = files?.[0] ?? null;
+    await handleSelectedFile(nextFile);
   };
 
   useEffect(() => {
@@ -649,82 +847,254 @@ function FileUploadField({
     };
   }, [previewUrl]);
 
-  return (
-    <div
-      className={`rounded-[26px] border bg-white p-4 shadow-sm transition ${isDragOver ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200'}`}
-      onDragOver={event => {
-        event.preventDefault();
-        setIsDragOver(true);
-      }}
-      onDragEnter={event => {
-        event.preventDefault();
-        setIsDragOver(true);
-      }}
-      onDragLeave={event => {
-        event.preventDefault();
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          return;
-        }
-        setIsDragOver(false);
-      }}
-      onDrop={event => {
-        event.preventDefault();
-        setIsDragOver(false);
-        handleDroppedFiles(event.dataTransfer.files);
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={event => handleDroppedFiles(event.target.files)}
-      />
+  useEffect(() => {
+    return () => {
+      if (compressionPreviewUrl) {
+        URL.revokeObjectURL(compressionPreviewUrl);
+      }
+    };
+  }, [compressionPreviewUrl]);
 
-      {file ? (
-        <>
-          <div className="min-w-0 text-center text-sm text-slate-700">
-            <div className="truncate text-center font-medium text-slate-900" title={file.name}>
-              {file.name}
+  const compressionReviewModal =
+    compressionCandidate && typeof document !== 'undefined'
+      ? createPortal(
+          <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-950/50 px-4 py-6" role="dialog" aria-modal="true" aria-label={compressionTitle}>
+            <div className="flex min-h-full items-center justify-center">
+              <div className="w-full max-w-xl rounded-[28px] bg-white p-6 shadow-2xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">{compressionTitle}</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{compressionBody}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                    onClick={() => {
+                      setCompressionCandidate(null);
+                    }}
+                  >
+                    {closeLabel}
+                  </button>
+                </div>
+
+                {compressionPreviewUrl ? (
+                  <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+                    <img src={compressionPreviewUrl} alt={compressionTitle} className="max-h-[60vh] w-full object-contain" />
+                  </div>
+                ) : null}
+
+                <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <dt className="text-slate-500">{originalSizeLabel}</dt>
+                    <dd className="mt-1 font-semibold text-slate-900">{formatFileSize(compressionCandidate.original.size)}</dd>
+                  </div>
+                  <div className="rounded-2xl bg-emerald-50 px-4 py-3">
+                    <dt className="text-emerald-700">{compressedSizeLabel}</dt>
+                    <dd className="mt-1 font-semibold text-emerald-900">{formatFileSize(compressionCandidate.compressed.size)}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    onClick={() => {
+                      onChange(compressionCandidate.compressed);
+                      setCompressionCandidate(null);
+                    }}
+                  >
+                    {useCompressedLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    onClick={() => {
+                      onChange(compressionCandidate.original);
+                      setCompressionCandidate(null);
+                    }}
+                  >
+                    {keepOriginalLabel}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
+        )
+      : null;
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {previewUrl ? (
-              <a
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                href={previewUrl}
-                target="_blank"
-                rel="noreferrer"
+  const previewModal =
+    isPreviewOpen && previewUrl && file && typeof document !== 'undefined'
+      ? createPortal(
+          <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-950/50 px-4 py-6" role="dialog" aria-modal="true" aria-label={previewTitle}>
+            <div className="flex min-h-full items-center justify-center">
+              <div className="w-full max-w-4xl rounded-[28px] bg-white p-6 shadow-2xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-slate-900">{previewTitle}</h2>
+                    <p className="mt-2 truncate text-sm text-slate-600" title={file.name}>{file.name}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                    onClick={() => setIsPreviewOpen(false)}
+                  >
+                    {closeLabel}
+                  </button>
+                </div>
+
+                <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+                  {file.type.startsWith('image/') ? (
+                    <img src={previewUrl} alt={file.name} className="max-h-[70vh] w-full object-contain" />
+                  ) : (
+                    <iframe title={file.name} src={previewUrl} className="h-[70vh] w-full bg-white" />
+                  )}
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <a
+                    className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    href={previewUrl}
+                    download={file.name}
+                  >
+                    {downloadLabel}
+                  </a>
+                  <a
+                    className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {openInNewTabLabel}
+                  </a>
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    onClick={() => setIsPreviewOpen(false)}
+                  >
+                    {closeLabel}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <div
+        className={`rounded-[26px] border bg-white p-4 shadow-sm transition ${isDragOver ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200'}`}
+        onDragOver={event => {
+          event.preventDefault();
+          if (!isProcessing) {
+            setIsDragOver(true);
+          }
+        }}
+        onDragEnter={event => {
+          event.preventDefault();
+          if (!isProcessing) {
+            setIsDragOver(true);
+          }
+        }}
+        onDragLeave={event => {
+          event.preventDefault();
+          if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            return;
+          }
+          setIsDragOver(false);
+        }}
+        onDrop={event => {
+          event.preventDefault();
+          setIsDragOver(false);
+          void handleDroppedFiles(event.dataTransfer.files);
+        }}
+      >
+        <div className="mb-3 flex items-start justify-end">
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900"
+            aria-label={infoTitle}
+            title={infoTitle}
+            onClick={() => setIsHelpOpen(current => !current)}
+          >
+            {infoTriggerLabel === 'i' ? <InfoIcon /> : infoTriggerLabel}
+          </button>
+        </div>
+
+        {isHelpOpen ? (
+          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-950">
+            <div className="font-semibold">{infoTitle}</div>
+            <p className="mt-1">{infoBody}</p>
+          </div>
+        ) : null}
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={event => {
+            const files = event.target.files;
+            event.target.value = '';
+            void handleDroppedFiles(files);
+          }}
+        />
+
+        {file ? (
+          <>
+            <div className="min-w-0 text-center text-sm text-slate-700">
+              <div className="truncate text-center font-medium text-slate-900" title={file.name}>
+                {file.name}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">{formatFileSize(file.size)}</div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {previewUrl ? (
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  onClick={() => setIsPreviewOpen(true)}
+                >
+                  {previewLabel}
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                onClick={() => {
+                  resetPicker();
+                  setErrorMessage('');
+                  setCompressionCandidate(null);
+                  onChange(null);
+                }}
               >
-                {previewLabel}
-              </a>
-            ) : null}
+                {removeLabel}
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="flex min-h-[112px] w-full items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-wait disabled:opacity-70"
+            onClick={openPicker}
+            disabled={isProcessing}
+          >
+            {isProcessing ? processingLabel : selectLabel}
+          </button>
+        )}
 
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
-              onClick={() => {
-                if (inputRef.current) {
-                  inputRef.current.value = '';
-                }
-                onChange(null);
-              }}
-            >
-              {removeLabel}
-            </button>
-          </div>
-        </>
-      ) : (
-        <button
-          type="button"
-          className="flex min-h-[112px] w-full items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-          onClick={openPicker}
-        >
-          {selectLabel}
-        </button>
-      )}
-    </div>
+        {errorMessage ? (
+          <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">{errorMessage}</p>
+        ) : null}
+      </div>
+
+      {compressionReviewModal}
+      {previewModal}
+    </>
   );
 }
 
@@ -777,6 +1147,10 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
   const [draftDateSelections, setDraftDateSelections] = useState<DraftDateSelections>(initialDraftDateSelections);
 
   const copy = copyByLocale[locale];
+  const uploadInfoBody = copy.fileInfoBody
+    .replace('XXX', formatFileSize(encontroEuropeuUploadMaxBytes))
+    .replace('YYY', formatFileSize(encontroEuropeuImageCompressionThresholdBytes));
+  const uploadTooLargeError = copy.fileTooLarge.replace('XXX', formatFileSize(encontroEuropeuUploadMaxBytes));
   const contribution = useMemo(() => calculateContribution(values), [values]);
   const roomAvailabilityQuery = useQuery({
     queryKey: ['encontro-europeu-room-availability'],
@@ -1170,34 +1544,85 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <Field className="flex h-full flex-col" label={copy.identityDocument} labelClassName="min-h-[2.5rem] leading-5">
                     <FileUploadField
-                      accept=".pdf,image/*"
+                      accept={encontroEuropeuUploadAccept}
+                      closeLabel={copy.close}
+                      compressedSizeLabel={copy.fileCompressedSize}
+                      compressionBody={copy.fileCompressionBody}
+                      compressionError={copy.fileCompressionError}
+                      compressionTitle={copy.fileCompressionTitle}
+                      downloadLabel={copy.fileDownload}
                       file={documents.identityDocument}
+                      infoBody={uploadInfoBody}
+                      infoTitle={copy.fileInfoTitle}
+                      infoTriggerLabel={copy.fileInfoTrigger}
+                      invalidTypeError={copy.fileInvalidType}
+                      keepOriginalLabel={copy.fileKeepOriginal}
+                      openInNewTabLabel={copy.fileOpenNewTab}
                       onChange={file => setDocuments(current => ({ ...current, identityDocument: file }))}
+                      originalSizeLabel={copy.fileOriginalSize}
                       previewLabel={copy.filePreview}
+                      previewTitle={copy.filePreviewTitle}
+                      processingLabel={copy.fileProcessing}
                       removeLabel={copy.fileRemove}
                       selectLabel={copy.fileSelect}
+                      tooLargeError={uploadTooLargeError}
+                      useCompressedLabel={copy.fileApproveCompressed}
                     />
                   </Field>
                   <Field className="flex h-full flex-col" label={copy.paymentProof} labelClassName="min-h-[2.5rem] leading-5">
                     <FileUploadField
-                      accept=".pdf,image/*"
+                      accept={encontroEuropeuUploadAccept}
+                      closeLabel={copy.close}
+                      compressedSizeLabel={copy.fileCompressedSize}
+                      compressionBody={copy.fileCompressionBody}
+                      compressionError={copy.fileCompressionError}
+                      compressionTitle={copy.fileCompressionTitle}
+                      downloadLabel={copy.fileDownload}
                       file={documents.paymentProof}
+                      infoBody={uploadInfoBody}
+                      infoTitle={copy.fileInfoTitle}
+                      infoTriggerLabel={copy.fileInfoTrigger}
+                      invalidTypeError={copy.fileInvalidType}
+                      keepOriginalLabel={copy.fileKeepOriginal}
+                      openInNewTabLabel={copy.fileOpenNewTab}
                       onChange={file => setDocuments(current => ({ ...current, paymentProof: file }))}
+                      originalSizeLabel={copy.fileOriginalSize}
                       previewLabel={copy.filePreview}
+                      previewTitle={copy.filePreviewTitle}
+                      processingLabel={copy.fileProcessing}
                       removeLabel={copy.fileRemove}
                       selectLabel={copy.fileSelect}
+                      tooLargeError={uploadTooLargeError}
+                      useCompressedLabel={copy.fileApproveCompressed}
                     />
                   </Field>
                   {values.isNovice ? (
                     <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                       <Field className="flex flex-col" label={copy.consentDocument} labelClassName="leading-5">
                         <FileUploadField
-                          accept=".pdf,image/*"
+                          accept={encontroEuropeuUploadAccept}
+                          closeLabel={copy.close}
+                          compressedSizeLabel={copy.fileCompressedSize}
+                          compressionBody={copy.fileCompressionBody}
+                          compressionError={copy.fileCompressionError}
+                          compressionTitle={copy.fileCompressionTitle}
+                          downloadLabel={copy.fileDownload}
                           file={documents.consentDocument}
+                          infoBody={uploadInfoBody}
+                          infoTitle={copy.fileInfoTitle}
+                          infoTriggerLabel={copy.fileInfoTrigger}
+                          invalidTypeError={copy.fileInvalidType}
+                          keepOriginalLabel={copy.fileKeepOriginal}
+                          openInNewTabLabel={copy.fileOpenNewTab}
                           onChange={file => setDocuments(current => ({ ...current, consentDocument: file }))}
+                          originalSizeLabel={copy.fileOriginalSize}
                           previewLabel={copy.filePreview}
+                          previewTitle={copy.filePreviewTitle}
+                          processingLabel={copy.fileProcessing}
                           removeLabel={copy.fileRemove}
                           selectLabel={copy.fileSelect}
+                          tooLargeError={uploadTooLargeError}
+                          useCompressedLabel={copy.fileApproveCompressed}
                         />
                       </Field>
                       <a className="inline-flex rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">

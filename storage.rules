@@ -24,8 +24,8 @@ service firebase.storage {
 
     function isAllowedDocument() {
       return request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('application/pdf|image/.*');
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
     }
 
     match /encontroEuropeuInscricoes/{registrationId}/{fileName} {

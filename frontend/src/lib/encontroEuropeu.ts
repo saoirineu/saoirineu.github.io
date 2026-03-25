@@ -12,6 +12,7 @@ import {
   asStringArray,
   removeUndefinedDeep
 } from './firestoreData';
+import { validateEncontroEuropeuUploadFile } from './encontroEuropeuUpload';
 
 export type EncontroEuropeuRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
 
@@ -217,6 +218,15 @@ export async function uploadEncontroEuropeuDocuments(args: { documents: Encontro
       Object.entries(args.documents).map(async ([key, file]) => {
         if (!file) {
           return null;
+        }
+
+        const validationError = validateEncontroEuropeuUploadFile(file);
+        if (validationError === 'invalid-type') {
+          throw new Error('Only PDF, JPG, and PNG files are allowed.');
+        }
+
+        if (validationError === 'file-too-large') {
+          throw new Error('Uploaded files must be 10 MB or smaller.');
         }
 
         const storagePath = buildDocumentPath(args.registrationId, key as EncontroEuropeuDocumentKey, file.name);
