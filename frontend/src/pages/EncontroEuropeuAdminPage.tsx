@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   deleteEncontroEuropeuRegistration,
   fetchEncontroEuropeuRegistrations,
+  rebuildEncontroEuropeuRoomAvailabilityFromRegistrations,
   resolveEncontroEuropeuDocumentUrl,
   updateEncontroEuropeuRegistrationStatus,
   type EncontroEuropeuRegistrationRecord,
@@ -194,6 +195,16 @@ export default function EncontroEuropeuAdminPage() {
     },
     [attendanceFilter, query.data, searchTerm, sortKey, statusFilter]
   );
+
+  useEffect(() => {
+    if (!query.data) {
+      return;
+    }
+
+    rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(query.data).catch(error => {
+      setErrorMessage(error instanceof Error ? error.message : 'Falha ao sincronizar vagas dos quartos.');
+    });
+  }, [query.data]);
 
   return (
     <div className="space-y-4">

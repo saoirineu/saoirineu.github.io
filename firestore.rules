@@ -43,6 +43,20 @@ service cloud.firestore {
       return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue', 'rejected', 'archived'];
     }
 
+    function isValidEncontroEuropeuRoom(room) {
+      return room in ['Cedro', 'Luce', 'Aurora', 'Bosco', 'Fonte', 'Monte', 'Stella'];
+    }
+
+    function expectedEncontroEuropeuRoomCapacity(room) {
+      return room == 'Cedro' ? 6
+        : room == 'Luce' ? 8
+        : room == 'Aurora' ? 10
+        : room == 'Bosco' ? 12
+        : room == 'Fonte' ? 14
+        : room == 'Monte' ? 16
+        : 18;
+    }
+
     match /usuarios/{uid} {
       allow read: if true;
       allow create: if hasValidUserSystemRole() && (
@@ -135,6 +149,7 @@ service cloud.firestore {
       && request.resource.data.selectedWorks.size() > 0
       && request.resource.data.selectedWorks.size() <= 4
       && request.resource.data.needsExtraLinen is bool
+      && (!request.resource.data.keys().hasAny(['roomNumber']) || isValidEncontroEuropeuRoom(request.resource.data.roomNumber))
       && request.resource.data.contribution is map
       && request.resource.data.contribution.nights is number
       && request.resource.data.contribution.lodging is number
@@ -148,6 +163,20 @@ service cloud.firestore {
       && request.resource.data.submittedAt == request.time;
       allow read, delete: if isAdmin();
       allow update: if isAdmin() && hasValidEncontroEuropeuStatus();
+    }
+
+    match /encontroEuropeuQuartos/{room} {
+      allow read: if true;
+      allow create, update: if isValidEncontroEuropeuRoom(room)
+        && request.resource.data.keys().hasOnly(['capacity', 'reserved', 'available', 'updatedAt'])
+        && request.resource.data.capacity == expectedEncontroEuropeuRoomCapacity(room)
+        && request.resource.data.reserved is number
+        && request.resource.data.available is number
+        && request.resource.data.reserved >= 0
+        && request.resource.data.reserved <= request.resource.data.capacity
+        && request.resource.data.available == request.resource.data.capacity - request.resource.data.reserved
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     // Default deny anything not matched above.

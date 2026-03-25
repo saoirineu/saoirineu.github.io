@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Direction 3: rose window logo">
+  <defs>
+    <linearGradient id="bg" x1="20" x2="236" y1="228" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bg)" />
+  <circle cx="128" cy="128" r="66" fill="none" stroke="#f8f4ea" stroke-width="16" />
+  <circle cx="128" cy="128" r="30" fill="none" stroke="#dbeafe" stroke-width="12" />
+  <path d="M128 62V194" fill="none" stroke="#f8f4ea" stroke-linecap="round" stroke-width="10" />
+  <path d="M62 128H194" fill="none" stroke="#f8f4ea" stroke-linecap="round" stroke-width="10" />
+  <circle cx="128" cy="62" r="10" fill="#fbbf24" />
+  <circle cx="194" cy="128" r="10" fill="#34d399" />
+  <circle cx="128" cy="194" r="10" fill="#93c5fd" />
+  <circle cx="62" cy="128" r="10" fill="#f8f4ea" />
+</svg>

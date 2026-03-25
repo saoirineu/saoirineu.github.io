@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { hasRequiredRole } from '../lib/systemRole';
+import { BrandMark } from './BrandMark';
 import { useDevMode } from '../providers/useDevMode';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -99,8 +100,8 @@ export function NavBar() {
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-slate-900 to-blue-600" aria-hidden />
-          <div className="text-lg font-semibold text-slate-900">Saoirineu</div>
+          <BrandMark className="h-9 w-9 shrink-0" decorative />
+          <div className="text-lg font-semibold tracking-tight text-slate-900">São Irineu</div>
         </div>
         <nav className="hidden items-center gap-4 text-sm font-medium text-slate-700 sm:flex">
           {navigationLinks.map(link => (

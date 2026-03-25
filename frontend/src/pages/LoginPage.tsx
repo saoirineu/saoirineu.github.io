@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { BrandMark } from '../components/BrandMark';
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 
 const copyByLocale = {
   pt: {
-    title: 'Saoirineu',
-    intro: 'Acesse com sua conta para navegar os dados.',
+    title: 'São Irineu',
     email: 'Email',
     password: 'Senha',
     signIn: 'Entrar',
@@ -24,8 +24,7 @@ const copyByLocale = {
     language: 'Idioma'
   },
   en: {
-    title: 'Saoirineu',
-    intro: 'Sign in with your account to browse the data.',
+    title: 'São Irineu',
     email: 'Email',
     password: 'Password',
     signIn: 'Sign in',
@@ -41,8 +40,7 @@ const copyByLocale = {
     language: 'Language'
   },
   es: {
-    title: 'Saoirineu',
-    intro: 'Acceda con su cuenta para navegar por los datos.',
+    title: 'São Irineu',
     email: 'Correo electrónico',
     password: 'Contraseña',
     signIn: 'Entrar',
@@ -58,8 +56,7 @@ const copyByLocale = {
     language: 'Idioma'
   },
   it: {
-    title: 'Saoirineu',
-    intro: 'Accedi con il tuo account per navigare i dati.',
+    title: 'São Irineu',
     email: 'Email',
     password: 'Password',
     signIn: 'Accedi',
@@ -126,7 +123,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-900 to-blue-700 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-gradient-to-br from-slate-900 to-blue-600" aria-hidden />
+          <BrandMark className="mx-auto mb-4 h-14 w-14" decorative />
           <div className="mb-4 flex justify-center">
             <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
               <span>{copy.language}</span>
@@ -143,8 +140,7 @@ export function LoginPage() {
               </select>
             </label>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">{copy.title}</h1>
-          <p className="text-sm text-slate-600">{copy.intro}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{copy.title}</h1>
         </div>
 
         <form className="space-y-4" onSubmit={handleEmail}>

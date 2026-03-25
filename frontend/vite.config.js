@@ -45,7 +45,7 @@ export default defineConfig({
         copyIndexTo404(),
         VitePWA({
             registerType: 'prompt',
-            includeAssets: ['icon.svg'],
+            includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
             manifest: {
                 name: 'Saoirineu',
                 short_name: 'Saoirineu',
@@ -59,7 +59,20 @@ export default defineConfig({
                     {
                         src: 'icon.svg',
                         sizes: 'any',
-                        type: 'image/svg+xml'
+                        type: 'image/svg+xml',
+                        purpose: 'any maskable'
+                    },
+                    {
+                        src: 'icon-192.png',
+                        sizes: '192x192',
+                        type: 'image/png',
+                        purpose: 'any maskable'
+                    },
+                    {
+                        src: 'icon-512.png',
+                        sizes: '512x512',
+                        type: 'image/png',
+                        purpose: 'any maskable'
                     }
                 ]
             },

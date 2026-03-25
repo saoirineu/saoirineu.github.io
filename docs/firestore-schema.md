@@ -95,6 +95,13 @@
 - status: `pending` | `approved` | `under-review` | `payment-overdue` | `rejected` | `archived`
 - submittedAt
 
+### encontroEuropeuQuartos
+- doc id: `Cedro` | `Luce` | `Aurora` | `Bosco` | `Fonte` | `Monte` | `Stella`
+- capacity: number fixa por quarto
+- reserved: total de vagas bloqueadas por inscricoes `pending`, `under-review` e `approved`
+- available: `capacity - reserved`
+- updatedAt
+
 ## Indices compostos sugeridos
 - pessoas: papeis+status; igrejaRef+status
 - igrejas: localizacao.cidade+localizacao.uf
@@ -103,6 +110,7 @@
 - bebidaLotes: ano+localidade; grau+ano; responsaveis
 - trabalhos: data+igrejasResponsaveis; data+createdBy; hinarios+data
 - encontroEuropeuInscricoes: status+submittedAt; attendanceMode+submittedAt
+- encontroEuropeuQuartos: sem indice composto; leitura publica por doc/listagem simples
 
 ## Regras (esboco)
 - Leitura: `allow read: if true;` (ou restrita a auth conforme politicas de privacidade).
@@ -118,4 +126,5 @@
 - `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
 - `encontroEuropeuInscricoes` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
+- `encontroEuropeuQuartos` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
 - Ha dois niveis administrativos no app: `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia papeis de usuarios.

@@ -6,6 +6,8 @@ import {
   calculateNightCount,
   initialEncontroEuropeuFormValues,
   resolveInitialLocale,
+  suggestedCheckInDate,
+  suggestedCheckOutDate,
   validateEncontroEuropeuForm
 } from './form';
 
@@ -39,9 +41,11 @@ describe('encontro europeu helpers', () => {
     });
   });
 
-  it('starts with september check-in and check-out defaults', () => {
-    expect(initialEncontroEuropeuFormValues.checkIn).toBe('2026-09-10');
-    expect(initialEncontroEuropeuFormValues.checkOut).toBe('2026-09-16');
+  it('starts with empty check-in and check-out values but keeps suggested september dates', () => {
+    expect(initialEncontroEuropeuFormValues.checkIn).toBe('');
+    expect(initialEncontroEuropeuFormValues.checkOut).toBe('');
+    expect(suggestedCheckInDate).toBe('2026-09-10');
+    expect(suggestedCheckOutDate).toBe('2026-09-16');
   });
 
   it('builds normalized payload', () => {

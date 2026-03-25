@@ -38,6 +38,9 @@ export type RegistrationDocumentNames = {
   consentDocumentPath?: string;
 };
 
+export const suggestedCheckInDate = '2026-09-10';
+export const suggestedCheckOutDate = '2026-09-16';
+
 export const initialEncontroEuropeuFormValues: EncontroEuropeuFormValues = {
   firstName: '',
   lastName: '',
@@ -48,8 +51,8 @@ export const initialEncontroEuropeuFormValues: EncontroEuropeuFormValues = {
   isIcefluMember: false,
   isNovice: false,
   attendanceMode: 'lodging',
-  checkIn: '2026-09-10',
-  checkOut: '2026-09-16',
+  checkIn: '',
+  checkOut: '',
   selectedWorks: [],
   needsExtraLinen: false,
   roomNumber: ''

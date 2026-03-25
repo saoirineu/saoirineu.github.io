@@ -1,5 +1,5 @@
 import { FirebaseError } from 'firebase/app';
-import { Timestamp, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { Timestamp, Transaction, collection, doc, getDocs, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
@@ -14,6 +14,16 @@ import {
 } from './firestoreData';
 
 export type EncontroEuropeuRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
+
+export type EncontroEuropeuRoomOption = {
+  name: string;
+  capacity: number;
+};
+
+export type EncontroEuropeuRoomAvailability = EncontroEuropeuRoomOption & {
+  reserved: number;
+  available: number;
+};
 
 type EncontroEuropeuDocumentKey = 'identityDocument' | 'paymentProof' | 'consentDocument';
 
@@ -91,6 +101,21 @@ export type EncontroEuropeuRegistrationRecord = {
 };
 
 const registrationsRef = collection(db, 'encontroEuropeuInscricoes');
+const roomAvailabilityRef = collection(db, 'encontroEuropeuQuartos');
+
+export const encontroEuropeuRoomOptions: EncontroEuropeuRoomOption[] = [
+  { name: 'Cedro', capacity: 6 },
+  { name: 'Luce', capacity: 8 },
+  { name: 'Aurora', capacity: 10 },
+  { name: 'Bosco', capacity: 12 },
+  { name: 'Fonte', capacity: 14 },
+  { name: 'Monte', capacity: 16 },
+  { name: 'Stella', capacity: 18 }
+];
+
+const roomCapacityMap = new Map(encontroEuropeuRoomOptions.map(room => [room.name, room.capacity]));
+
+const roomBlockingStatuses: EncontroEuropeuRegistrationStatus[] = ['pending', 'under-review', 'approved'];
 
 function normalizeStatus(value: unknown): EncontroEuropeuRegistrationStatus {
   switch (value) {
@@ -113,6 +138,55 @@ function normalizeStatus(value: unknown): EncontroEuropeuRegistrationStatus {
 
 function sanitizeFileName(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+function getRoomCapacity(roomName: string) {
+  return roomCapacityMap.get(roomName) ?? null;
+}
+
+export function statusBlocksRoomCapacity(status: EncontroEuropeuRegistrationStatus) {
+  return roomBlockingStatuses.includes(status);
+}
+
+export function buildEncontroEuropeuRoomAvailabilitySnapshot(
+  records: Array<{ id: string; capacity?: unknown; reserved?: unknown; available?: unknown }>
+) {
+  const byId = new Map(records.map(record => [record.id, record]));
+
+  return encontroEuropeuRoomOptions.map(room => {
+    const record = byId.get(room.name);
+    const reserved = Math.max(0, Math.min(room.capacity, asOptionalNumber(record?.reserved) ?? 0));
+    const available = Math.max(0, Math.min(room.capacity, asOptionalNumber(record?.available) ?? room.capacity - reserved));
+
+    return {
+      ...room,
+      reserved,
+      available: room.capacity - reserved === available ? available : room.capacity - reserved
+    };
+  });
+}
+
+async function adjustRoomAvailability(roomName: string, delta: number, transaction: Transaction) {
+  const capacity = getRoomCapacity(roomName);
+  if (capacity == null) {
+    throw new Error('Selected room is invalid.');
+  }
+
+  const roomRef = doc(roomAvailabilityRef, roomName);
+  const roomSnapshot = await transaction.get(roomRef);
+  const currentReserved = roomSnapshot.exists() ? asOptionalNumber(roomSnapshot.data().reserved) ?? 0 : 0;
+  const nextReserved = currentReserved + delta;
+
+  if (nextReserved < 0 || nextReserved > capacity) {
+    throw new Error('Selected room has no remaining availability.');
+  }
+
+  transaction.set(roomRef, {
+    capacity,
+    reserved: nextReserved,
+    available: capacity - nextReserved,
+    updatedAt: serverTimestamp()
+  });
 }
 
 function buildDocumentPath(registrationId: string, key: EncontroEuropeuDocumentKey, fileName: string) {
@@ -192,6 +266,7 @@ export async function createEncontroEuropeuRegistration(args: {
 }) {
   const registrationRef = doc(registrationsRef);
   const registrationId = registrationRef.id;
+  const desiredRoom = args.input.attendanceMode === 'lodging' ? args.input.roomNumber?.trim() || undefined : undefined;
   const uploadedDocuments = await uploadEncontroEuropeuDocuments({
     registrationId,
     documents: args.documents ?? {}
@@ -209,7 +284,14 @@ export async function createEncontroEuropeuRegistration(args: {
   });
 
   try {
-    await setDoc(registrationRef, payload);
+    await runTransaction(db, async transaction => {
+      if (desiredRoom && statusBlocksRoomCapacity(payload.status)) {
+        await adjustRoomAvailability(desiredRoom, 1, transaction);
+      }
+
+      transaction.set(registrationRef, payload);
+    });
+
     return registrationRef;
   } catch (error) {
     await Promise.all(
@@ -229,22 +311,88 @@ export async function fetchEncontroEuropeuRegistrations() {
   return snapshot.docs.map(docSnap => mapRegistration(docSnap.id, docSnap.data()));
 }
 
+export async function fetchEncontroEuropeuRoomAvailability() {
+  const snapshot = await getDocs(roomAvailabilityRef);
+  return buildEncontroEuropeuRoomAvailabilitySnapshot(
+    snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+  );
+}
+
+export async function rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(
+  registrations: Array<Pick<EncontroEuropeuRegistrationRecord, 'roomNumber' | 'status'>>
+) {
+  const batch = writeBatch(db);
+  const reservedByRoom = new Map<string, number>();
+
+  registrations.forEach(registration => {
+    if (!registration.roomNumber || !statusBlocksRoomCapacity(registration.status)) {
+      return;
+    }
+
+    reservedByRoom.set(registration.roomNumber, (reservedByRoom.get(registration.roomNumber) ?? 0) + 1);
+  });
+
+  encontroEuropeuRoomOptions.forEach(room => {
+    const reserved = Math.min(room.capacity, reservedByRoom.get(room.name) ?? 0);
+
+    batch.set(doc(roomAvailabilityRef, room.name), {
+      capacity: room.capacity,
+      reserved,
+      available: room.capacity - reserved,
+      updatedAt: serverTimestamp()
+    });
+  });
+
+  await batch.commit();
+}
+
 export async function resolveEncontroEuropeuDocumentUrl(path: string) {
   return getDownloadURL(ref(storage, path));
 }
 
 export async function updateEncontroEuropeuRegistrationStatus(args: { id: string; status: EncontroEuropeuRegistrationStatus }) {
-  await updateDoc(doc(registrationsRef, args.id), { status: args.status });
+  const registrationRef = doc(registrationsRef, args.id);
+
+  await runTransaction(db, async transaction => {
+    const registrationSnapshot = await transaction.get(registrationRef);
+    if (!registrationSnapshot.exists()) {
+      throw new Error('Registration not found.');
+    }
+
+    const registration = mapRegistration(args.id, registrationSnapshot.data());
+
+    if (registration.roomNumber) {
+      const currentlyBlocking = statusBlocksRoomCapacity(registration.status);
+      const nextBlocking = statusBlocksRoomCapacity(args.status);
+
+      if (currentlyBlocking && !nextBlocking) {
+        await adjustRoomAvailability(registration.roomNumber, -1, transaction);
+      }
+
+      if (!currentlyBlocking && nextBlocking) {
+        await adjustRoomAvailability(registration.roomNumber, 1, transaction);
+      }
+    }
+
+    transaction.update(registrationRef, { status: args.status });
+  });
 }
 
 export async function deleteEncontroEuropeuRegistration(registration: Pick<
   EncontroEuropeuRegistrationRecord,
-  'id' | 'identityDocumentPath' | 'paymentProofPath' | 'consentDocumentPath'
+  'id' | 'identityDocumentPath' | 'paymentProofPath' | 'consentDocumentPath' | 'roomNumber' | 'status'
 >) {
   const documentPaths = [registration.identityDocumentPath, registration.paymentProofPath, registration.consentDocumentPath].filter(
     (value): value is string => typeof value === 'string' && value.length > 0
   );
 
   await Promise.all(documentPaths.map(path => deleteObject(ref(storage, path)).catch(() => undefined)));
-  await deleteDoc(doc(registrationsRef, registration.id));
+
+  await runTransaction(db, async transaction => {
+    if (registration.roomNumber && statusBlocksRoomCapacity(registration.status)) {
+      await adjustRoomAvailability(registration.roomNumber, -1, transaction);
+    }
+
+    transaction.delete(doc(registrationsRef, registration.id));
+  });
 }

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
-import { createEncontroEuropeuRegistration } from '../lib/encontroEuropeu';
+import {
+  createEncontroEuropeuRegistration,
+  encontroEuropeuRoomOptions,
+  fetchEncontroEuropeuRoomAvailability
+} from '../lib/encontroEuropeu';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import {
   buildEncontroEuropeuPayload,
@@ -12,6 +16,8 @@ import {
   generalProgramPaths,
   initialEncontroEuropeuFormValues,
   resolveInitialLocale,
+  suggestedCheckInDate,
+  suggestedCheckOutDate,
   type EncontroEuropeuFormValues,
   type Locale,
   type SpiritualWorkId,
@@ -53,6 +59,9 @@ type Copy = {
   roomHelpTitle: string;
   roomHelpIntro: string;
   roomHelpCapacity: string;
+  roomRemaining: string;
+  roomSelectPlaceholder: string;
+  noRoomsAvailable: string;
   extraLinen: string;
   worksTitle: string;
   worksHint: string;
@@ -98,27 +107,12 @@ type SuccessState = {
   registrationId: string;
 };
 
-type RoomOption = {
-  name: string;
-  capacity: number;
-};
-
 const paymentInfo = {
   iban: 'IBAN A PREENCHER',
   causale: 'donazione per l\'incontro europeo',
   whatsapp: 'XXX',
   email: 'YYY'
 };
-
-const roomOptions: RoomOption[] = [
-  { name: 'Cedro', capacity: 6 },
-  { name: 'Luce', capacity: 8 },
-  { name: 'Aurora', capacity: 10 },
-  { name: 'Bosco', capacity: 12 },
-  { name: 'Fonte', capacity: 14 },
-  { name: 'Monte', capacity: 16 },
-  { name: 'Stella', capacity: 18 }
-];
 
 const copyByLocale: Record<Locale, Copy> = {
   pt: {
@@ -156,6 +150,9 @@ const copyByLocale: Record<Locale, Copy> = {
     roomHelpTitle: 'Quartos e vagas',
     roomHelpIntro: 'Distribuição provisória para orientar o preenchimento do quarto desejado.',
     roomHelpCapacity: 'vagas',
+    roomRemaining: 'restantes',
+    roomSelectPlaceholder: 'Selecione um quarto',
+    noRoomsAvailable: 'Sem vagas disponíveis no momento',
     extraLinen: 'Quero segundo lençol superior e toalhas (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Selecione um ou mais trabalhos. O valor é calculado automaticamente.',
@@ -238,6 +235,9 @@ const copyByLocale: Record<Locale, Copy> = {
     roomHelpTitle: 'Rooms and available beds',
     roomHelpIntro: 'Temporary room allocation to help you choose the preferred room.',
     roomHelpCapacity: 'beds',
+    roomRemaining: 'remaining',
+    roomSelectPlaceholder: 'Select a room',
+    noRoomsAvailable: 'No rooms currently available',
     extraLinen: 'I need an extra top sheet and towels (+20 euro)',
     worksTitle: 'Spiritual works',
     worksHint: 'Select one or more works. The contribution is calculated automatically.',
@@ -320,6 +320,9 @@ const copyByLocale: Record<Locale, Copy> = {
     roomHelpTitle: 'Habitaciones y plazas',
     roomHelpIntro: 'Distribución provisional para orientar la elección de la habitación deseada.',
     roomHelpCapacity: 'plazas',
+    roomRemaining: 'disponibles',
+    roomSelectPlaceholder: 'Seleccione una habitación',
+    noRoomsAvailable: 'No hay plazas disponibles por ahora',
     extraLinen: 'Quiero una sábana superior adicional y toallas (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleccione uno o más trabajos. El valor se calcula automáticamente.',
@@ -402,6 +405,9 @@ const copyByLocale: Record<Locale, Copy> = {
     roomHelpTitle: 'Camere e posti disponibili',
     roomHelpIntro: 'Distribuzione provvisoria delle camere per aiutarti a scegliere la camera desiderata.',
     roomHelpCapacity: 'posti',
+    roomRemaining: 'disponibili',
+    roomSelectPlaceholder: 'Seleziona una camera',
+    noRoomsAvailable: 'Nessuna camera disponibile al momento',
     extraLinen: 'Desidero un secondo lenzuolo superiore e asciugamani (+20 euro)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleziona uno o più lavori. Il contributo viene calcolato automaticamente.',
@@ -499,6 +505,14 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
 
   const copy = copyByLocale[locale];
   const contribution = useMemo(() => calculateContribution(values), [values]);
+  const roomAvailabilityQuery = useQuery({
+    queryKey: ['encontro-europeu-room-availability'],
+    queryFn: fetchEncontroEuropeuRoomAvailability
+  });
+
+  const roomAvailability = roomAvailabilityQuery.data ?? encontroEuropeuRoomOptions.map(room => ({ ...room, reserved: 0, available: room.capacity }));
+  const availableRooms = roomAvailability.filter(room => room.available > 0);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -525,6 +539,18 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
       window.localStorage.removeItem(encontroEuropeuDraftKey);
     }
   }, [setLocale]);
+
+  useEffect(() => {
+    if (values.attendanceMode !== 'lodging' || !values.roomNumber) {
+      return;
+    }
+
+    if (availableRooms.some(room => room.name === values.roomNumber)) {
+      return;
+    }
+
+    setValues(current => ({ ...current, roomNumber: '' }));
+  }, [availableRooms, values.attendanceMode, values.roomNumber]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -608,6 +634,23 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     setDraftMessage(copy.draftSaved);
   };
 
+  const actionArea = (
+    <>
+      {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
+      {draftMessage ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{draftMessage}</p> : null}
+      <p className="text-xs leading-5 text-slate-500">{copy.draftHint}</p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button type="button" className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={saveDraft}>
+          {copy.saveDraft}
+        </button>
+        <button type="submit" form="encontro-europeu-form" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
+          {mutation.isPending ? copy.submitting : copy.submit}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className={showPublicHero ? 'min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#f8fafc_50%,_#e2e8f0)]' : ''}>
       <main className={showPublicHero ? 'mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8' : 'space-y-6'}>
@@ -684,6 +727,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
               <h2 className="text-xl font-semibold text-slate-900">{copy.formTitle}</h2>
 
               <form
+                id="encontro-europeu-form"
                 className="mt-6 space-y-8"
                 onSubmit={event => {
                   event.preventDefault();
@@ -742,10 +786,10 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                   {values.attendanceMode !== 'spiritual' ? (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label={copy.checkIn}>
-                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkIn} onChange={event => setField('checkIn', event.target.value)} />
+                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkIn} onFocus={() => { if (!values.checkIn) setField('checkIn', suggestedCheckInDate); }} onChange={event => setField('checkIn', event.target.value)} />
                       </Field>
                       <Field label={copy.checkOut}>
-                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkOut} onChange={event => setField('checkOut', event.target.value)} />
+                        <input type="date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.checkOut} onFocus={() => { if (!values.checkOut) setField('checkOut', suggestedCheckOutDate); }} onChange={event => setField('checkOut', event.target.value)} />
                       </Field>
                     </div>
                   ) : null}
@@ -767,7 +811,14 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                           </span>
                         }
                       >
-                        <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.roomNumber} onChange={event => setField('roomNumber', event.target.value)} />
+                        <select className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.roomNumber} onChange={event => setField('roomNumber', event.target.value)} disabled={roomAvailabilityQuery.isLoading || availableRooms.length === 0}>
+                          <option value="">{availableRooms.length > 0 ? copy.roomSelectPlaceholder : copy.noRoomsAvailable}</option>
+                          {availableRooms.map(room => (
+                            <option key={room.name} value={room.name}>
+                              {room.name} ({room.available} {copy.roomHelpCapacity})
+                            </option>
+                          ))}
+                        </select>
                       </Field>
                       <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 sm:mt-7">
                         <input type="checkbox" checked={values.needsExtraLinen} onChange={event => setField('needsExtraLinen', event.target.checked)} />
@@ -789,19 +840,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                     ))}
                   </div>
                 </div>
-
-                {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
-                {draftMessage ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{draftMessage}</p> : null}
-                <p className="text-xs leading-5 text-slate-500">{copy.draftHint}</p>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button type="button" className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={saveDraft}>
-                    {copy.saveDraft}
-                  </button>
-                  <button type="submit" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
-                    {mutation.isPending ? copy.submitting : copy.submit}
-                  </button>
-                </div>
+                <div className="hidden space-y-3 lg:block">{actionArea}</div>
               </form>
             </section>
 
@@ -870,6 +909,8 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                 </dl>
               </section>
             </aside>
+
+            <div className="space-y-3 lg:hidden">{actionArea}</div>
           </div>
         )}
       </main>
@@ -888,11 +929,14 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
             </div>
 
             <div className="mt-5 grid gap-3">
-              {roomOptions.map(room => (
+              {roomAvailability.map(room => (
                 <div key={room.name} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  <span className="font-medium text-slate-900">{room.name}</span>
+                  <div>
+                    <span className="font-medium text-slate-900">{room.name}</span>
+                    <p className="text-xs text-slate-500">{room.available} {copy.roomRemaining}</p>
+                  </div>
                   <span>
-                    {room.capacity} {copy.roomHelpCapacity}
+                    {room.available}/{room.capacity} {copy.roomHelpCapacity}
                   </span>
                 </div>
               ))}
