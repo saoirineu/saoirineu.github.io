@@ -6,8 +6,47 @@ type IgrejasProps = {
 };
 
 type BaseSectionProps = {
+  copy: PerfilSectionsCopy;
   form: PerfilFormState;
   setField: PerfilFormFieldSetter;
+};
+
+export type PerfilSectionsCopy = {
+  name: string;
+  yourName: string;
+  email: string;
+  phone: string;
+  optional: string;
+  city: string;
+  state: string;
+  country: string;
+  avatar: string;
+  avatarUrl: string;
+  useGooglePhoto: string;
+  currentChurchRegistered: string;
+  selectPlaceholder: string;
+  currentChurchText: string;
+  notRegisteredYet: string;
+  originChurchText: string;
+  originChurchPlaceholder: string;
+  notes: string;
+  iAmFardado: string;
+  iAmSponsor: string;
+  fardamentoDate: string;
+  fardamentoPlace: string;
+  fardamentoPlacePlaceholder: string;
+  whoFardouMe: string;
+  whoFardouMePlaceholder: string;
+  fardamentoChurchRegistered: string;
+  fardamentoChurchText: string;
+  withWhomIWasFardado: string;
+  withWhomIWasFardadoPlaceholder: string;
+  sponsorChurchesRegistered: string;
+  sponsorChurchesText: string;
+  sponsorChurchesPlaceholder: string;
+  roles: string;
+  rolesPlaceholder: string;
+  rolesHint: string;
 };
 
 function selectIgrejaName(igrejas: IgrejaInfo[] | undefined, id: string) {
@@ -16,6 +55,7 @@ function selectIgrejaName(igrejas: IgrejaInfo[] | undefined, id: string) {
 
 export function PerfilDadosPessoaisSection({
   avatarUrl,
+  copy,
   form,
   setField,
   userPhotoURL
@@ -26,16 +66,16 @@ export function PerfilDadosPessoaisSection({
     <div className="grid gap-4 rounded-lg bg-slate-100 p-3 sm:grid-cols-[1fr,240px]">
       <div className="space-y-3">
         <label className="text-sm text-slate-700">
-          Nome
+          {copy.name}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.displayName}
             onChange={event => setField('displayName', event.target.value)}
-            placeholder="Seu nome"
+            placeholder={copy.yourName}
           />
         </label>
         <label className="text-sm text-slate-700">
-          Email
+          {copy.email}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
             value={form.email}
@@ -43,17 +83,17 @@ export function PerfilDadosPessoaisSection({
           />
         </label>
         <label className="text-sm text-slate-700">
-          Telefone
+          {copy.phone}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.phone}
             onChange={event => setField('phone', event.target.value)}
-            placeholder="Opcional"
+            placeholder={copy.optional}
           />
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="text-sm text-slate-700">
-            Cidade
+            {copy.city}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.cidade}
@@ -61,7 +101,7 @@ export function PerfilDadosPessoaisSection({
             />
           </label>
           <label className="text-sm text-slate-700">
-            Estado/UF
+            {copy.state}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.estado}
@@ -69,7 +109,7 @@ export function PerfilDadosPessoaisSection({
             />
           </label>
           <label className="text-sm text-slate-700">
-            País
+            {copy.country}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.pais}
@@ -81,11 +121,11 @@ export function PerfilDadosPessoaisSection({
       <div className="flex flex-col items-center gap-3 rounded-lg bg-white/60 p-3 shadow-sm">
         <img
           src={resolvedAvatar}
-          alt="Avatar"
+          alt={copy.avatar}
           className="h-28 w-28 rounded-full border border-slate-200 object-cover shadow-sm"
         />
         <label className="w-full text-sm text-slate-700">
-          URL do avatar
+          {copy.avatarUrl}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.avatarUrl}
@@ -99,7 +139,7 @@ export function PerfilDadosPessoaisSection({
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             onClick={() => setField('avatarUrl', userPhotoURL)}
           >
-            Usar foto do Google
+            {copy.useGooglePhoto}
           </button>
         ) : null}
       </div>
@@ -107,12 +147,12 @@ export function PerfilDadosPessoaisSection({
   );
 }
 
-export function PerfilIgrejasSection({ form, igrejas, setField }: BaseSectionProps & IgrejasProps) {
+export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSectionProps & IgrejasProps) {
   return (
     <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
       <div className="space-y-3">
         <label className="text-sm text-slate-700">
-          Igreja atual (cadastrada)
+          {copy.currentChurchRegistered}
           <select
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.igrejaAtualId}
@@ -122,7 +162,7 @@ export function PerfilIgrejasSection({ form, igrejas, setField }: BaseSectionPro
               setField('igrejaAtualNome', selectIgrejaName(igrejas, igrejaAtualId));
             }}
           >
-            <option value="">— Selecionar —</option>
+            <option value="">{copy.selectPlaceholder}</option>
             {igrejas?.map(igreja => (
               <option key={igreja.id} value={igreja.id}>
                 {igreja.nome}
@@ -131,27 +171,27 @@ export function PerfilIgrejasSection({ form, igrejas, setField }: BaseSectionPro
           </select>
         </label>
         <label className="text-sm text-slate-700">
-          Igreja atual (texto livre)
+          {copy.currentChurchText}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.igrejaAtualNome}
             onChange={event => setField('igrejaAtualNome', event.target.value)}
-            placeholder="Se não estiver cadastrada"
+            placeholder={copy.notRegisteredYet}
           />
         </label>
       </div>
       <div className="space-y-3">
         <label className="text-sm text-slate-700">
-          Igreja de origem (texto livre)
+          {copy.originChurchText}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.igrejaOrigemNome}
             onChange={event => setField('igrejaOrigemNome', event.target.value)}
-            placeholder="Linha ou igreja de onde veio"
+            placeholder={copy.originChurchPlaceholder}
           />
         </label>
         <label className="text-sm text-slate-700">
-          Observações gerais
+          {copy.notes}
           <textarea
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             rows={3}
@@ -164,7 +204,7 @@ export function PerfilIgrejasSection({ form, igrejas, setField }: BaseSectionPro
   );
 }
 
-export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSectionProps & IgrejasProps) {
+export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseSectionProps & IgrejasProps) {
   return (
     <div className="space-y-3 rounded-lg bg-slate-100 p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -184,7 +224,7 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
               }
             }}
           />
-          Sou fardado(a)
+          {copy.iAmFardado}
         </label>
         <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
           <input
@@ -195,7 +235,7 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
             disabled={!form.fardado}
             onChange={event => setField('padrinhoMadrinha', event.target.checked)}
           />
-          Sou padrinho/madrinha
+          {copy.iAmSponsor}
         </label>
       </div>
 
@@ -204,7 +244,7 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-3">
               <label className="text-sm text-slate-700">
-                Data do fardamento
+                {copy.fardamentoDate}
                 <input
                   type="date"
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -213,27 +253,27 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Local do fardamento
+                {copy.fardamentoPlace}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.fardamentoLocal}
                   onChange={event => setField('fardamentoLocal', event.target.value)}
-                  placeholder="Cidade/estado ou igreja"
+                  placeholder={copy.fardamentoPlacePlaceholder}
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Quem me fardou
+                {copy.whoFardouMe}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.fardadorNome}
                   onChange={event => setField('fardadorNome', event.target.value)}
-                  placeholder="Nome do padrinho/madrinha"
+                  placeholder={copy.whoFardouMePlaceholder}
                 />
               </label>
             </div>
             <div className="space-y-3">
               <label className="text-sm text-slate-700">
-                Igreja onde fui fardado (cadastrada)
+                {copy.fardamentoChurchRegistered}
                 <select
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.fardamentoIgrejaId}
@@ -243,7 +283,7 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
                     setField('fardamentoIgrejaNome', selectIgrejaName(igrejas, fardamentoIgrejaId));
                   }}
                 >
-                  <option value="">— Selecionar —</option>
+                  <option value="">{copy.selectPlaceholder}</option>
                   {igrejas?.map(igreja => (
                     <option key={igreja.id} value={igreja.id}>
                       {igreja.nome}
@@ -252,21 +292,21 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                Igreja onde fui fardado (texto livre)
+                {copy.fardamentoChurchText}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.fardamentoIgrejaNome}
                   onChange={event => setField('fardamentoIgrejaNome', event.target.value)}
-                  placeholder="Se não estiver cadastrada"
+                  placeholder={copy.notRegisteredYet}
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Com quem me fardei
+                {copy.withWhomIWasFardado}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.fardadoComQuem}
                   onChange={event => setField('fardadoComQuem', event.target.value)}
-                  placeholder="Outras pessoas fardadas junto"
+                  placeholder={copy.withWhomIWasFardadoPlaceholder}
                 />
               </label>
             </div>
@@ -275,7 +315,7 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
           {form.padrinhoMadrinha ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm text-slate-700">
-                Igrejas onde sou padrinho/madrinha (cadastradas)
+                {copy.sponsorChurchesRegistered}
                 <select
                   multiple
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -294,12 +334,12 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                Igrejas onde sou padrinho/madrinha (texto livre)
+                {copy.sponsorChurchesText}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.padrinhoIgrejasTexto}
                   onChange={event => setField('padrinhoIgrejasTexto', event.target.value)}
-                  placeholder="Ex.: nome de igrejas não cadastradas"
+                  placeholder={copy.sponsorChurchesPlaceholder}
                 />
               </label>
             </div>
@@ -310,20 +350,20 @@ export function PerfilFardamentoSection({ form, igrejas, setField }: BaseSection
   );
 }
 
-export function PerfilPapeisSection({ form, setField }: BaseSectionProps) {
+export function PerfilPapeisSection({ copy, form, setField }: BaseSectionProps) {
   return (
     <div className="space-y-2">
       <label className="text-sm text-slate-700">
-        Papéis na doutrina (separar por vírgula)
+        {copy.roles}
         <input
           className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           value={form.papeisTexto}
           onChange={event => setField('papeisTexto', event.target.value)}
-          placeholder="Ex.: tesoureiro, coordenador, músico oficial, limpeza"
+          placeholder={copy.rolesPlaceholder}
         />
       </label>
       <p className="text-xs text-slate-500">
-        Use termos livres (ex.: tesoureiro, cozinheira oficial, organização, arrumação, limpeza, músico, músico oficial).
+        {copy.rolesHint}
       </p>
     </div>
   );

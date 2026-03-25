@@ -1,13 +1,88 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { siteLocaleOptions } from '../lib/siteLocale';
 import { useAuth } from '../providers/useAuth';
+import { useSiteLocale } from '../providers/useSiteLocale';
+
+const copyByLocale = {
+  pt: {
+    title: 'Saoirineu',
+    intro: 'Acesse com sua conta para navegar os dados.',
+    email: 'Email',
+    password: 'Senha',
+    signIn: 'Entrar',
+    signUp: 'Criar conta',
+    or: 'ou',
+    google: 'Entrar com Google',
+    signInError: 'Erro ao autenticar.',
+    googleError: 'Erro ao autenticar com Google.',
+    newHere: 'Novo por aqui?',
+    alreadyHave: 'Já tem conta?',
+    switchToSignUp: 'Criar conta',
+    switchToSignIn: 'Fazer login',
+    language: 'Idioma'
+  },
+  en: {
+    title: 'Saoirineu',
+    intro: 'Sign in with your account to browse the data.',
+    email: 'Email',
+    password: 'Password',
+    signIn: 'Sign in',
+    signUp: 'Create account',
+    or: 'or',
+    google: 'Continue with Google',
+    signInError: 'Authentication failed.',
+    googleError: 'Google authentication failed.',
+    newHere: 'New here?',
+    alreadyHave: 'Already have an account?',
+    switchToSignUp: 'Create account',
+    switchToSignIn: 'Sign in',
+    language: 'Language'
+  },
+  es: {
+    title: 'Saoirineu',
+    intro: 'Acceda con su cuenta para navegar por los datos.',
+    email: 'Correo electrónico',
+    password: 'Contraseña',
+    signIn: 'Entrar',
+    signUp: 'Crear cuenta',
+    or: 'o',
+    google: 'Entrar con Google',
+    signInError: 'Error al autenticar.',
+    googleError: 'Error al autenticar con Google.',
+    newHere: '¿Nuevo por aquí?',
+    alreadyHave: '¿Ya tiene cuenta?',
+    switchToSignUp: 'Crear cuenta',
+    switchToSignIn: 'Iniciar sesión',
+    language: 'Idioma'
+  },
+  it: {
+    title: 'Saoirineu',
+    intro: 'Accedi con il tuo account per navigare i dati.',
+    email: 'Email',
+    password: 'Password',
+    signIn: 'Accedi',
+    signUp: 'Crea account',
+    or: 'oppure',
+    google: 'Accedi con Google',
+    signInError: 'Errore di autenticazione.',
+    googleError: 'Errore durante l\'autenticazione con Google.',
+    newHere: 'Sei nuovo qui?',
+    alreadyHave: 'Hai già un account?',
+    switchToSignUp: 'Crea account',
+    switchToSignIn: 'Accedi',
+    language: 'Lingua'
+  }
+} as const;
 
 export function LoginPage() {
   const { signInWithGoogle, emailSignIn, emailSignUp } = useAuth();
+  const { locale, setLocale } = useSiteLocale();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: Location } | undefined)?.from?.pathname ?? '/';
+  const copy = copyByLocale[locale];
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +103,7 @@ export function LoginPage() {
       }
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao autenticar.');
+      setError(err instanceof Error ? err.message : copy.signInError);
     } finally {
       setSubmitting(false);
     }
@@ -41,7 +116,7 @@ export function LoginPage() {
       await signInWithGoogle();
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao autenticar com Google.');
+      setError(err instanceof Error ? err.message : copy.googleError);
     } finally {
       setSubmitting(false);
     }
@@ -52,13 +127,29 @@ export function LoginPage() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-gradient-to-br from-slate-900 to-blue-600" aria-hidden />
-          <h1 className="text-2xl font-bold text-slate-900">Saoirineu</h1>
-          <p className="text-sm text-slate-600">Acesse com sua conta para navegar os dados.</p>
+          <div className="mb-4 flex justify-center">
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+              <span>{copy.language}</span>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                value={locale}
+                onChange={event => setLocale(event.target.value as typeof locale)}
+              >
+                {siteLocaleOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">{copy.title}</h1>
+          <p className="text-sm text-slate-600">{copy.intro}</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleEmail}>
           <label className="block text-sm font-medium text-slate-700">
-            Email
+            {copy.email}
             <input
               type="email"
               required
@@ -69,7 +160,7 @@ export function LoginPage() {
           </label>
 
           <label className="block text-sm font-medium text-slate-700">
-            Senha
+            {copy.password}
             <input
               type="password"
               required
@@ -84,11 +175,11 @@ export function LoginPage() {
             disabled={submitting}
             className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
           >
-            {mode === 'signin' ? 'Entrar' : 'Criar conta'}
+            {mode === 'signin' ? copy.signIn : copy.signUp}
           </button>
         </form>
 
-        <div className="my-4 text-center text-xs text-slate-500">ou</div>
+        <div className="my-4 text-center text-xs text-slate-500">{copy.or}</div>
 
         <button
           type="button"
@@ -96,19 +187,19 @@ export function LoginPage() {
           disabled={submitting}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-70"
         >
-          <span>Entrar com Google</span>
+          <span>{copy.google}</span>
         </button>
 
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
         <div className="mt-6 text-center text-sm text-slate-600">
-          {mode === 'signin' ? 'Novo por aqui?' : 'Já tem conta?'}
+          {mode === 'signin' ? copy.newHere : copy.alreadyHave}
           <button
             type="button"
             className="ml-2 font-semibold text-blue-700 underline"
             onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
           >
-            {mode === 'signin' ? 'Criar conta' : 'Fazer login'}
+            {mode === 'signin' ? copy.switchToSignUp : copy.switchToSignIn}
           </button>
         </div>
       </div>

@@ -1,34 +1,98 @@
 import { NavLink } from 'react-router-dom';
 
+import { siteLocaleOptions } from '../lib/siteLocale';
 import { hasRequiredRole } from '../lib/systemRole';
 import { useDevMode } from '../providers/useDevMode';
 import { useAuth } from '../providers/useAuth';
+import { useSiteLocale } from '../providers/useSiteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
 
-const stableLinks = [
-  { to: '/', label: 'Início' },
-  { to: '/igrejas', label: 'Igrejas' },
-  { to: '/encontro-europeu', label: 'Encontro Europeu' },
-  { to: '/perfil', label: 'Perfil' }
+type NavCopy = typeof copyByLocale.pt;
+type NavCopyKey = keyof NavCopy;
+
+const stableLinks: Array<{ to: string; key: NavCopyKey }> = [
+  { to: '/', key: 'home' },
+  { to: '/perfil', key: 'profile' },
+  { to: '/igrejas', key: 'churches' }
 ];
 
-const devLinks = [
-  { to: '/pessoas', label: 'Pessoas' },
-  { to: '/hinarios', label: 'Hinários/Hinos' },
-  { to: '/bebida', label: 'Bebida' },
-  { to: '/trabalhos', label: 'Trabalhos' }
+const devLinks: Array<{ to: string; key: NavCopyKey }> = [
+  { to: '/pessoas', key: 'people' },
+  { to: '/hinarios', key: 'hymns' },
+  { to: '/bebida', key: 'beverage' },
+  { to: '/trabalhos', key: 'works' }
 ];
+
+const copyByLocale = {
+  pt: {
+    home: 'Início',
+    profile: 'Perfil',
+    churches: 'Igrejas',
+    meeting: 'Encontro Europeu',
+    people: 'Pessoas',
+    hymns: 'Hinários/Hinos',
+    beverage: 'Bebida',
+    works: 'Trabalhos',
+    users: 'Usuários',
+    dev: 'Dev',
+    signOut: 'Sair',
+    language: 'Idioma'
+  },
+  en: {
+    home: 'Home',
+    profile: 'Profile',
+    churches: 'Churches',
+    meeting: 'European Meeting',
+    people: 'People',
+    hymns: 'Hymns',
+    beverage: 'Beverage',
+    works: 'Works',
+    users: 'Users',
+    dev: 'Dev',
+    signOut: 'Sign out',
+    language: 'Language'
+  },
+  es: {
+    home: 'Inicio',
+    profile: 'Perfil',
+    churches: 'Iglesias',
+    meeting: 'Encuentro Europeo',
+    people: 'Personas',
+    hymns: 'Himnarios/Himnos',
+    beverage: 'Bebida',
+    works: 'Trabajos',
+    users: 'Usuarios',
+    dev: 'Dev',
+    signOut: 'Salir',
+    language: 'Idioma'
+  },
+  it: {
+    home: 'Inizio',
+    profile: 'Profilo',
+    churches: 'Chiese',
+    meeting: 'Incontro Europeo',
+    people: 'Persone',
+    hymns: 'Inni/Innari',
+    beverage: 'Bevanda',
+    works: 'Lavori',
+    users: 'Utenti',
+    dev: 'Dev',
+    signOut: 'Esci',
+    language: 'Lingua'
+  }
+} as const;
 
 export function NavBar() {
   const { signOut } = useAuth();
   const { role } = useSystemRole();
   const { canToggleDevMode, devModeEnabled, setDevModeEnabled } = useDevMode();
+  const { locale, setLocale } = useSiteLocale();
+  const copy = copyByLocale[locale];
 
   const navigationLinks = [
-    ...stableLinks,
-    ...(devModeEnabled ? devLinks : []),
-    ...(hasRequiredRole(role, 'admin') ? [{ to: '/admin/inscricoes-encontro', label: 'Inscrições' }] : []),
-    ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/usuarios', label: 'Usuários' }] : [])
+    ...stableLinks.map(link => ({ to: link.to, label: copy[link.key] })),
+    ...(devModeEnabled ? devLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
+    ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/usuarios', label: copy.users }] : [])
   ];
 
   return (
@@ -52,9 +116,23 @@ export function NavBar() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
+          <label className="hidden items-center gap-2 md:flex">
+            <span className="text-xs font-medium text-slate-600">{copy.language}</span>
+            <select
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              value={locale}
+              onChange={event => setLocale(event.target.value as typeof locale)}
+            >
+              {siteLocaleOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           {canToggleDevMode ? (
             <label className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 md:flex">
-              <span>Dev</span>
+              <span>{copy.dev}</span>
               <button
                 type="button"
                 role="switch"
@@ -71,7 +149,7 @@ export function NavBar() {
             onClick={() => signOut()}
             className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
           >
-            Sair
+            {copy.signOut}
           </button>
         </div>
       </div>

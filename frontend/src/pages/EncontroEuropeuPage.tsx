@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
+import { siteLocaleOptions } from '../lib/siteLocale';
 import { createEncontroEuropeuRegistration } from '../lib/encontroEuropeu';
-import { useAuth } from '../providers/useAuth';
+import { useSiteLocale } from '../providers/useSiteLocale';
 import {
   buildEncontroEuropeuPayload,
   calculateContribution,
@@ -108,13 +109,6 @@ const paymentInfo = {
   whatsapp: 'XXX',
   email: 'YYY'
 };
-
-const localeOptions: Array<{ value: Locale; label: string }> = [
-  { value: 'pt', label: 'Português' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-  { value: 'it', label: 'Italiano' }
-];
 
 const roomOptions: RoomOption[] = [
   { name: 'Cedro', capacity: 6 },
@@ -491,8 +485,7 @@ type EncontroEuropeuPageProps = {
 };
 
 export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroEuropeuPageProps) {
-  const { user } = useAuth();
-  const [locale, setLocale] = useState<Locale>(() => resolveInitialLocale(typeof navigator === 'undefined' ? undefined : navigator.language));
+  const { locale, setLocale } = useSiteLocale();
   const [values, setValues] = useState<EncontroEuropeuFormValues>(initialEncontroEuropeuFormValues);
   const [documents, setDocuments] = useState<DocumentState>({
     identityDocument: null,
@@ -506,8 +499,6 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
 
   const copy = copyByLocale[locale];
   const contribution = useMemo(() => calculateContribution(values), [values]);
-  const isAuthenticatedView = Boolean(user) && !showPublicHero;
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -533,7 +524,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     } catch {
       window.localStorage.removeItem(encontroEuropeuDraftKey);
     }
-  }, []);
+  }, [setLocale]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -635,7 +626,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                 value={locale}
                 onChange={event => setLocale(event.target.value as Locale)}
               >
-                {localeOptions.map(option => (
+                {siteLocaleOptions.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -643,29 +634,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
               </select>
             </Field>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">{copy.pageTitle}</h1>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                {isAuthenticatedView ? copy.loggedIntro : copy.pageIntro}
-              </p>
-            </div>
-            <Field label={copy.languageLabel} className="sm:w-52">
-              <select
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm"
-                value={locale}
-                onChange={event => setLocale(event.target.value as Locale)}
-              >
-                {localeOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        )}
+        ) : null}
 
         {successState ? (
           <section className="rounded-[28px] border border-emerald-200 bg-white p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">

@@ -4,6 +4,7 @@ import type { IgrejaInfo } from '../../lib/trabalhos';
 import { emptyIgrejaUsageStats, type IgrejaFormState, type IgrejaUsageStats } from './form';
 
 type FormSectionProps = {
+  copy: ChurchesCopy;
   editingId: string | null;
   errorMessage?: string;
   form: IgrejaFormState;
@@ -16,6 +17,7 @@ type FormSectionProps = {
 };
 
 type ListSectionProps = {
+  copy: ChurchesCopy;
   deleteMutation: UseMutationResult<unknown, Error, string, unknown>;
   igrejas: IgrejaInfo[];
   isLoading: boolean;
@@ -24,7 +26,41 @@ type ListSectionProps = {
   usoIgrejas: Map<string, IgrejaUsageStats>;
 };
 
+export type ChurchesCopy = {
+  newChurch: string;
+  formHint: string;
+  editing: string;
+  loginToSave: string;
+  name: string;
+  lineage: string;
+  city: string;
+  state: string;
+  country: string;
+  latitude: string;
+  longitude: string;
+  notes: string;
+  saveChanges: string;
+  createChurch: string;
+  saving: string;
+  cancelEdit: string;
+  saved: string;
+  map: string;
+  works: string;
+  local: string;
+  responsible: string;
+  people: string;
+  current: string;
+  fardamento: string;
+  edit: string;
+  deleting: string;
+  delete: string;
+  churchesRegistered: string;
+  loading: string;
+  noChurches: string;
+};
+
 export function IgrejaFormSection({
+  copy,
   editingId,
   errorMessage,
   form,
@@ -45,20 +81,18 @@ export function IgrejaFormSection({
     >
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-slate-800">Nova igreja</h2>
-          <p className="text-xs text-slate-500">
-            Preencha o nome e, se quiser, localização, linhagem e coordenadas (para mapa).
-          </p>
+          <h2 className="text-sm font-semibold text-slate-800">{copy.newChurch}</h2>
+          <p className="text-xs text-slate-500">{copy.formHint}</p>
         </div>
         <div className="text-xs text-slate-600">
-          {editingId ? <span className="text-amber-700">Editando {editingId}</span> : null}
-          {!userPresent ? <span className="ml-2 text-amber-600">Faça login para salvar</span> : null}
+          {editingId ? <span className="text-amber-700">{copy.editing} {editingId}</span> : null}
+          {!userPresent ? <span className="ml-2 text-amber-600">{copy.loginToSave}</span> : null}
         </div>
       </div>
 
       <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
         <label className="text-sm text-slate-700">
-          Nome
+          {copy.name}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.nome}
@@ -69,7 +103,7 @@ export function IgrejaFormSection({
         </label>
 
         <label className="text-sm text-slate-700">
-          Linhagem / casa
+          {copy.lineage}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={form.linhagem}
@@ -80,7 +114,7 @@ export function IgrejaFormSection({
 
         <div className="grid grid-cols-3 gap-3 sm:col-span-2">
           <label className="text-sm text-slate-700">
-            Cidade
+            {copy.city}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.cidade}
@@ -89,7 +123,7 @@ export function IgrejaFormSection({
             />
           </label>
           <label className="text-sm text-slate-700">
-            Estado
+            {copy.state}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.estado}
@@ -98,7 +132,7 @@ export function IgrejaFormSection({
             />
           </label>
           <label className="text-sm text-slate-700">
-            País
+            {copy.country}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.pais}
@@ -110,7 +144,7 @@ export function IgrejaFormSection({
 
         <div className="grid grid-cols-2 gap-3 sm:col-span-2">
           <label className="text-sm text-slate-700">
-            Latitude
+            {copy.latitude}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.lat}
@@ -119,7 +153,7 @@ export function IgrejaFormSection({
             />
           </label>
           <label className="text-sm text-slate-700">
-            Longitude
+            {copy.longitude}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.lng}
@@ -130,7 +164,7 @@ export function IgrejaFormSection({
         </div>
 
         <label className="text-sm text-slate-700 sm:col-span-2">
-          Observações
+          {copy.notes}
           <textarea
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             rows={2}
@@ -147,27 +181,29 @@ export function IgrejaFormSection({
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50"
           disabled={mutation.isPending}
         >
-          {mutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Cadastrar igreja'}
+          {mutation.isPending ? copy.saving : editingId ? copy.saveChanges : copy.createChurch}
         </button>
         {editingId ? (
           <button type="button" className="text-xs text-slate-600 underline" onClick={onCancelEdit}>
-            Cancelar edição
+            {copy.cancelEdit}
           </button>
         ) : null}
         {errorMessage ? <span className="text-xs text-red-600">{errorMessage}</span> : null}
-        {isSuccess ? <span className="text-xs text-emerald-700">Salvo.</span> : null}
+        {isSuccess ? <span className="text-xs text-emerald-700">{copy.saved}</span> : null}
       </div>
     </form>
   );
 }
 
 function IgrejaCard({
+  copy,
   deleteMutation,
   igreja,
   onDelete,
   onEdit,
   uso
 }: {
+  copy: ChurchesCopy;
   deleteMutation: UseMutationResult<unknown, Error, string, unknown>;
   igreja: IgrejaInfo;
   onDelete: (id: string) => void;
@@ -194,34 +230,34 @@ function IgrejaCard({
         {igreja.observacoes ? <p className="text-slate-600">{igreja.observacoes}</p> : null}
         {mapLink ? (
           <a className="text-xs text-slate-600 underline" href={mapLink} target="_blank" rel="noreferrer">
-            Ver no mapa ({igreja.lat?.toFixed(4)}, {igreja.lng?.toFixed(4)})
+            {copy.map} ({igreja.lat?.toFixed(4)}, {igreja.lng?.toFixed(4)})
           </a>
         ) : null}
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
         <div className="rounded-md bg-slate-100 px-2 py-1">
-          <div className="font-semibold text-slate-800">Trabalhos</div>
-          <div>Local: {uso.trabalhosLocal}</div>
-          <div>Responsável: {uso.trabalhosResponsavel}</div>
+          <div className="font-semibold text-slate-800">{copy.works}</div>
+          <div>{copy.local}: {uso.trabalhosLocal}</div>
+          <div>{copy.responsible}: {uso.trabalhosResponsavel}</div>
         </div>
         <div className="rounded-md bg-slate-100 px-2 py-1">
-          <div className="font-semibold text-slate-800">Pessoas</div>
-          <div>Atuais: {uso.pessoasAtuais}</div>
-          <div>Fardamento: {uso.pessoasFardamento}</div>
+          <div className="font-semibold text-slate-800">{copy.people}</div>
+          <div>{copy.current}: {uso.pessoasAtuais}</div>
+          <div>{copy.fardamento}: {uso.pessoasFardamento}</div>
         </div>
       </div>
 
       <div className="mt-3 flex items-center gap-2 text-xs">
         <button className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm" onClick={() => onEdit(igreja)}>
-          Editar
+          {copy.edit}
         </button>
         <button
           className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
           disabled={deleteMutation.isPending && deleteMutation.variables === igreja.id}
           onClick={() => onDelete(igreja.id)}
         >
-          {deleteMutation.isPending && deleteMutation.variables === igreja.id ? 'Excluindo...' : 'Excluir'}
+          {deleteMutation.isPending && deleteMutation.variables === igreja.id ? copy.deleting : copy.delete}
         </button>
       </div>
     </div>
@@ -229,6 +265,7 @@ function IgrejaCard({
 }
 
 export function IgrejasListSection({
+  copy,
   deleteMutation,
   igrejas,
   isLoading,
@@ -239,18 +276,19 @@ export function IgrejasListSection({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-800">Igrejas cadastradas</h2>
-        {isLoading ? <span className="text-xs text-slate-500">Carregando...</span> : null}
+        <h2 className="text-sm font-semibold text-slate-800">{copy.churchesRegistered}</h2>
+        {isLoading ? <span className="text-xs text-slate-500">{copy.loading}</span> : null}
       </div>
 
       {igrejas.length === 0 && !isLoading ? (
         <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-          Nenhuma igreja cadastrada ainda.
+          {copy.noChurches}
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {igrejas.map(igreja => (
             <IgrejaCard
+              copy={copy}
               key={igreja.id}
               deleteMutation={deleteMutation}
               igreja={igreja}
