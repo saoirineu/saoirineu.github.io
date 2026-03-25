@@ -2,7 +2,6 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 
 const base = process.env.VITE_BASE_PATH ?? '/';
 const staticRoutes = ['encontro-europeu'];
@@ -46,60 +45,6 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    copyIndexTo404(),
-    VitePWA({
-      registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
-      manifest: {
-        name: 'São Irineu',
-        short_name: 'São Irineu',
-        description: 'PWA para navegação das ontologias e dados do Santo Daime.',
-        theme_color: '#3f84c2',
-        background_color: '#f7f4ea',
-        display: 'standalone',
-        scope: base,
-        start_url: base,
-        icons: [
-          {
-            src: 'icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable'
-          },
-          {
-            src: 'icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: 'icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,pdf}'],
-        navigateFallbackDenylist: [/\.[^/]+$/],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.destination === 'document',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'html-cache'
-            }
-          },
-          {
-            urlPattern: ({ request }) => request.destination === 'style' || request.destination === 'script',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'asset-cache'
-            }
-          }
-        ]
-      }
-    })
+    copyIndexTo404()
   ]
 });

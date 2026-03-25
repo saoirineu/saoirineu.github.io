@@ -35,25 +35,26 @@ async function clearLegacyServiceWorkers() {
     return false;
   }
 
-  const resetFlag = 'saoirineu-sw-reset-v1';
-  if (window.localStorage.getItem(resetFlag) === 'done') {
-    return false;
-  }
-
   const registrations = await navigator.serviceWorker.getRegistrations();
-  if (registrations.length === 0) {
-    window.localStorage.setItem(resetFlag, 'done');
-    return false;
+  const hadRegistrations = registrations.length > 0;
+
+  if (hadRegistrations) {
+    await Promise.all(registrations.map(registration => registration.unregister()));
   }
 
-  await Promise.all(registrations.map(registration => registration.unregister()));
-
+  let hadCaches = false;
   if ('caches' in window) {
     const cacheKeys = await caches.keys();
-    await Promise.all(cacheKeys.map(cacheKey => caches.delete(cacheKey)));
+    hadCaches = cacheKeys.length > 0;
+    if (hadCaches) {
+      await Promise.all(cacheKeys.map(cacheKey => caches.delete(cacheKey)));
+    }
   }
 
-  window.localStorage.setItem(resetFlag, 'done');
+  if (!hadRegistrations && !hadCaches) {
+    return false;
+  }
+
   window.location.reload();
   return true;
 }

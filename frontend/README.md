@@ -1,6 +1,6 @@
 # Pod Frontend
 
-SPA PWA 100% client-side (GitHub Pages), usando React + Vite + TypeScript, Firebase Auth (Google / Email) e Firestore. Estilização com Tailwind e caching offline com `vite-plugin-pwa`.
+SPA 100% client-side (GitHub Pages), usando React + Vite + TypeScript, Firebase Auth (Google / Email) e Firestore. Estilização com Tailwind.
 
 ## Requisitos
 - Node 18+ e npm.
@@ -19,12 +19,8 @@ SPA PWA 100% client-side (GitHub Pages), usando React + Vite + TypeScript, Fireb
 
 ## Estrutura
 - `src/` – app React (routes, pages, providers, lib/firebase, estilos Tailwind).
-- `public/` – ícone e manifest da PWA.
-- `vite.config.ts` – base ajustável para GitHub Pages e configuração PWA.
-
-## PWA
-- `vite-plugin-pwa` gera service worker e manifest; `registerSW` está em `src/main.tsx`.
-- Offline-first para HTML e assets; dados do Firestore dependem do cache local do SDK.
+- `public/` – ícones e arquivos estáticos.
+- `vite.config.ts` – base ajustável para GitHub Pages e rotas estáticas.
 
 ## Próximos passos
 - Modelar coleções Firestore (pessoas, igrejas, hinarios, hinos, bebida/lotes) e regras de segurança.
