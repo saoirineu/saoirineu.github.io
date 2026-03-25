@@ -3,10 +3,13 @@ import { Outlet, Route, Routes } from 'react-router-dom';
 
 import { AuthGate } from './components/AuthGate';
 import { NavBar } from './components/NavBar';
+import { RoleGate } from './components/RoleGate';
 
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const BeveragePage = lazy(() => import('./pages/BeveragePage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const EncontroEuropeuAdminPage = lazy(() => import('./pages/EncontroEuropeuAdminPage'));
 const EncontroEuropeuPage = lazy(() => import('./pages/EncontroEuropeuPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -49,6 +52,12 @@ function App() {
             <Route path="/bebida" element={<BeveragePage />} />
             <Route path="/trabalhos" element={<TrabalhosPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
+            <Route element={<RoleGate requiredRole="admin" />}>
+              <Route path="/admin/inscricoes-encontro" element={<EncontroEuropeuAdminPage />} />
+            </Route>
+            <Route element={<RoleGate requiredRole="superadmin" />}>
+              <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<NotFoundPage />} />

@@ -1,11 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
-import {
-  EncontroEuropeuRegistrationError,
-  type EncontroEuropeuRegistrationDebugInfo,
-  createEncontroEuropeuRegistration
-} from '../lib/encontroEuropeu';
+import { createEncontroEuropeuRegistration } from '../lib/encontroEuropeu';
 import {
   buildEncontroEuropeuPayload,
   calculateContribution,
@@ -93,10 +89,6 @@ type DocumentState = {
 type SuccessState = {
   contributionTotal: number;
   registrationId: string;
-};
-
-type SubmitDebugState = EncontroEuropeuRegistrationDebugInfo & {
-  projectId: string;
 };
 
 type RoomOption = {
@@ -475,7 +467,6 @@ export default function EncontroEuropeuPage() {
     consentDocument: null
   });
   const [submitError, setSubmitError] = useState<string>('');
-  const [submitDebug, setSubmitDebug] = useState<SubmitDebugState | null>(null);
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
 
@@ -505,26 +496,9 @@ export default function EncontroEuropeuPage() {
     onSuccess: result => {
       setSuccessState({ contributionTotal: contribution.total, registrationId: result.id });
       setSubmitError('');
-      setSubmitDebug(null);
     },
     onError: error => {
-      console.error('[EncontroEuropeuPage] mutation error', error);
       setSubmitError(error.message);
-
-      if (error instanceof EncontroEuropeuRegistrationError) {
-        setSubmitDebug({
-          ...error.debugInfo,
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'unknown'
-        });
-        return;
-      }
-
-      setSubmitDebug({
-        code: 'unknown',
-        message: error.message,
-        payloadPreview: {},
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'unknown'
-      });
     }
   });
 
@@ -545,7 +519,6 @@ export default function EncontroEuropeuPage() {
     setValues(initialEncontroEuropeuFormValues);
     setDocuments({ identityDocument: null, paymentProof: null, consentDocument: null });
     setSubmitError('');
-    setSubmitDebug(null);
     setSuccessState(null);
     setIsRoomModalOpen(false);
     mutation.reset();
@@ -732,24 +705,6 @@ export default function EncontroEuropeuPage() {
                 </div>
 
                 {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
-
-                {submitDebug ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-xs text-slate-700">
-                    <div className="font-semibold text-slate-900">Debug</div>
-                    <div className="mt-2 grid gap-1">
-                      <div>
-                        <span className="font-medium">projectId:</span> {submitDebug.projectId}
-                      </div>
-                      <div>
-                        <span className="font-medium">code:</span> {submitDebug.code}
-                      </div>
-                      <div>
-                        <span className="font-medium">message:</span> {submitDebug.message}
-                      </div>
-                    </div>
-                    <pre className="mt-3 overflow-x-auto rounded-2xl bg-white/80 p-3 text-[11px] leading-5 text-slate-800">{JSON.stringify(submitDebug.payloadPreview, null, 2)}</pre>
-                  </div>
-                ) : null}
 
                 <button type="submit" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
                   {mutation.isPending ? copy.submitting : copy.submit}

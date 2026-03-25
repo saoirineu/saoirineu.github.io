@@ -4,6 +4,7 @@
 
 ### usuarios (perfil do auth)
 - uid (igual ao auth)
+- systemRole: `user` | `admin` | `superadmin`
 - nomeExibicao
 - email
 - fardado: bool
@@ -108,6 +109,7 @@
 - trabalhos: permitir criar/editar se `request.auth.uid == resource.data.createdBy` ou tiver claim/role apropriada.
 - bebidaLotes: escrita apenas para responsaveis ou admins (claim).
 - usuarios: cada uid edita apenas seu perfil; leitura publica opcional.
+- `usuarios.systemRole` deve ser alterado apenas por superadmin; `renato.fabbri@gmail.com` atua como bootstrap superadmin.
 - Storage (se usar): uploads apenas autenticados; path por uid ou por colecao; validar tipo/tamanho.
 
 ## Notas de modelagem
@@ -115,3 +117,4 @@
 - `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
 - `encontroEuropeuInscricoes` foi pensado para receber inscricoes anonimas via pagina publica; leitura fica restrita a admins e a primeira versao guarda apenas os nomes dos anexos selecionados, nao os binarios.
+- Ha dois niveis administrativos no app: `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia papeis de usuarios.

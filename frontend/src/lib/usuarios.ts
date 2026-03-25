@@ -9,9 +9,11 @@ import {
   asStringArray,
   removeUndefinedDeep
 } from './firestoreData';
+import { normalizeSystemRole, type SystemRole } from './systemRole';
 
 export type UsuarioPerfil = {
   uid: string;
+  systemRole?: SystemRole;
   displayName?: string;
   email?: string;
   phone?: string;
@@ -44,6 +46,7 @@ function mapUsuarioPerfil(uid: string, value: unknown): UsuarioPerfil {
   const data = asRecord(value);
   return {
     uid,
+    systemRole: normalizeSystemRole(data.systemRole),
     displayName: asOptionalString(data.displayName),
     email: asOptionalString(data.email),
     phone: asOptionalString(data.phone),
@@ -96,4 +99,8 @@ export async function upsertUsuario(uid: string, data: Partial<UsuarioPerfil>) {
   }
 
   return setDoc(ref, payload, { merge: true });
+}
+
+export async function updateUsuarioSystemRole(uid: string, systemRole: SystemRole) {
+  return upsertUsuario(uid, { systemRole });
 }

@@ -1,6 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function hasStoredRole(role) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.systemRole == role;
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,13 +16,39 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.admin == true || request.auth.token.role == 'admin');
+      return isSignedIn() && (
+        request.auth.token.admin == true
+        || request.auth.token.role == 'admin'
+        || request.auth.token.role == 'superadmin'
+        || request.auth.token.email == 'renato.fabbri@gmail.com'
+        || hasStoredRole('admin')
+        || hasStoredRole('superadmin')
+      );
+    }
+
+    function isSuperadmin() {
+      return isSignedIn() && (
+        request.auth.token.role == 'superadmin'
+        || request.auth.token.email == 'renato.fabbri@gmail.com'
+        || hasStoredRole('superadmin')
+      );
+    }
+
+    function hasValidUserSystemRole() {
+      return !request.resource.data.keys().hasAny(['systemRole'])
+        || request.resource.data.systemRole in ['user', 'admin', 'superadmin'];
     }
 
     match /usuarios/{uid} {
       allow read: if true;
-      allow create: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow update: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if hasValidUserSystemRole() && (
+        (isSignedIn() && request.auth.uid == uid && !request.resource.data.keys().hasAny(['systemRole']))
+        || isSuperadmin()
+      );
+      allow update: if hasValidUserSystemRole() && (
+        (isSignedIn() && request.auth.uid == uid && !request.resource.data.diff(resource.data).changedKeys().hasAny(['systemRole']))
+        || isSuperadmin()
+      );
       allow delete: if false;
     }
 

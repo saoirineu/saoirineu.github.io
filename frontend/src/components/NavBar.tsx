@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom';
 
+import { hasRequiredRole } from '../lib/systemRole';
 import { useAuth } from '../providers/useAuth';
+import { useSystemRole } from '../providers/useSystemRole';
 
 const links = [
   { to: '/', label: 'Início' },
@@ -14,6 +16,13 @@ const links = [
 
 export function NavBar() {
   const { signOut } = useAuth();
+  const { role } = useSystemRole();
+
+  const navigationLinks = [
+    ...links,
+    ...(hasRequiredRole(role, 'admin') ? [{ to: '/admin/inscricoes-encontro', label: 'Inscrições' }] : []),
+    ...(hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/usuarios', label: 'Usuários' }] : [])
+  ];
 
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -23,7 +32,7 @@ export function NavBar() {
           <div className="text-lg font-semibold text-slate-900">Saoirineu</div>
         </div>
         <nav className="hidden items-center gap-4 text-sm font-medium text-slate-700 sm:flex">
-          {links.map(link => (
+          {navigationLinks.map(link => (
             <NavLink
               key={link.to}
               to={link.to}

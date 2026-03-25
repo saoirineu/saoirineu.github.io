@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 
 import { auth, googleProvider } from '../lib/firebase';
+import { upsertUsuario } from '../lib/usuarios';
 import { AuthContext, type AuthContextValue } from './auth-context';
 
 function isPopupBlockedError(error: unknown) {
@@ -24,6 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, currentUser => {
       setUser(currentUser);
       setLoading(false);
+
+      if (currentUser) {
+        void upsertUsuario(currentUser.uid, {
+          avatarUrl: currentUser.photoURL ?? undefined,
+          displayName: currentUser.displayName ?? undefined,
+          email: currentUser.email ?? undefined
+        }).catch(() => undefined);
+      }
     });
 
     return unsubscribe;
