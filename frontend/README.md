@@ -26,3 +26,5 @@ SPA 100% client-side (GitHub Pages), usando React + Vite + TypeScript, Firebase 
 - Modelar coleções Firestore (pessoas, igrejas, hinarios, hinos, bebida/lotes) e regras de segurança.
 - Implementar consultas paginadas e buscas com React Query + Firestore.
 - Adicionar views de taxonomia SKOS e trilhas conceito → exemplos → fontes.
+- acrescenter email/telefone de contato?
+- qual o IBAN e causale?
