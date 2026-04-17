@@ -1,29 +1,29 @@
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import type { IgrejaInfo } from '../../lib/trabalhos';
-import { emptyIgrejaUsageStats, type IgrejaFormState, type IgrejaUsageStats } from './form';
+import type { ChurchInfo } from '../../lib/trabalhos';
+import { emptyChurchUsageStats, type ChurchFormState, type ChurchUsageStats } from './form';
 
 type FormSectionProps = {
   copy: ChurchesCopy;
   editingId: string | null;
   errorMessage?: string;
-  form: IgrejaFormState;
+  form: ChurchFormState;
   isSuccess: boolean;
   mutation: UseMutationResult<unknown, Error, void, unknown>;
   onCancelEdit: () => void;
   onSubmit: () => void;
-  setField: <K extends keyof IgrejaFormState>(field: K, value: IgrejaFormState[K]) => void;
+  setField: <K extends keyof ChurchFormState>(field: K, value: ChurchFormState[K]) => void;
   userPresent: boolean;
 };
 
 type ListSectionProps = {
   copy: ChurchesCopy;
   deleteMutation: UseMutationResult<unknown, Error, string, unknown>;
-  igrejas: IgrejaInfo[];
+  churches: ChurchInfo[];
   isLoading: boolean;
   onDelete: (id: string) => void;
-  onEdit: (igreja: IgrejaInfo) => void;
-  usoIgrejas: Map<string, IgrejaUsageStats>;
+  onEdit: (church: ChurchInfo) => void;
+  churchUsage: Map<string, ChurchUsageStats>;
 };
 
 export type ChurchesCopy = {
@@ -59,7 +59,7 @@ export type ChurchesCopy = {
   noChurches: string;
 };
 
-export function IgrejaFormSection({
+export function ChurchFormSection({
   copy,
   editingId,
   errorMessage,
@@ -95,8 +95,8 @@ export function IgrejaFormSection({
           {copy.name}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.nome}
-            onChange={event => setField('nome', event.target.value)}
+            value={form.name}
+            onChange={event => setField('name', event.target.value)}
             placeholder="Ex.: Igreja da Floresta"
             required
           />
@@ -106,8 +106,8 @@ export function IgrejaFormSection({
           {copy.lineage}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.linhagem}
-            onChange={event => setField('linhagem', event.target.value)}
+            value={form.lineage}
+            onChange={event => setField('lineage', event.target.value)}
             placeholder="Ex.: ICEFLU, CEFLI, IDCEFLU, Barquinha, UdV, Linha Unificada, etc."
           />
         </label>
@@ -117,8 +117,8 @@ export function IgrejaFormSection({
             {copy.city}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.cidade}
-              onChange={event => setField('cidade', event.target.value)}
+              value={form.city}
+              onChange={event => setField('city', event.target.value)}
               placeholder="Ex.: Rio Branco"
             />
           </label>
@@ -126,8 +126,8 @@ export function IgrejaFormSection({
             {copy.state}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.estado}
-              onChange={event => setField('estado', event.target.value)}
+              value={form.state}
+              onChange={event => setField('state', event.target.value)}
               placeholder="AC"
             />
           </label>
@@ -135,8 +135,8 @@ export function IgrejaFormSection({
             {copy.country}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.pais}
-              onChange={event => setField('pais', event.target.value)}
+              value={form.country}
+              onChange={event => setField('country', event.target.value)}
               placeholder="Brasil"
             />
           </label>
@@ -168,8 +168,8 @@ export function IgrejaFormSection({
           <textarea
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             rows={2}
-            value={form.observacoes}
-            onChange={event => setField('observacoes', event.target.value)}
+            value={form.observations}
+            onChange={event => setField('observations', event.target.value)}
             placeholder="Responsáveis, contato, notas livres"
           />
         </label>
@@ -195,42 +195,42 @@ export function IgrejaFormSection({
   );
 }
 
-function IgrejaCard({
+function ChurchCard({
   copy,
   deleteMutation,
-  igreja,
+  church,
   onDelete,
   onEdit,
   uso
 }: {
   copy: ChurchesCopy;
   deleteMutation: UseMutationResult<unknown, Error, string, unknown>;
-  igreja: IgrejaInfo;
+  church: ChurchInfo;
   onDelete: (id: string) => void;
-  onEdit: (igreja: IgrejaInfo) => void;
-  uso: IgrejaUsageStats;
+  onEdit: (church: ChurchInfo) => void;
+  uso: ChurchUsageStats;
 }) {
-  const localParts = [igreja.cidade, igreja.estado, igreja.pais].filter(Boolean).join(' • ');
+  const localParts = [church.city, church.state, church.country].filter(Boolean).join(' • ');
   const mapLink =
-    igreja.lat && igreja.lng
-      ? `https://www.openstreetmap.org/?mlat=${igreja.lat}&mlon=${igreja.lng}&zoom=14`
+    church.lat && church.lng
+      ? `https://www.openstreetmap.org/?mlat=${church.lat}&mlon=${church.lng}&zoom=14`
       : null;
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">{igreja.nome}</h3>
-          {igreja.linhagem ? <p className="text-xs text-slate-600">{igreja.linhagem}</p> : null}
+          <h3 className="text-base font-semibold text-slate-900">{church.name}</h3>
+          {church.lineage ? <p className="text-xs text-slate-600">{church.lineage}</p> : null}
         </div>
-        <span className="text-[10px] uppercase tracking-wide text-slate-500">{igreja.id}</span>
+        <span className="text-[10px] uppercase tracking-wide text-slate-500">{church.id}</span>
       </div>
       <div className="mt-2 space-y-1 text-sm text-slate-700">
         {localParts ? <p>{localParts}</p> : null}
-        {igreja.observacoes ? <p className="text-slate-600">{igreja.observacoes}</p> : null}
+        {church.observations ? <p className="text-slate-600">{church.observations}</p> : null}
         {mapLink ? (
           <a className="text-xs text-slate-600 underline" href={mapLink} target="_blank" rel="noreferrer">
-            {copy.map} ({igreja.lat?.toFixed(4)}, {igreja.lng?.toFixed(4)})
+            {copy.map} ({church.lat?.toFixed(4)}, {church.lng?.toFixed(4)})
           </a>
         ) : null}
       </div>
@@ -249,29 +249,29 @@ function IgrejaCard({
       </div>
 
       <div className="mt-3 flex items-center gap-2 text-xs">
-        <button className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm" onClick={() => onEdit(igreja)}>
+        <button className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm" onClick={() => onEdit(church)}>
           {copy.edit}
         </button>
         <button
           className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
-          disabled={deleteMutation.isPending && deleteMutation.variables === igreja.id}
-          onClick={() => onDelete(igreja.id)}
+          disabled={deleteMutation.isPending && deleteMutation.variables === church.id}
+          onClick={() => onDelete(church.id)}
         >
-          {deleteMutation.isPending && deleteMutation.variables === igreja.id ? copy.deleting : copy.delete}
+          {deleteMutation.isPending && deleteMutation.variables === church.id ? copy.deleting : copy.delete}
         </button>
       </div>
     </div>
   );
 }
 
-export function IgrejasListSection({
+export function ChurchesListSection({
   copy,
   deleteMutation,
-  igrejas,
+  churches,
   isLoading,
   onDelete,
   onEdit,
-  usoIgrejas
+  churchUsage
 }: ListSectionProps) {
   return (
     <div className="space-y-2">
@@ -280,21 +280,21 @@ export function IgrejasListSection({
         {isLoading ? <span className="text-xs text-slate-500">{copy.loading}</span> : null}
       </div>
 
-      {igrejas.length === 0 && !isLoading ? (
+      {churches.length === 0 && !isLoading ? (
         <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
           {copy.noChurches}
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {igrejas.map(igreja => (
-            <IgrejaCard
+          {churches.map(church => (
+            <ChurchCard
               copy={copy}
-              key={igreja.id}
+              key={church.id}
               deleteMutation={deleteMutation}
-              igreja={igreja}
+              church={church}
               onDelete={onDelete}
               onEdit={onEdit}
-              uso={usoIgrejas.get(igreja.id) ?? emptyIgrejaUsageStats}
+              uso={churchUsage.get(church.id) ?? emptyChurchUsageStats}
             />
           ))}
         </div>

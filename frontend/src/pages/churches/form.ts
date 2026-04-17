@@ -1,101 +1,101 @@
-import type { IgrejaInfo, IgrejaInput, Trabalho } from '../../lib/trabalhos';
-import type { UsuarioPerfil } from '../../lib/usuarios';
+import type { ChurchInfo, ChurchInput, Trabalho } from '../../lib/trabalhos';
+import type { UserProfile } from '../../lib/users';
 
-export type IgrejaFormState = {
-  nome: string;
-  cidade: string;
-  estado: string;
-  pais: string;
-  linhagem: string;
-  observacoes: string;
+export type ChurchFormState = {
+  name: string;
+  city: string;
+  state: string;
+  country: string;
+  lineage: string;
+  observations: string;
   lat: string;
   lng: string;
 };
 
-export type IgrejaUsageStats = {
+export type ChurchUsageStats = {
   trabalhosLocal: number;
   trabalhosResponsavel: number;
   pessoasAtuais: number;
   pessoasFardamento: number;
 };
 
-export const emptyIgrejaUsageStats: IgrejaUsageStats = {
+export const emptyChurchUsageStats: ChurchUsageStats = {
   trabalhosLocal: 0,
   trabalhosResponsavel: 0,
   pessoasAtuais: 0,
   pessoasFardamento: 0
 };
 
-export const initialIgrejaForm: IgrejaFormState = {
-  nome: '',
-  cidade: '',
-  estado: '',
-  pais: '',
-  linhagem: '',
-  observacoes: '',
+export const initialChurchForm: ChurchFormState = {
+  name: '',
+  city: '',
+  state: '',
+  country: '',
+  lineage: '',
+  observations: '',
   lat: '',
   lng: ''
 };
 
-function incrementUsage(map: Map<string, IgrejaUsageStats>, id: string, field: keyof IgrejaUsageStats) {
-  const current = map.get(id) ?? { ...emptyIgrejaUsageStats };
+function incrementUsage(map: Map<string, ChurchUsageStats>, id: string, field: keyof ChurchUsageStats) {
+  const current = map.get(id) ?? { ...emptyChurchUsageStats };
   current[field] += 1;
   map.set(id, current);
 }
 
-export function buildIgrejaPayload(form: IgrejaFormState): IgrejaInput {
+export function buildChurchPayload(form: ChurchFormState): ChurchInput {
   const latNum = form.lat.trim() ? Number(form.lat) : undefined;
   const lngNum = form.lng.trim() ? Number(form.lng) : undefined;
 
   return {
-    nome: form.nome.trim(),
-    cidade: form.cidade.trim() || undefined,
-    estado: form.estado.trim() || undefined,
-    pais: form.pais.trim() || undefined,
-    linhagem: form.linhagem.trim() || undefined,
-    observacoes: form.observacoes.trim() || undefined,
+    name: form.name.trim(),
+    city: form.city.trim() || undefined,
+    state: form.state.trim() || undefined,
+    country: form.country.trim() || undefined,
+    lineage: form.lineage.trim() || undefined,
+    observations: form.observations.trim() || undefined,
     lat: Number.isFinite(latNum) ? latNum : undefined,
     lng: Number.isFinite(lngNum) ? lngNum : undefined
   };
 }
 
-export function prefillIgrejaForm(igreja: IgrejaInfo): IgrejaFormState {
+export function prefillChurchForm(church: ChurchInfo): ChurchFormState {
   return {
-    nome: igreja.nome ?? '',
-    cidade: igreja.cidade ?? '',
-    estado: igreja.estado ?? '',
-    pais: igreja.pais ?? '',
-    linhagem: igreja.linhagem ?? '',
-    observacoes: igreja.observacoes ?? '',
-    lat: igreja.lat?.toString() ?? '',
-    lng: igreja.lng?.toString() ?? ''
+    name: church.name,
+    city: church.city ?? '',
+    state: church.state ?? '',
+    country: church.country ?? '',
+    lineage: church.lineage ?? '',
+    observations: church.observations ?? '',
+    lat: church.lat?.toString() ?? '',
+    lng: church.lng?.toString() ?? ''
   };
 }
 
-export function sortIgrejas(igrejas: IgrejaInfo[]) {
-  return igrejas.slice().sort((left, right) => left.nome.localeCompare(right.nome));
+export function sortChurches(churches: ChurchInfo[]) {
+  return churches.slice().sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export function buildUsoIgrejasMap(trabalhos: Trabalho[], usuarios: UsuarioPerfil[]) {
-  const map = new Map<string, IgrejaUsageStats>();
+export function buildChurchUsageMap(trabalhos: Trabalho[], users: UserProfile[]) {
+  const map = new Map<string, ChurchUsageStats>();
 
   trabalhos.forEach(trabalho => {
-    if (trabalho.localId) {
-      incrementUsage(map, trabalho.localId, 'trabalhosLocal');
+    if (trabalho.venueId) {
+      incrementUsage(map, trabalho.venueId, 'trabalhosLocal');
     }
 
-    (trabalho.igrejasResponsaveisIds ?? []).forEach(id => {
+    (trabalho.responsibleChurchIds ?? []).forEach(id => {
       incrementUsage(map, id, 'trabalhosResponsavel');
     });
   });
 
-  usuarios.forEach(usuario => {
-    if (usuario.igrejaAtualId) {
-      incrementUsage(map, usuario.igrejaAtualId, 'pessoasAtuais');
+  users.forEach(user => {
+    if (user.currentChurchId) {
+      incrementUsage(map, user.currentChurchId, 'pessoasAtuais');
     }
 
-    if (usuario.fardamentoIgrejaId) {
-      incrementUsage(map, usuario.fardamentoIgrejaId, 'pessoasFardamento');
+    if (user.fardamentoChurchId) {
+      incrementUsage(map, user.fardamentoChurchId, 'pessoasFardamento');
     }
   });
 

@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
-  deleteEncontroEuropeuRegistration,
-  fetchEncontroEuropeuRegistrations,
-  rebuildEncontroEuropeuRoomAvailabilityFromRegistrations,
-  resolveEncontroEuropeuDocumentUrl,
-  updateEncontroEuropeuRegistrationStatus,
-  type EncontroEuropeuRegistrationRecord,
-  type EncontroEuropeuRegistrationStatus
-} from '../lib/encontroEuropeu';
+  deleteEuropeanGatheringRegistration,
+  fetchEuropeanGatheringRegistrations,
+  rebuildEuropeanGatheringRoomAvailabilityFromRegistrations,
+  resolveEuropeanGatheringDocumentUrl,
+  updateEuropeanGatheringRegistrationStatus,
+  type EuropeanGatheringRegistrationRecord,
+  type EuropeanGatheringRegistrationStatus
+} from '../lib/europeanGathering';
 
-const statusOptions: Array<{ value: EncontroEuropeuRegistrationStatus; label: string }> = [
+const statusOptions: Array<{ value: EuropeanGatheringRegistrationStatus; label: string }> = [
   { value: 'approved', label: 'Aprovado' },
   { value: 'pending', label: 'Pendente' },
   { value: 'under-review', label: 'Em revisão' },
@@ -20,13 +20,13 @@ const statusOptions: Array<{ value: EncontroEuropeuRegistrationStatus; label: st
   { value: 'archived', label: 'Arquivado' }
 ];
 
-const attendanceModeLabels: Record<EncontroEuropeuRegistrationRecord['attendanceMode'], string> = {
+const attendanceModeLabels: Record<EuropeanGatheringRegistrationRecord['attendanceMode'], string> = {
   lodging: 'Hospedagem e alimentação',
   meals: 'Somente alimentação',
   spiritual: 'Somente trabalhos'
 };
 
-const statusLabels: Record<EncontroEuropeuRegistrationStatus, string> = {
+const statusLabels: Record<EuropeanGatheringRegistrationStatus, string> = {
   approved: 'Aprovado',
   pending: 'Pendente',
   'under-review': 'Em revisão',
@@ -38,7 +38,7 @@ const statusLabels: Record<EncontroEuropeuRegistrationStatus, string> = {
 type ViewMode = 'cards' | 'table';
 type SortKey = 'date-desc' | 'date-asc' | 'status' | 'name' | 'total-desc' | 'total-asc';
 
-function getStatusAccentClasses(status: EncontroEuropeuRegistrationStatus) {
+function getStatusAccentClasses(status: EuropeanGatheringRegistrationStatus) {
   switch (status) {
     case 'approved':
       return 'border-emerald-200 bg-emerald-50 text-emerald-800';
@@ -56,7 +56,7 @@ function getStatusAccentClasses(status: EncontroEuropeuRegistrationStatus) {
   }
 }
 
-function sortRegistrations(registrations: EncontroEuropeuRegistrationRecord[], sortKey: SortKey) {
+function sortRegistrations(registrations: EuropeanGatheringRegistrationRecord[], sortKey: SortKey) {
   const items = [...registrations];
 
   items.sort((left, right) => {
@@ -137,7 +137,7 @@ function formatWorkDays(selectedWorks: string[]) {
     .join(', ');
 }
 
-function formatMembershipSummary(registration: EncontroEuropeuRegistrationRecord) {
+function formatMembershipSummary(registration: EuropeanGatheringRegistrationRecord) {
   return [
     registration.isFardado ? 'Fardado' : 'Não fardado',
     registration.isIcefluMember ? 'ICEFLU em dia' : 'ICEFLU não informado',
@@ -145,7 +145,7 @@ function formatMembershipSummary(registration: EncontroEuropeuRegistrationRecord
   ].join(' · ');
 }
 
-function formatExtraItems(registration: EncontroEuropeuRegistrationRecord) {
+function formatExtraItems(registration: EuropeanGatheringRegistrationRecord) {
   return registration.needsExtraLinen ? 'Lençol extra + toalhas' : 'Sem extras';
 }
 
@@ -153,21 +153,21 @@ export default function EncontroEuropeuAdminPage() {
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | EncontroEuropeuRegistrationStatus>('all');
-  const [attendanceFilter, setAttendanceFilter] = useState<'all' | EncontroEuropeuRegistrationRecord['attendanceMode']>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | EuropeanGatheringRegistrationStatus>('all');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | EuropeanGatheringRegistrationRecord['attendanceMode']>('all');
   const [sortKey, setSortKey] = useState<SortKey>('date-desc');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   const query = useQuery({
-    queryKey: ['encontro-europeu-inscricoes'],
-    queryFn: fetchEncontroEuropeuRegistrations
+    queryKey: ['european-gathering-registrations'],
+    queryFn: fetchEuropeanGatheringRegistrations
   });
 
   const statusMutation = useMutation({
-    mutationFn: updateEncontroEuropeuRegistrationStatus,
+    mutationFn: updateEuropeanGatheringRegistrationStatus,
     onSuccess: () => {
       setErrorMessage('');
-      queryClient.invalidateQueries({ queryKey: ['encontro-europeu-inscricoes'] });
+      queryClient.invalidateQueries({ queryKey: ['european-gathering-registrations'] });
     },
     onError: error => {
       setErrorMessage(error instanceof Error ? error.message : 'Falha ao atualizar status.');
@@ -175,10 +175,10 @@ export default function EncontroEuropeuAdminPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteEncontroEuropeuRegistration,
+    mutationFn: deleteEuropeanGatheringRegistration,
     onSuccess: () => {
       setErrorMessage('');
-      queryClient.invalidateQueries({ queryKey: ['encontro-europeu-inscricoes'] });
+      queryClient.invalidateQueries({ queryKey: ['european-gathering-registrations'] });
     },
     onError: error => {
       setErrorMessage(error instanceof Error ? error.message : 'Falha ao apagar inscrição.');
@@ -213,7 +213,7 @@ export default function EncontroEuropeuAdminPage() {
       return;
     }
 
-    rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(query.data).catch(error => {
+    rebuildEuropeanGatheringRoomAvailabilityFromRegistrations(query.data).catch(error => {
       setErrorMessage(error instanceof Error ? error.message : 'Falha ao sincronizar vagas dos quartos.');
     });
   }, [query.data]);
@@ -237,7 +237,7 @@ export default function EncontroEuropeuAdminPage() {
         </label>
         <label className="space-y-1 text-sm text-slate-700">
           <span className="font-medium text-slate-900">Status</span>
-          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2" value={statusFilter} onChange={event => setStatusFilter(event.target.value as 'all' | EncontroEuropeuRegistrationStatus)}>
+          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2" value={statusFilter} onChange={event => setStatusFilter(event.target.value as 'all' | EuropeanGatheringRegistrationStatus)}>
             <option value="all">Todos</option>
             {statusOptions.map(option => (
               <option key={option.value} value={option.value}>
@@ -248,7 +248,7 @@ export default function EncontroEuropeuAdminPage() {
         </label>
         <label className="space-y-1 text-sm text-slate-700">
           <span className="font-medium text-slate-900">Modalidade</span>
-          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2" value={attendanceFilter} onChange={event => setAttendanceFilter(event.target.value as 'all' | EncontroEuropeuRegistrationRecord['attendanceMode'])}>
+          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2" value={attendanceFilter} onChange={event => setAttendanceFilter(event.target.value as 'all' | EuropeanGatheringRegistrationRecord['attendanceMode'])}>
             <option value="all">Todas</option>
             {Object.entries(attendanceModeLabels).map(([value, label]) => (
               <option key={value} value={value}>
@@ -382,10 +382,10 @@ function RegistrationCard({
   onDelete,
   onStatusChange
 }: {
-  registration: EncontroEuropeuRegistrationRecord;
+  registration: EuropeanGatheringRegistrationRecord;
   busy: boolean;
   onDelete: () => void;
-  onStatusChange: (status: EncontroEuropeuRegistrationStatus) => void;
+  onStatusChange: (status: EuropeanGatheringRegistrationStatus) => void;
 }) {
   const statusAccentClasses = getStatusAccentClasses(registration.status);
 
@@ -480,9 +480,9 @@ function StatusSelect({
   onChange,
   accent = false
 }: {
-  value: EncontroEuropeuRegistrationStatus;
+  value: EuropeanGatheringRegistrationStatus;
   disabled: boolean;
-  onChange: (status: EncontroEuropeuRegistrationStatus) => void;
+  onChange: (status: EuropeanGatheringRegistrationStatus) => void;
   accent?: boolean;
 }) {
   const accentClasses = accent ? 'border-transparent bg-transparent p-0 text-sm font-medium' : 'border border-slate-300 bg-white px-3 py-2 text-sm';
@@ -492,7 +492,7 @@ function StatusSelect({
       className={`rounded-lg ${accentClasses}`}
       value={value}
       disabled={disabled}
-      onChange={event => onChange(event.target.value as EncontroEuropeuRegistrationStatus)}
+      onChange={event => onChange(event.target.value as EuropeanGatheringRegistrationStatus)}
     >
       {statusOptions.map(option => (
         <option key={option.value} value={option.value}>
@@ -533,7 +533,7 @@ function DocumentDownloadLink({ name, path }: { name?: string; path?: string }) 
           setError('');
 
           try {
-            const resolvedUrl = await resolveEncontroEuropeuDocumentUrl(path);
+            const resolvedUrl = await resolveEuropeanGatheringDocumentUrl(path);
             setDownloadUrl(resolvedUrl);
             window.open(resolvedUrl, '_blank', 'noopener,noreferrer');
           } catch (requestError) {

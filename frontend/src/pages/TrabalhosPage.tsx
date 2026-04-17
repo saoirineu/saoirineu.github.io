@@ -4,8 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchTrabalhos,
   createTrabalho,
-  fetchIgrejas,
-  fetchBebidaLotes,
+  fetchChurches,
+  fetchBeverageBatches,
   updateTrabalho,
   deleteTrabalho
 } from '../lib/trabalhos';
@@ -16,15 +16,15 @@ import {
   formatTime,
   initialTrabalhoForm,
   prefillTrabalhoForm,
-  totalParticipantes
+  totalAttendees
 } from './trabalhos/form';
 
 export function TrabalhosPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({ queryKey: ['trabalhos'], queryFn: fetchTrabalhos });
-  const igrejasQuery = useQuery({ queryKey: ['igrejas'], queryFn: fetchIgrejas });
-  const bebidaQuery = useQuery({ queryKey: ['bebidaLotes'], queryFn: fetchBebidaLotes });
+  const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
+  const beverageQuery = useQuery({ queryKey: ['beverageBatches'], queryFn: fetchBeverageBatches });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(initialTrabalhoForm);
@@ -34,9 +34,9 @@ export function TrabalhosPage() {
       if (!user) throw new Error('Sessão expirada');
 
       const payload = buildTrabalhoPayload({
-        bebidaLotes: bebidaQuery.data,
+        beverageBatches: beverageQuery.data,
         form,
-        igrejas: igrejasQuery.data,
+        churches: churchesQuery.data,
         userId: user.uid
       });
 
@@ -96,8 +96,8 @@ export function TrabalhosPage() {
             Título
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.titulo}
-              onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               placeholder="Trabalho de..."
             />
           </label>
@@ -149,16 +149,16 @@ export function TrabalhosPage() {
               Igreja responsável (cadastrada)
               <select
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.igrejaRespId}
+                value={form.churchRespId}
                 onChange={e => {
-                  const found = igrejasQuery.data?.find(i => i.id === e.target.value);
-                  setForm(f => ({ ...f, igrejaRespId: e.target.value, igrejaRespNome: found?.nome ?? '' }));
+                  const found = churchesQuery.data?.find(i => i.id === e.target.value);
+                  setForm(f => ({ ...f, churchRespId: e.target.value, churchRespName: found?.name ?? '' }));
                 }}
               >
                 <option value="">— Selecionar —</option>
-                {igrejasQuery.data?.map(ig => (
+                {churchesQuery.data?.map(ig => (
                   <option key={ig.id} value={ig.id}>
-                    {ig.nome}
+                    {ig.name}
                   </option>
                 ))}
               </select>
@@ -168,8 +168,8 @@ export function TrabalhosPage() {
               Igreja responsável (texto livre)
               <input
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.igrejasTexto}
-                onChange={e => setForm(f => ({ ...f, igrejasTexto: e.target.value }))}
+                value={form.churchesText}
+                onChange={e => setForm(f => ({ ...f, churchesText: e.target.value }))}
                 placeholder="Ex.: igreja não cadastrada ou múltiplas"
               />
             </label>
@@ -180,16 +180,16 @@ export function TrabalhosPage() {
               Local (igreja cadastrada)
               <select
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.localId}
+                value={form.venueId}
                 onChange={e => {
-                  const found = igrejasQuery.data?.find(i => i.id === e.target.value);
-                  setForm(f => ({ ...f, localId: e.target.value, localNome: found?.nome ?? '' }));
+                  const found = churchesQuery.data?.find(i => i.id === e.target.value);
+                  setForm(f => ({ ...f, venueId: e.target.value, venueName: found?.name ?? '' }));
                 }}
               >
                 <option value="">— Selecionar —</option>
-                {igrejasQuery.data?.map(ig => (
+                {churchesQuery.data?.map(ig => (
                   <option key={ig.id} value={ig.id}>
-                    {ig.nome}
+                    {ig.name}
                   </option>
                 ))}
               </select>
@@ -198,8 +198,8 @@ export function TrabalhosPage() {
               Local (texto livre)
               <input
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.localTexto}
-                onChange={e => setForm(f => ({ ...f, localTexto: e.target.value }))}
+                value={form.venueText}
+                onChange={e => setForm(f => ({ ...f, venueText: e.target.value }))}
                 placeholder="Ex.: nome da igreja não cadastrada ou outra localidade"
               />
             </label>
@@ -209,8 +209,8 @@ export function TrabalhosPage() {
             Hinários (separar por vírgula)
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.hinarios}
-              onChange={e => setForm(f => ({ ...f, hinarios: e.target.value }))}
+              value={form.hymnals}
+              onChange={e => setForm(f => ({ ...f, hymnals: e.target.value }))}
               placeholder="Ex.: O Cruzeiro, Lua Branca"
             />
           </label>
@@ -259,8 +259,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.criancas}
-                onChange={e => setForm(f => ({ ...f, criancas: e.target.value }))}
+                value={form.children}
+                onChange={e => setForm(f => ({ ...f, children: e.target.value }))}
               />
             </label>
             <label className="text-sm text-slate-700">
@@ -268,8 +268,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.outros}
-                onChange={e => setForm(f => ({ ...f, outros: e.target.value }))}
+                value={form.others}
+                onChange={e => setForm(f => ({ ...f, others: e.target.value }))}
               />
             </label>
           </div>
@@ -277,8 +277,8 @@ export function TrabalhosPage() {
             Descrição de "outros"
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.outrosDescricao}
-              onChange={e => setForm(f => ({ ...f, outrosDescricao: e.target.value }))}
+              value={form.othersDescription}
+              onChange={e => setForm(f => ({ ...f, othersDescription: e.target.value }))}
               placeholder="Ex.: visitantes, músicos convidados, equipe técnica"
             />
           </label>
@@ -290,16 +290,16 @@ export function TrabalhosPage() {
               Lote de Daime (cadastrado)
               <select
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.loteId}
+                value={form.batchId}
                 onChange={e => {
-                  const found = bebidaQuery.data?.find(b => b.id === e.target.value);
-                  setForm(f => ({ ...f, loteId: e.target.value, loteDescricao: found?.descricao ?? '' }));
+                  const found = beverageQuery.data?.find(b => b.id === e.target.value);
+                  setForm(f => ({ ...f, batchId: e.target.value, batchDescription: found?.description ?? '' }));
                 }}
               >
                 <option value="">— Selecionar —</option>
-                {bebidaQuery.data?.map(b => (
+                {beverageQuery.data?.map(b => (
                   <option key={b.id} value={b.id}>
-                    {b.descricao}
+                    {b.description}
                   </option>
                 ))}
               </select>
@@ -310,8 +310,8 @@ export function TrabalhosPage() {
                 type="number"
                 step="0.1"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.quantidadeLitros}
-                onChange={e => setForm(f => ({ ...f, quantidadeLitros: e.target.value }))}
+                value={form.liters}
+                onChange={e => setForm(f => ({ ...f, liters: e.target.value }))}
               />
             </label>
           </div>
@@ -320,8 +320,8 @@ export function TrabalhosPage() {
             Descrição do Daime (texto livre)
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.loteTexto}
-              onChange={e => setForm(f => ({ ...f, loteTexto: e.target.value }))}
+              value={form.batchText}
+              onChange={e => setForm(f => ({ ...f, batchText: e.target.value }))}
               placeholder="Ex.: primeiro grau, 1x1, 2023, Céu do Vale"
             />
           </label>
@@ -333,8 +333,8 @@ export function TrabalhosPage() {
             <textarea
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               rows={3}
-              value={form.anotacoes}
-              onChange={e => setForm(f => ({ ...f, anotacoes: e.target.value }))}
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
             />
           </label>
         </div>
@@ -376,7 +376,7 @@ export function TrabalhosPage() {
         )}
 
         {data?.map(trabalho => {
-          const participantes = totalParticipantes(trabalho.participantes);
+          const attendees = totalAttendees(trabalho.attendees);
           const editPrefill = () => {
             setEditingId(trabalho.id);
             setForm(prefillTrabalhoForm(trabalho));
@@ -389,17 +389,17 @@ export function TrabalhosPage() {
             >
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-slate-900">{trabalho.titulo || 'Trabalho'}</div>
+                  <div className="text-lg font-semibold text-slate-900">{trabalho.title || 'Trabalho'}</div>
                   <div className="text-sm text-slate-600">
                     {formatDate(trabalho.data)} • {formatTime(trabalho.horarioInicio)} •{' '}
-                    {trabalho.localNome || trabalho.localTexto || 'Local a definir'}
+                    {trabalho.venueName || trabalho.venueText || 'Local a definir'}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  {trabalho.bebida?.loteId || trabalho.bebida?.loteDescricao || trabalho.bebida?.loteTexto ? (
+                  {trabalho.beverage?.batchId || trabalho.beverage?.batchDescription || trabalho.beverage?.batchText ? (
                     <div className="text-xs font-medium text-blue-700">
-                      Daime: {trabalho.bebida.loteDescricao || trabalho.bebida.loteId || trabalho.bebida.loteTexto}
-                      {trabalho.bebida.quantidadeLitros ? ` • ${trabalho.bebida.quantidadeLitros} L` : ''}
+                      Daime: {trabalho.beverage.batchDescription || trabalho.beverage.batchId || trabalho.beverage.batchText}
+                      {trabalho.beverage.liters ? ` • ${trabalho.beverage.liters} L` : ''}
                     </div>
                   ) : null}
                   <button
@@ -427,20 +427,20 @@ export function TrabalhosPage() {
               <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
                 <div>
                   <span className="font-medium">Igrejas responsáveis:</span>{' '}
-                  {trabalho.igrejasResponsaveisNomes?.length
-                    ? trabalho.igrejasResponsaveisNomes.join(', ')
-                    : trabalho.igrejasResponsaveisTexto || '—'}
+                  {trabalho.responsibleChurchNames?.length
+                    ? trabalho.responsibleChurchNames.join(', ')
+                    : trabalho.responsibleChurchText || '—'}
                 </div>
                 <div>
                   <span className="font-medium">Hinários:</span>{' '}
-                  {trabalho.hinarios?.length ? trabalho.hinarios.join(', ') : '—'}
+                  {trabalho.hymnals?.length ? trabalho.hymnals.join(', ') : '—'}
                 </div>
                 <div>
                   <span className="font-medium">Participantes:</span>{' '}
-                  {participantes
-                    ? `${participantes.total} (F:${participantes.fardados ?? '0'} H:${participantes.homens} M:${participantes.mulheres}` +
-                      ` C:${participantes.criancas} ` +
-                      `${participantes.outros ? ` O:${participantes.outros}` : ''})`
+                  {attendees
+                    ? `${attendees.total} (F:${attendees.fardados ?? '0'} H:${attendees.homens} M:${attendees.mulheres}` +
+                      ` C:${attendees.children} ` +
+                      `${attendees.others ? ` O:${attendees.others}` : ''})`
                     : '—'}
                 </div>
                 <div>
@@ -450,8 +450,8 @@ export function TrabalhosPage() {
                 </div>
               </div>
 
-              {trabalho.anotacoes ? (
-                <p className="mt-3 text-sm text-slate-600">{trabalho.anotacoes}</p>
+              {trabalho.notes ? (
+                <p className="mt-3 text-sm text-slate-600">{trabalho.notes}</p>
               ) : null}
             </div>
           );

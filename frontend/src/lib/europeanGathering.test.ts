@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildEncontroEuropeuRoomAvailabilitySnapshot,
+  buildEuropeanGatheringRoomAvailabilitySnapshot,
   statusBlocksRoomCapacity
-} from './encontroEuropeu';
+} from './europeanGathering';
 
-describe('encontroEuropeu room availability helpers', () => {
+describe('europeanGathering room availability helpers', () => {
   it('counts only active reservation statuses as occupying a room', () => {
     expect(statusBlocksRoomCapacity('pending')).toBe(true);
     expect(statusBlocksRoomCapacity('under-review')).toBe(true);
@@ -17,7 +17,7 @@ describe('encontroEuropeu room availability helpers', () => {
 
   it('builds room availability from stored aggregate records', () => {
     expect(
-      buildEncontroEuropeuRoomAvailabilitySnapshot([
+      buildEuropeanGatheringRoomAvailabilitySnapshot([
         { id: 'Cedro', reserved: 2, available: 4 },
         { id: 'Luce', reserved: 8, available: 0 }
       ])
@@ -32,7 +32,7 @@ describe('encontroEuropeu room availability helpers', () => {
 
   it('ignores invalid legacy room ids in aggregate snapshots', () => {
     expect(
-      buildEncontroEuropeuRoomAvailabilitySnapshot([
+      buildEuropeanGatheringRoomAvailabilitySnapshot([
         { id: 'Au', reserved: 1, available: 0 },
         { id: 'Cedro', reserved: 1, available: 5 }
       ])

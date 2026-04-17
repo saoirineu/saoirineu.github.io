@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { fetchIgrejas } from '../lib/trabalhos';
-import { fetchUsuario, upsertUsuario } from '../lib/usuarios';
+import { fetchChurches } from '../lib/trabalhos';
+import { fetchUser, upsertUser } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { buildPerfilForm, buildUsuarioPayload, initialPerfilForm, type PerfilFormState } from './perfil/form';
@@ -47,7 +47,7 @@ const copyByLocale: Record<'pt' | 'en' | 'es' | 'it', {
   }
 };
 
-export default function PerfilPage() {
+export default function ProfilePage() {
   const { user } = useAuth();
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
@@ -56,17 +56,17 @@ export default function PerfilPage() {
   const [form, setForm] = useState<PerfilFormState>(initialPerfilForm);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const igrejasQuery = useQuery({ queryKey: ['igrejas'], queryFn: fetchIgrejas });
-  const perfilQuery = useQuery({
-    queryKey: ['usuario', user?.uid],
-    queryFn: () => fetchUsuario(user!.uid),
+  const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
+  const profileQuery = useQuery({
+    queryKey: ['user', user?.uid],
+    queryFn: () => fetchUser(user!.uid),
     enabled: !!user
   });
 
   useEffect(() => {
     if (!user) return;
-    setForm(buildPerfilForm(user, perfilQuery.data));
-  }, [perfilQuery.data, user]);
+    setForm(buildPerfilForm(user, profileQuery.data));
+  }, [profileQuery.data, user]);
 
   const setField = <K extends keyof PerfilFormState>(field: K, value: PerfilFormState[K]) => {
     setForm(current => ({ ...current, [field]: value }));
@@ -77,10 +77,10 @@ export default function PerfilPage() {
       if (!user) throw new Error(copy.sessionExpired);
       setErrorMsg('');
 
-      return upsertUsuario(user.uid, buildUsuarioPayload(user, form));
+      return upsertUser(user.uid, buildUsuarioPayload(user, form));
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['usuario', user?.uid] });
+      qc.invalidateQueries({ queryKey: ['user', user?.uid] });
     },
     onError: err => {
       const msg = err instanceof Error ? err.message : copy.saveError;
@@ -118,9 +118,9 @@ export default function PerfilPage() {
           userPhotoURL={user.photoURL}
         />
 
-        <PerfilIgrejasSection copy={copy.sections} form={form} igrejas={igrejasQuery.data} setField={setField} />
+        <PerfilIgrejasSection copy={copy.sections} form={form} igrejas={churchesQuery.data} setField={setField} />
 
-        <PerfilFardamentoSection copy={copy.sections} form={form} igrejas={igrejasQuery.data} setField={setField} />
+        <PerfilFardamentoSection copy={copy.sections} form={form} igrejas={churchesQuery.data} setField={setField} />
 
         <PerfilPapeisSection copy={copy.sections} form={form} setField={setField} />
 

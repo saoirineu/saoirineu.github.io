@@ -2,34 +2,34 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
-  createIgreja,
-  deleteIgreja,
-  fetchIgrejas,
+  createChurch,
+  deleteChurch,
+  fetchChurches,
   fetchTrabalhos,
-  updateIgreja
+  updateChurch
 } from '../lib/trabalhos';
-import { fetchUsuarios } from '../lib/usuarios';
+import { fetchUsers } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
-import { IgrejaFormSection, IgrejasListSection, type ChurchesCopy } from './churches/ChurchesSections';
+import { ChurchFormSection, ChurchesListSection, type ChurchesCopy } from './churches/ChurchesSections';
 import {
-  buildIgrejaPayload,
-  buildUsoIgrejasMap,
-  initialIgrejaForm,
-  prefillIgrejaForm,
-  sortIgrejas,
-  type IgrejaFormState
+  buildChurchPayload,
+  buildChurchUsageMap,
+  initialChurchForm,
+  prefillChurchForm,
+  sortChurches,
+  type ChurchFormState
 } from './churches/form';
 
 export default function ChurchesPage() {
   const { user } = useAuth();
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
-  const igrejasQuery = useQuery({ queryKey: ['igrejas'], queryFn: fetchIgrejas });
+  const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
   const trabalhosQuery = useQuery({ queryKey: ['trabalhos'], queryFn: fetchTrabalhos });
-  const usuariosQuery = useQuery({ queryKey: ['usuarios'], queryFn: fetchUsuarios });
+  const usersQuery = useQuery({ queryKey: ['users'], queryFn: fetchUsers });
 
-  const [form, setForm] = useState<IgrejaFormState>(initialIgrejaForm);
+  const [form, setForm] = useState<ChurchFormState>(initialChurchForm);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const copyByLocale: Record<'pt' | 'en' | 'es' | 'it', {
@@ -57,26 +57,26 @@ export default function ChurchesPage() {
 
   const copy = copyByLocale[locale];
 
-  const setField = <K extends keyof IgrejaFormState>(field: K, value: IgrejaFormState[K]) => {
+  const setField = <K extends keyof ChurchFormState>(field: K, value: ChurchFormState[K]) => {
     setForm(current => ({ ...current, [field]: value }));
   };
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error(copy.loginToCreate);
-      if (!form.nome.trim()) throw new Error(copy.requiredName);
+      if (!form.name.trim()) throw new Error(copy.requiredName);
 
-      const payload = buildIgrejaPayload(form);
+      const payload = buildChurchPayload(form);
 
       if (editingId) {
-        return updateIgreja(editingId, payload);
+        return updateChurch(editingId, payload);
       }
 
-      return createIgreja(payload);
+      return createChurch(payload);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['igrejas'] });
-      setForm(initialIgrejaForm);
+      await qc.invalidateQueries({ queryKey: ['churches'] });
+      setForm(initialChurchForm);
       setEditingId(null);
     }
   });
@@ -84,21 +84,21 @@ export default function ChurchesPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error(copy.loginToDelete);
-      return deleteIgreja(id);
+      return deleteChurch(id);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['igrejas'] });
+      await qc.invalidateQueries({ queryKey: ['churches'] });
       if (editingId) {
         setEditingId(null);
-        setForm(initialIgrejaForm);
+        setForm(initialChurchForm);
       }
     }
   });
 
-  const igrejasOrdenadas = useMemo(() => sortIgrejas(igrejasQuery.data ?? []), [igrejasQuery.data]);
-  const usoIgrejas = useMemo(
-    () => buildUsoIgrejasMap(trabalhosQuery.data ?? [], usuariosQuery.data ?? []),
-    [trabalhosQuery.data, usuariosQuery.data]
+  const sortedChurches = useMemo(() => sortChurches(churchesQuery.data ?? []), [churchesQuery.data]);
+  const churchUsage = useMemo(
+    () => buildChurchUsageMap(trabalhosQuery.data ?? [], usersQuery.data ?? []),
+    [trabalhosQuery.data, usersQuery.data]
   );
 
   return (
@@ -108,7 +108,7 @@ export default function ChurchesPage() {
         <p className="text-sm text-slate-600">{copy.intro}</p>
       </div>
 
-      <IgrejaFormSection
+      <ChurchFormSection
         copy={copy.sections}
         editingId={editingId}
         errorMessage={mutation.error?.message}
@@ -117,18 +117,18 @@ export default function ChurchesPage() {
         mutation={mutation}
         onCancelEdit={() => {
           setEditingId(null);
-          setForm(initialIgrejaForm);
+          setForm(initialChurchForm);
         }}
         onSubmit={() => mutation.mutate()}
         setField={setField}
         userPresent={!!user}
       />
 
-      <IgrejasListSection
+      <ChurchesListSection
         copy={copy.sections}
         deleteMutation={deleteMutation}
-        igrejas={igrejasOrdenadas}
-        isLoading={igrejasQuery.isLoading}
+        churches={sortedChurches}
+        isLoading={churchesQuery.isLoading}
         onDelete={id => {
           if (!window.confirm(copy.confirmDelete)) {
             return;
@@ -136,11 +136,11 @@ export default function ChurchesPage() {
 
           deleteMutation.mutate(id);
         }}
-        onEdit={igreja => {
-          setEditingId(igreja.id);
-          setForm(prefillIgrejaForm(igreja));
+        onEdit={church => {
+          setEditingId(church.id);
+          setForm(prefillChurchForm(church));
         }}
-        usoIgrejas={usoIgrejas}
+        churchUsage={churchUsage}
       />
     </div>
   );

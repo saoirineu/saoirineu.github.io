@@ -1,8 +1,8 @@
-import type { IgrejaInfo } from '../../lib/trabalhos';
+import type { ChurchInfo } from '../../lib/trabalhos';
 import { avatarFallback, type PerfilFormFieldSetter, type PerfilFormState } from './form';
 
-type IgrejasProps = {
-  igrejas?: IgrejaInfo[];
+type ChurchesProps = {
+  igrejas?: ChurchInfo[];
 };
 
 type BaseSectionProps = {
@@ -49,8 +49,8 @@ export type PerfilSectionsCopy = {
   rolesHint: string;
 };
 
-function selectIgrejaName(igrejas: IgrejaInfo[] | undefined, id: string) {
-  return igrejas?.find(igreja => igreja.id === id)?.nome ?? '';
+function selectChurchName(churches: ChurchInfo[] | undefined, id: string) {
+  return churches?.find(church => church.id === id)?.name ?? '';
 }
 
 export function PerfilDadosPessoaisSection({
@@ -96,24 +96,24 @@ export function PerfilDadosPessoaisSection({
             {copy.city}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.cidade}
-              onChange={event => setField('cidade', event.target.value)}
+              value={form.city}
+              onChange={event => setField('city', event.target.value)}
             />
           </label>
           <label className="text-sm text-slate-700">
             {copy.state}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.estado}
-              onChange={event => setField('estado', event.target.value)}
+              value={form.state}
+              onChange={event => setField('state', event.target.value)}
             />
           </label>
           <label className="text-sm text-slate-700">
             {copy.country}
             <input
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.pais}
-              onChange={event => setField('pais', event.target.value)}
+              value={form.country}
+              onChange={event => setField('country', event.target.value)}
             />
           </label>
         </div>
@@ -147,7 +147,7 @@ export function PerfilDadosPessoaisSection({
   );
 }
 
-export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSectionProps & IgrejasProps) {
+export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSectionProps & ChurchesProps) {
   return (
     <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
       <div className="space-y-3">
@@ -155,17 +155,17 @@ export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSect
           {copy.currentChurchRegistered}
           <select
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.igrejaAtualId}
+            value={form.currentChurchId}
             onChange={event => {
-              const igrejaAtualId = event.target.value;
-              setField('igrejaAtualId', igrejaAtualId);
-              setField('igrejaAtualNome', selectIgrejaName(igrejas, igrejaAtualId));
+              const currentChurchId = event.target.value;
+              setField('currentChurchId', currentChurchId);
+              setField('currentChurchName', selectChurchName(igrejas, currentChurchId));
             }}
           >
             <option value="">{copy.selectPlaceholder}</option>
-            {igrejas?.map(igreja => (
-              <option key={igreja.id} value={igreja.id}>
-                {igreja.nome}
+            {igrejas?.map(church => (
+              <option key={church.id} value={church.id}>
+                {church.name}
               </option>
             ))}
           </select>
@@ -174,8 +174,8 @@ export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSect
           {copy.currentChurchText}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.igrejaAtualNome}
-            onChange={event => setField('igrejaAtualNome', event.target.value)}
+            value={form.currentChurchName}
+            onChange={event => setField('currentChurchName', event.target.value)}
             placeholder={copy.notRegisteredYet}
           />
         </label>
@@ -185,8 +185,8 @@ export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSect
           {copy.originChurchText}
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.igrejaOrigemNome}
-            onChange={event => setField('igrejaOrigemNome', event.target.value)}
+            value={form.originChurchName}
+            onChange={event => setField('originChurchName', event.target.value)}
             placeholder={copy.originChurchPlaceholder}
           />
         </label>
@@ -195,8 +195,8 @@ export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSect
           <textarea
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             rows={3}
-            value={form.observacoes}
-            onChange={event => setField('observacoes', event.target.value)}
+            value={form.observations}
+            onChange={event => setField('observations', event.target.value)}
           />
         </label>
       </div>
@@ -204,7 +204,7 @@ export function PerfilIgrejasSection({ copy, form, igrejas, setField }: BaseSect
   );
 }
 
-export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseSectionProps & IgrejasProps) {
+export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseSectionProps & ChurchesProps) {
   return (
     <div className="space-y-3 rounded-lg bg-slate-100 p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -218,9 +218,9 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
               const isChecked = event.target.checked;
               setField('fardado', isChecked);
               if (!isChecked) {
-                setField('padrinhoMadrinha', false);
-                setField('padrinhoIgrejasIds', []);
-                setField('padrinhoIgrejasTexto', '');
+                setField('isPadrinho', false);
+                setField('padrinhoChurchIds', []);
+                setField('padrinhoChurchesText', '');
               }
             }}
           />
@@ -231,9 +231,9 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
             id="padrinho"
             type="checkbox"
             className="h-4 w-4 rounded border-slate-300 text-slate-900"
-            checked={form.padrinhoMadrinha}
+            checked={form.isPadrinho}
             disabled={!form.fardado}
-            onChange={event => setField('padrinhoMadrinha', event.target.checked)}
+            onChange={event => setField('isPadrinho', event.target.checked)}
           />
           {copy.iAmSponsor}
         </label>
@@ -248,16 +248,16 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
                 <input
                   type="date"
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.fardamentoData}
-                  onChange={event => setField('fardamentoData', event.target.value)}
+                  value={form.fardamentoDate}
+                  onChange={event => setField('fardamentoDate', event.target.value)}
                 />
               </label>
               <label className="text-sm text-slate-700">
                 {copy.fardamentoPlace}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.fardamentoLocal}
-                  onChange={event => setField('fardamentoLocal', event.target.value)}
+                  value={form.fardamentoVenue}
+                  onChange={event => setField('fardamentoVenue', event.target.value)}
                   placeholder={copy.fardamentoPlacePlaceholder}
                 />
               </label>
@@ -265,8 +265,8 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
                 {copy.whoFardouMe}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.fardadorNome}
-                  onChange={event => setField('fardadorNome', event.target.value)}
+                  value={form.fardadorName}
+                  onChange={event => setField('fardadorName', event.target.value)}
                   placeholder={copy.whoFardouMePlaceholder}
                 />
               </label>
@@ -276,17 +276,17 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
                 {copy.fardamentoChurchRegistered}
                 <select
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.fardamentoIgrejaId}
+                  value={form.fardamentoChurchId}
                   onChange={event => {
-                    const fardamentoIgrejaId = event.target.value;
-                    setField('fardamentoIgrejaId', fardamentoIgrejaId);
-                    setField('fardamentoIgrejaNome', selectIgrejaName(igrejas, fardamentoIgrejaId));
+                    const fardamentoChurchId = event.target.value;
+                    setField('fardamentoChurchId', fardamentoChurchId);
+                    setField('fardamentoChurchName', selectChurchName(igrejas, fardamentoChurchId));
                   }}
                 >
                   <option value="">{copy.selectPlaceholder}</option>
-                  {igrejas?.map(igreja => (
-                    <option key={igreja.id} value={igreja.id}>
-                      {igreja.nome}
+                  {igrejas?.map(church => (
+                    <option key={church.id} value={church.id}>
+                      {church.name}
                     </option>
                   ))}
                 </select>
@@ -295,8 +295,8 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
                 {copy.fardamentoChurchText}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.fardamentoIgrejaNome}
-                  onChange={event => setField('fardamentoIgrejaNome', event.target.value)}
+                  value={form.fardamentoChurchName}
+                  onChange={event => setField('fardamentoChurchName', event.target.value)}
                   placeholder={copy.notRegisteredYet}
                 />
               </label>
@@ -312,23 +312,23 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
             </div>
           </div>
 
-          {form.padrinhoMadrinha ? (
+          {form.isPadrinho ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm text-slate-700">
                 {copy.sponsorChurchesRegistered}
                 <select
                   multiple
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.padrinhoIgrejasIds}
+                  value={form.padrinhoChurchIds}
                   onChange={event => {
                     const selected = Array.from(event.target.selectedOptions).map(option => option.value);
-                    setField('padrinhoIgrejasIds', selected);
+                    setField('padrinhoChurchIds', selected);
                   }}
                   size={Math.min(igrejas?.length ?? 4, 6)}
                 >
-                  {igrejas?.map(igreja => (
-                    <option key={igreja.id} value={igreja.id}>
-                      {igreja.nome}
+                  {igrejas?.map(church => (
+                    <option key={church.id} value={church.id}>
+                      {church.name}
                     </option>
                   ))}
                 </select>
@@ -337,8 +337,8 @@ export function PerfilFardamentoSection({ copy, form, igrejas, setField }: BaseS
                 {copy.sponsorChurchesText}
                 <input
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.padrinhoIgrejasTexto}
-                  onChange={event => setField('padrinhoIgrejasTexto', event.target.value)}
+                  value={form.padrinhoChurchesText}
+                  onChange={event => setField('padrinhoChurchesText', event.target.value)}
                   placeholder={copy.sponsorChurchesPlaceholder}
                 />
               </label>
@@ -357,8 +357,8 @@ export function PerfilPapeisSection({ copy, form, setField }: BaseSectionProps) 
         {copy.roles}
         <input
           className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          value={form.papeisTexto}
-          onChange={event => setField('papeisTexto', event.target.value)}
+          value={form.doctrineRolesText}
+          onChange={event => setField('doctrineRolesText', event.target.value)}
           placeholder={copy.rolesPlaceholder}
         />
       </label>

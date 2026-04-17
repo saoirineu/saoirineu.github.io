@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildEncontroEuropeuPayload,
+  buildEuropeanGatheringPayload,
   calculateContribution,
   calculateNightCount,
-  initialEncontroEuropeuFormValues,
+  initialEuropeanGatheringFormValues,
   resolveInitialLocale,
   suggestedCheckInDate,
   suggestedCheckOutDate,
-  validateEncontroEuropeuForm
+  validateEuropeanGatheringForm
 } from './form';
 
-describe('encontro europeu helpers', () => {
+describe('european gathering helpers', () => {
   it('resolves locale from browser language', () => {
     expect(resolveInitialLocale('it-IT')).toBe('it');
     expect(resolveInitialLocale('en-US')).toBe('en');
@@ -42,16 +42,16 @@ describe('encontro europeu helpers', () => {
   });
 
   it('starts with empty check-in and check-out values but keeps suggested september dates', () => {
-    expect(initialEncontroEuropeuFormValues.checkIn).toBe('');
-    expect(initialEncontroEuropeuFormValues.checkOut).toBe('');
+    expect(initialEuropeanGatheringFormValues.checkIn).toBe('');
+    expect(initialEuropeanGatheringFormValues.checkOut).toBe('');
     expect(suggestedCheckInDate).toBe('2026-09-10');
     expect(suggestedCheckOutDate).toBe('2026-09-16');
   });
 
   it('builds normalized payload', () => {
-    const payload = buildEncontroEuropeuPayload({
+    const payload = buildEuropeanGatheringPayload({
       values: {
-        ...initialEncontroEuropeuFormValues,
+        ...initialEuropeanGatheringFormValues,
         firstName: '  Maria ',
         lastName: ' Silva ',
         country: ' Italia ',
@@ -85,11 +85,11 @@ describe('encontro europeu helpers', () => {
   });
 
   it('validates required fields and date logic', () => {
-    expect(validateEncontroEuropeuForm(initialEncontroEuropeuFormValues)).toBe('firstName');
+    expect(validateEuropeanGatheringForm(initialEuropeanGatheringFormValues)).toBe('firstName');
 
     expect(
-      validateEncontroEuropeuForm({
-        ...initialEncontroEuropeuFormValues,
+      validateEuropeanGatheringForm({
+        ...initialEuropeanGatheringFormValues,
         firstName: 'Maria',
         lastName: 'Silva',
         country: 'Italia',

@@ -12,30 +12,30 @@ import {
   asStringArray,
   removeUndefinedDeep
 } from './firestoreData';
-import { validateEncontroEuropeuUploadFile } from './encontroEuropeuUpload';
+import { validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
 
-export type EncontroEuropeuRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
+export type EuropeanGatheringRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
 
-export type EncontroEuropeuRoomOption = {
+export type EuropeanGatheringRoomOption = {
   name: string;
   capacity: number;
 };
 
-export type EncontroEuropeuRoomAvailability = EncontroEuropeuRoomOption & {
+export type EuropeanGatheringRoomAvailability = EuropeanGatheringRoomOption & {
   reserved: number;
   available: number;
 };
 
-type EncontroEuropeuDocumentKey = 'identityDocument' | 'paymentProof' | 'consentDocument';
+type EuropeanGatheringDocumentKey = 'identityDocument' | 'paymentProof' | 'consentDocument';
 
-export type EncontroEuropeuUploadableDocuments = Partial<Record<EncontroEuropeuDocumentKey, File | null>>;
+export type EuropeanGatheringUploadableDocuments = Partial<Record<EuropeanGatheringDocumentKey, File | null>>;
 
-export type EncontroEuropeuStoredDocument = {
+export type EuropeanGatheringStoredDocument = {
   name: string;
   path: string;
 };
 
-export type EncontroEuropeuRegistrationInput = {
+export type EuropeanGatheringRegistrationInput = {
   locale: 'pt' | 'en' | 'es' | 'it';
   firstName: string;
   lastName: string;
@@ -67,7 +67,7 @@ export type EncontroEuropeuRegistrationInput = {
   status: 'pending';
 };
 
-export type EncontroEuropeuRegistrationRecord = {
+export type EuropeanGatheringRegistrationRecord = {
   id: string;
   locale: 'pt' | 'en' | 'es' | 'it';
   firstName: string;
@@ -97,14 +97,14 @@ export type EncontroEuropeuRegistrationRecord = {
     extras: number;
     total: number;
   };
-  status: EncontroEuropeuRegistrationStatus;
+  status: EuropeanGatheringRegistrationStatus;
   submittedAt?: Date | null;
 };
 
 const registrationsRef = collection(db, 'encontroEuropeuInscricoes');
 const roomAvailabilityRef = collection(db, 'encontroEuropeuQuartos');
 
-export const encontroEuropeuRoomOptions: EncontroEuropeuRoomOption[] = [
+export const europeanGatheringRoomOptions: EuropeanGatheringRoomOption[] = [
   { name: 'Cedro', capacity: 6 },
   { name: 'Luce', capacity: 8 },
   { name: 'Aurora', capacity: 10 },
@@ -114,11 +114,11 @@ export const encontroEuropeuRoomOptions: EncontroEuropeuRoomOption[] = [
   { name: 'Stella', capacity: 18 }
 ];
 
-const roomCapacityMap = new Map(encontroEuropeuRoomOptions.map(room => [room.name, room.capacity]));
+const roomCapacityMap = new Map(europeanGatheringRoomOptions.map(room => [room.name, room.capacity]));
 
-const roomBlockingStatuses: EncontroEuropeuRegistrationStatus[] = ['pending', 'under-review', 'approved'];
+const roomBlockingStatuses: EuropeanGatheringRegistrationStatus[] = ['pending', 'under-review', 'approved'];
 
-function normalizeStatus(value: unknown): EncontroEuropeuRegistrationStatus {
+function normalizeStatus(value: unknown): EuropeanGatheringRegistrationStatus {
   switch (value) {
     case 'approved':
       return 'approved';
@@ -149,7 +149,7 @@ function hasKnownRoomCapacity(roomName?: string | null): roomName is string {
   return typeof roomName === 'string' && getRoomCapacity(roomName) != null;
 }
 
-export function statusBlocksRoomCapacity(status: EncontroEuropeuRegistrationStatus) {
+export function statusBlocksRoomCapacity(status: EuropeanGatheringRegistrationStatus) {
   return roomBlockingStatuses.includes(status);
 }
 
@@ -165,12 +165,12 @@ async function deleteStoredDocumentIfPresent(path: string) {
   }
 }
 
-export function buildEncontroEuropeuRoomAvailabilitySnapshot(
+export function buildEuropeanGatheringRoomAvailabilitySnapshot(
   records: Array<{ id: string; capacity?: unknown; reserved?: unknown; available?: unknown }>
 ) {
   const byId = new Map(records.map(record => [record.id, record]));
 
-  return encontroEuropeuRoomOptions.map(room => {
+  return europeanGatheringRoomOptions.map(room => {
     const record = byId.get(room.name);
     const reserved = Math.max(0, Math.min(room.capacity, asOptionalNumber(record?.reserved) ?? 0));
     const available = Math.max(0, Math.min(room.capacity, asOptionalNumber(record?.available) ?? room.capacity - reserved));
@@ -206,12 +206,12 @@ async function adjustRoomAvailability(roomName: string, delta: number, transacti
   });
 }
 
-function buildDocumentPath(registrationId: string, key: EncontroEuropeuDocumentKey, fileName: string) {
+function buildDocumentPath(registrationId: string, key: EuropeanGatheringDocumentKey, fileName: string) {
   return `encontroEuropeuInscricoes/${registrationId}/${key}-${sanitizeFileName(fileName)}`;
 }
 
-export async function uploadEncontroEuropeuDocuments(args: { documents: EncontroEuropeuUploadableDocuments; registrationId: string }) {
-  const uploadedFiles: EncontroEuropeuStoredDocument[] = [];
+export async function uploadEuropeanGatheringDocuments(args: { documents: EuropeanGatheringUploadableDocuments; registrationId: string }) {
+  const uploadedFiles: EuropeanGatheringStoredDocument[] = [];
 
   try {
     const entries = await Promise.all(
@@ -220,7 +220,7 @@ export async function uploadEncontroEuropeuDocuments(args: { documents: Encontro
           return null;
         }
 
-        const validationError = validateEncontroEuropeuUploadFile(file);
+        const validationError = validateEuropeanGatheringUploadFile(file);
         if (validationError === 'invalid-type') {
           throw new Error('Only PDF, JPG, and PNG files are allowed.');
         }
@@ -229,7 +229,7 @@ export async function uploadEncontroEuropeuDocuments(args: { documents: Encontro
           throw new Error('Uploaded files must be 10 MB or smaller.');
         }
 
-        const storagePath = buildDocumentPath(args.registrationId, key as EncontroEuropeuDocumentKey, file.name);
+        const storagePath = buildDocumentPath(args.registrationId, key as EuropeanGatheringDocumentKey, file.name);
         const storageRef = ref(storage, storagePath);
 
         await uploadBytes(storageRef, file, { contentType: file.type || undefined });
@@ -239,21 +239,21 @@ export async function uploadEncontroEuropeuDocuments(args: { documents: Encontro
       })
     );
 
-    return Object.fromEntries(entries.filter((entry): entry is readonly [string, EncontroEuropeuStoredDocument] => entry !== null));
+    return Object.fromEntries(entries.filter((entry): entry is readonly [string, EuropeanGatheringStoredDocument] => entry !== null));
   } catch (error) {
     await Promise.all(uploadedFiles.map(file => deleteStoredDocumentIfPresent(file.path).catch(() => undefined)));
     throw error;
   }
 }
 
-function mapRegistration(id: string, value: unknown): EncontroEuropeuRegistrationRecord {
+function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrationRecord {
   const data = asRecord(value);
   const contribution = asRecord(data.contribution);
   const submittedAt = asOptionalTimestamp(data.submittedAt);
 
   return {
     id,
-    locale: (asOptionalString(data.locale) as EncontroEuropeuRegistrationRecord['locale']) ?? 'pt',
+    locale: (asOptionalString(data.locale) as EuropeanGatheringRegistrationRecord['locale']) ?? 'pt',
     firstName: asOptionalString(data.firstName) ?? '',
     lastName: asOptionalString(data.lastName) ?? '',
     country: asOptionalString(data.country) ?? '',
@@ -262,7 +262,7 @@ function mapRegistration(id: string, value: unknown): EncontroEuropeuRegistratio
     isFardado: asOptionalBoolean(data.isFardado) ?? false,
     isIcefluMember: asOptionalBoolean(data.isIcefluMember) ?? false,
     isNovice: asOptionalBoolean(data.isNovice) ?? false,
-    attendanceMode: (asOptionalString(data.attendanceMode) as EncontroEuropeuRegistrationRecord['attendanceMode']) ?? 'lodging',
+    attendanceMode: (asOptionalString(data.attendanceMode) as EuropeanGatheringRegistrationRecord['attendanceMode']) ?? 'lodging',
     checkIn: asOptionalString(data.checkIn),
     checkOut: asOptionalString(data.checkOut),
     selectedWorks: asStringArray(data.selectedWorks) ?? [],
@@ -286,14 +286,14 @@ function mapRegistration(id: string, value: unknown): EncontroEuropeuRegistratio
   };
 }
 
-export async function createEncontroEuropeuRegistration(args: {
-  documents?: EncontroEuropeuUploadableDocuments;
-  input: EncontroEuropeuRegistrationInput;
+export async function createEuropeanGatheringRegistration(args: {
+  documents?: EuropeanGatheringUploadableDocuments;
+  input: EuropeanGatheringRegistrationInput;
 }) {
   const registrationRef = doc(registrationsRef);
   const registrationId = registrationRef.id;
   const desiredRoom = args.input.attendanceMode === 'lodging' ? args.input.roomNumber?.trim() || undefined : undefined;
-  const uploadedDocuments = await uploadEncontroEuropeuDocuments({
+  const uploadedDocuments = await uploadEuropeanGatheringDocuments({
     registrationId,
     documents: args.documents ?? {}
   });
@@ -332,20 +332,20 @@ export async function createEncontroEuropeuRegistration(args: {
   }
 }
 
-export async function fetchEncontroEuropeuRegistrations() {
+export async function fetchEuropeanGatheringRegistrations() {
   const snapshot = await getDocs(registrationsRef);
   return snapshot.docs.map(docSnap => mapRegistration(docSnap.id, docSnap.data()));
 }
 
-export async function fetchEncontroEuropeuRoomAvailability() {
+export async function fetchEuropeanGatheringRoomAvailability() {
   const snapshot = await getDocs(roomAvailabilityRef);
-  return buildEncontroEuropeuRoomAvailabilitySnapshot(
+  return buildEuropeanGatheringRoomAvailabilitySnapshot(
     snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
   );
 }
 
-export async function rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(
-  registrations: Array<Pick<EncontroEuropeuRegistrationRecord, 'roomNumber' | 'status'>>
+export async function rebuildEuropeanGatheringRoomAvailabilityFromRegistrations(
+  registrations: Array<Pick<EuropeanGatheringRegistrationRecord, 'roomNumber' | 'status'>>
 ) {
   const batch = writeBatch(db);
   const reservedByRoom = new Map<string, number>();
@@ -358,7 +358,7 @@ export async function rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(
     reservedByRoom.set(registration.roomNumber, (reservedByRoom.get(registration.roomNumber) ?? 0) + 1);
   });
 
-  encontroEuropeuRoomOptions.forEach(room => {
+  europeanGatheringRoomOptions.forEach(room => {
     const reserved = Math.min(room.capacity, reservedByRoom.get(room.name) ?? 0);
 
     batch.set(doc(roomAvailabilityRef, room.name), {
@@ -372,11 +372,11 @@ export async function rebuildEncontroEuropeuRoomAvailabilityFromRegistrations(
   await batch.commit();
 }
 
-export async function resolveEncontroEuropeuDocumentUrl(path: string) {
+export async function resolveEuropeanGatheringDocumentUrl(path: string) {
   return getDownloadURL(ref(storage, path));
 }
 
-export async function updateEncontroEuropeuRegistrationStatus(args: { id: string; status: EncontroEuropeuRegistrationStatus }) {
+export async function updateEuropeanGatheringRegistrationStatus(args: { id: string; status: EuropeanGatheringRegistrationStatus }) {
   const registrationRef = doc(registrationsRef, args.id);
 
   await runTransaction(db, async transaction => {
@@ -404,8 +404,8 @@ export async function updateEncontroEuropeuRegistrationStatus(args: { id: string
   });
 }
 
-export async function deleteEncontroEuropeuRegistration(registration: Pick<
-  EncontroEuropeuRegistrationRecord,
+export async function deleteEuropeanGatheringRegistration(registration: Pick<
+  EuropeanGatheringRegistrationRecord,
   'id' | 'identityDocumentPath' | 'paymentProofPath' | 'consentDocumentPath' | 'roomNumber' | 'status'
 >) {
   const documentPaths = [registration.identityDocumentPath, registration.paymentProofPath, registration.consentDocumentPath].filter(

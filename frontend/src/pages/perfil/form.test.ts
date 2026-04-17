@@ -15,18 +15,18 @@ describe('perfil form helpers', () => {
       uid: 'user-1',
       displayName: 'Nome Perfil',
       email: 'perfil@example.com',
-      igrejaAtualId: 'igreja-1',
-      igrejaAtualNome: 'Igreja Atual',
-      padrinhoIgrejasIds: ['i1'],
-      padrinhoIgrejasNomes: ['Igreja Madrinha'],
-      papeisDoutrina: ['fiscal', 'apoio']
+      currentChurchId: 'igreja-1',
+      currentChurchName: 'Igreja Atual',
+      padrinhoChurchIds: ['i1'],
+      padrinhoChurchNames: ['Igreja Madrinha'],
+      doctrineRoles: ['fiscal', 'apoio']
     });
 
     expect(form.displayName).toBe('Nome Perfil');
     expect(form.email).toBe('auth@example.com');
-    expect(form.igrejaAtualNome).toBe('Igreja Atual');
-    expect(form.padrinhoIgrejasTexto).toBe('Igreja Madrinha');
-    expect(form.papeisTexto).toBe('fiscal, apoio');
+    expect(form.currentChurchName).toBe('Igreja Atual');
+    expect(form.padrinhoChurchesText).toBe('Igreja Madrinha');
+    expect(form.doctrineRolesText).toBe('fiscal, apoio');
   });
 
   it('builds payload respecting fardamento and padrinho rules', () => {
@@ -35,36 +35,36 @@ describe('perfil form helpers', () => {
       displayName: 'Nome Form',
       email: '',
       fardado: true,
-      fardamentoData: '2020-01-01',
-      fardamentoIgrejaId: 'igreja-farda',
-      padrinhoMadrinha: true,
-      padrinhoIgrejasIds: ['i1', ''],
-      padrinhoIgrejasTexto: 'Igreja 1, Igreja 2',
-      papeisTexto: 'fiscal, apoio',
-      observacoes: 'Observacao'
+      fardamentoDate: '2020-01-01',
+      fardamentoChurchId: 'igreja-farda',
+      isPadrinho: true,
+      padrinhoChurchIds: ['i1', ''],
+      padrinhoChurchesText: 'Igreja 1, Igreja 2',
+      doctrineRolesText: 'fiscal, apoio',
+      observations: 'Observacao'
     });
 
     expect(payload.uid).toBe('user-1');
     expect(payload.email).toBe('auth@example.com');
     expect(payload.fardado).toBe(true);
-    expect(payload.padrinhoMadrinha).toBe(true);
-    expect(payload.padrinhoIgrejasIds).toEqual(['i1']);
-    expect(payload.padrinhoIgrejasNomes).toEqual(['Igreja 1', 'Igreja 2']);
-    expect(payload.papeisDoutrina).toEqual(['fiscal', 'apoio']);
+    expect(payload.isPadrinho).toBe(true);
+    expect(payload.padrinhoChurchIds).toEqual(['i1']);
+    expect(payload.padrinhoChurchNames).toEqual(['Igreja 1', 'Igreja 2']);
+    expect(payload.doctrineRoles).toEqual(['fiscal', 'apoio']);
   });
 
   it('drops dependent fields when user is not fardado', () => {
     const payload = buildUsuarioPayload(user, {
       ...initialPerfilForm,
-      padrinhoMadrinha: true,
-      padrinhoIgrejasIds: ['i1'],
-      padrinhoIgrejasTexto: 'Igreja 1'
+      isPadrinho: true,
+      padrinhoChurchIds: ['i1'],
+      padrinhoChurchesText: 'Igreja 1'
     });
 
     expect(payload.fardado).toBe(false);
-    expect(payload.padrinhoMadrinha).toBe(false);
-    expect(payload.padrinhoIgrejasIds).toBeUndefined();
-    expect(payload.padrinhoIgrejasNomes).toBeUndefined();
+    expect(payload.isPadrinho).toBe(false);
+    expect(payload.padrinhoChurchIds).toBeUndefined();
+    expect(payload.padrinhoChurchNames).toBeUndefined();
   });
 
   it('creates avatar fallback url from name or email', () => {

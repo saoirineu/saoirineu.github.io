@@ -16,11 +16,11 @@ const stableLinks: Array<{ to: string; key: NavCopyKey }> = [
 ];
 
 const devLinks: Array<{ to: string; key: NavCopyKey }> = [
-  { to: '/perfil', key: 'profile' },
-  { to: '/igrejas', key: 'churches' },
-  { to: '/pessoas', key: 'people' },
-  { to: '/hinarios', key: 'hymns' },
-  { to: '/bebida', key: 'beverage' },
+  { to: '/profile', key: 'profile' },
+  { to: '/churches', key: 'churches' },
+  { to: '/people', key: 'people' },
+  { to: '/hymnals', key: 'hymns' },
+  { to: '/beverage', key: 'beverage' },
   { to: '/trabalhos', key: 'works' }
 ];
 
@@ -93,7 +93,7 @@ export function NavBar() {
   const navigationLinks = [
     ...stableLinks.map(link => ({ to: link.to, label: copy[link.key] })),
     ...(devModeEnabled ? devLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
-    ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/usuarios', label: copy.users }] : [])
+    ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/users', label: copy.users }] : [])
   ];
 
   return (

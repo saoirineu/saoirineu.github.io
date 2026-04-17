@@ -1,58 +1,58 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildIgrejaPayload, buildUsoIgrejasMap, prefillIgrejaForm, sortIgrejas } from './form';
+import { buildChurchPayload, buildChurchUsageMap, prefillChurchForm, sortChurches } from './form';
 
 describe('churches form helpers', () => {
   it('builds church payload trimming text and validating coordinates', () => {
-    const payload = buildIgrejaPayload({
-      nome: '  Igreja da Floresta  ',
-      cidade: ' Rio Branco ',
-      estado: ' AC ',
-      pais: ' Brasil ',
-      linhagem: ' ICEFLU ',
-      observacoes: ' nota ',
+    const payload = buildChurchPayload({
+      name: '  Igreja da Floresta  ',
+      city: ' Rio Branco ',
+      state: ' AC ',
+      country: ' Brasil ',
+      lineage: ' ICEFLU ',
+      observations: ' nota ',
       lat: ' -9.974 ',
       lng: ' invalido '
     });
 
     expect(payload).toEqual({
-      nome: 'Igreja da Floresta',
-      cidade: 'Rio Branco',
-      estado: 'AC',
-      pais: 'Brasil',
-      linhagem: 'ICEFLU',
-      observacoes: 'nota',
+      name: 'Igreja da Floresta',
+      city: 'Rio Branco',
+      state: 'AC',
+      country: 'Brasil',
+      lineage: 'ICEFLU',
+      observations: 'nota',
       lat: -9.974,
       lng: undefined
     });
   });
 
   it('prefills and sorts churches consistently', () => {
-    const form = prefillIgrejaForm({
+    const form = prefillChurchForm({
       id: '2',
-      nome: 'Centro',
-      cidade: 'Rio Branco',
+      name: 'Centro',
+      city: 'Rio Branco',
       lat: -9.9,
       lng: -67.8
-    });
+    } as import('../../lib/trabalhos').ChurchInfo);
 
-    expect(form.nome).toBe('Centro');
+    expect(form.name).toBe('Centro');
     expect(form.lat).toBe('-9.9');
-    expect(sortIgrejas([{ id: 'b', nome: 'Zulu' }, { id: 'a', nome: 'Alpha' }]).map(item => item.nome)).toEqual([
+    expect(sortChurches([{ id: 'b', name: 'Zulu' }, { id: 'a', name: 'Alpha' }] as import('../../lib/trabalhos').ChurchInfo[]).map(item => item.name)).toEqual([
       'Alpha',
       'Zulu'
     ]);
   });
 
-  it('aggregates usage stats from trabalhos and usuarios', () => {
-    const usage = buildUsoIgrejasMap(
+  it('aggregates usage stats from trabalhos and users', () => {
+    const usage = buildChurchUsageMap(
       [
-        { id: 't1', localId: 'i1', igrejasResponsaveisIds: ['i1', 'i2'] },
-        { id: 't2', localId: 'i2', igrejasResponsaveisIds: ['i2'] }
+        { id: 't1', venueId: 'i1', responsibleChurchIds: ['i1', 'i2'] },
+        { id: 't2', venueId: 'i2', responsibleChurchIds: ['i2'] }
       ],
       [
-        { uid: 'u1', igrejaAtualId: 'i1', fardamentoIgrejaId: 'i2' },
-        { uid: 'u2', igrejaAtualId: 'i2', fardamentoIgrejaId: 'i2' }
+        { uid: 'u1', currentChurchId: 'i1', fardamentoChurchId: 'i2' },
+        { uid: 'u2', currentChurchId: 'i2', fardamentoChurchId: 'i2' }
       ]
     );
 

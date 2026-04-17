@@ -22,62 +22,62 @@ import {
 
 export type Trabalho = {
   id: string;
-  titulo?: string;
+  title?: string;
   data?: Timestamp | null;
   horarioInicio?: Timestamp | null;
   duracaoEsperadaMin?: number;
   duracaoEfetivaMin?: number;
-  anotacoes?: string;
-  participantes?: {
+  notes?: string;
+  attendees?: {
     total?: number;
     fardados?: number;
     homens?: number;
     mulheres?: number;
-    criancas?: number;
-    outros?: number;
-    outrosDescricao?: string;
+    children?: number;
+    others?: number;
+    othersDescription?: string;
   };
-  hinarios?: string[];
-  igrejasResponsaveisIds?: string[];
-  igrejasResponsaveisNomes?: string[];
-  igrejasResponsaveisTexto?: string;
-  localId?: string;
-  localNome?: string;
-  localTexto?: string;
-  bebida?: {
-    loteRef?: string;
-    loteId?: string;
-    loteDescricao?: string;
-    loteTexto?: string;
-    quantidadeLitros?: number;
+  hymnals?: string[];
+  responsibleChurchIds?: string[];
+  responsibleChurchNames?: string[];
+  responsibleChurchText?: string;
+  venueId?: string;
+  venueName?: string;
+  venueText?: string;
+  beverage?: {
+    batchRef?: string;
+    batchId?: string;
+    batchDescription?: string;
+    batchText?: string;
+    liters?: number;
   };
   createdBy?: string;
 };
 
 const trabalhosRef = collection(db, 'trabalhos');
-const igrejasRef = collection(db, 'igrejas');
+const churchesRef = collection(db, 'igrejas');
 
-function mapParticipantes(value: unknown): Trabalho['participantes'] {
+function mapAttendees(value: unknown): Trabalho['attendees'] {
   const data = asRecord(value);
   return {
     total: asOptionalNumber(data.total),
     fardados: asOptionalNumber(data.fardados),
     homens: asOptionalNumber(data.homens),
     mulheres: asOptionalNumber(data.mulheres),
-    criancas: asOptionalNumber(data.criancas),
-    outros: asOptionalNumber(data.outros),
-    outrosDescricao: asOptionalString(data.outrosDescricao)
+    children: asOptionalNumber(data.criancas),
+    others: asOptionalNumber(data.outros),
+    othersDescription: asOptionalString(data.outrosDescricao)
   };
 }
 
-function mapBebida(value: unknown): Trabalho['bebida'] {
+function mapBeverage(value: unknown): Trabalho['beverage'] {
   const data = asRecord(value);
   return {
-    loteRef: asOptionalString(data.loteRef),
-    loteId: asOptionalString(data.loteId),
-    loteDescricao: asOptionalString(data.loteDescricao),
-    loteTexto: asOptionalString(data.loteTexto),
-    quantidadeLitros: asOptionalNumber(data.quantidadeLitros)
+    batchRef: asOptionalString(data.loteRef),
+    batchId: asOptionalString(data.loteId),
+    batchDescription: asOptionalString(data.loteDescricao),
+    batchText: asOptionalString(data.loteTexto),
+    liters: asOptionalNumber(data.quantidadeLitros)
   };
 }
 
@@ -85,21 +85,21 @@ function mapTrabalho(id: string, value: unknown): Trabalho {
   const data = asRecord(value);
   return {
     id,
-    titulo: asOptionalString(data.titulo),
+    title: asOptionalString(data.titulo),
     data: asOptionalTimestamp(data.data),
     horarioInicio: asOptionalTimestamp(data.horarioInicio),
     duracaoEsperadaMin: asOptionalNumber(data.duracaoEsperadaMin),
     duracaoEfetivaMin: asOptionalNumber(data.duracaoEfetivaMin),
-    anotacoes: asOptionalString(data.anotacoes),
-    participantes: mapParticipantes(data.participantes),
-    hinarios: asStringArray(data.hinarios),
-    igrejasResponsaveisIds: asStringArray(data.igrejasResponsaveisIds),
-    igrejasResponsaveisNomes: asStringArray(data.igrejasResponsaveisNomes),
-    igrejasResponsaveisTexto: asOptionalString(data.igrejasResponsaveisTexto),
-    localId: asOptionalString(data.localId),
-    localNome: asOptionalString(data.localNome),
-    localTexto: asOptionalString(data.localTexto),
-    bebida: mapBebida(data.bebida),
+    notes: asOptionalString(data.anotacoes),
+    attendees: mapAttendees(data.participantes),
+    hymnals: asStringArray(data.hinarios),
+    responsibleChurchIds: asStringArray(data.igrejasResponsaveisIds),
+    responsibleChurchNames: asStringArray(data.igrejasResponsaveisNomes),
+    responsibleChurchText: asOptionalString(data.igrejasResponsaveisTexto),
+    venueId: asOptionalString(data.localId),
+    venueName: asOptionalString(data.localNome),
+    venueText: asOptionalString(data.localTexto),
+    beverage: mapBeverage(data.bebida),
     createdBy: asOptionalString(data.createdBy)
   };
 }
@@ -111,68 +111,68 @@ export async function fetchTrabalhos(): Promise<Trabalho[]> {
 }
 
 export type TrabalhoInput = {
-  titulo?: string;
+  title?: string;
   data?: Timestamp | null;
   horarioInicio?: Timestamp | null;
   duracaoEsperadaMin?: number | null;
   duracaoEfetivaMin?: number | null;
-  localId?: string;
-  localNome?: string;
-  localTexto?: string;
-  hinarios?: string[];
-  igrejasResponsaveisIds?: string[];
-  igrejasResponsaveisNomes?: string[];
-  igrejasResponsaveisTexto?: string;
-  participantes?: {
+  venueId?: string;
+  venueName?: string;
+  venueText?: string;
+  hymnals?: string[];
+  responsibleChurchIds?: string[];
+  responsibleChurchNames?: string[];
+  responsibleChurchText?: string;
+  attendees?: {
     total?: number;
     fardados?: number;
     homens?: number;
     mulheres?: number;
-    criancas?: number;
-    outros?: number;
-    outrosDescricao?: string;
+    children?: number;
+    others?: number;
+    othersDescription?: string;
   };
-  bebida?: {
-    loteId?: string;
-    loteDescricao?: string;
-    loteTexto?: string;
-    quantidadeLitros?: number | null;
+  beverage?: {
+    batchId?: string;
+    batchDescription?: string;
+    batchText?: string;
+    liters?: number | null;
   };
-  anotacoes?: string;
+  notes?: string;
   createdBy: string;
 };
 
-export type IgrejaInfo = {
+export type ChurchInfo = {
   id: string;
-  nome: string;
-  cidade?: string;
-  estado?: string;
-  pais?: string;
-  linhagem?: string;
-  observacoes?: string;
+  name: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  lineage?: string;
+  observations?: string;
   lat?: number;
   lng?: number;
 };
 
-export type BebidaInfo = {
+export type BeverageInfo = {
   id: string;
-  descricao: string;
+  description: string;
 };
 
-export async function fetchIgrejas(): Promise<IgrejaInfo[]> {
+export async function fetchChurches(): Promise<ChurchInfo[]> {
   try {
-    const q = query(igrejasRef);
+    const q = query(churchesRef);
     const snapshot = await getDocs(q);
     return snapshot.docs.map(docSnapshot => {
       const data = asRecord(docSnapshot.data());
       return {
         id: docSnapshot.id,
-        nome: typeof data.nome === 'string' && data.nome ? data.nome : docSnapshot.id,
-        cidade: typeof data.cidade === 'string' ? data.cidade : undefined,
-        estado: typeof data.estado === 'string' ? data.estado : undefined,
-        pais: typeof data.pais === 'string' ? data.pais : undefined,
-        linhagem: typeof data.linhagem === 'string' ? data.linhagem : undefined,
-        observacoes: typeof data.observacoes === 'string' ? data.observacoes : undefined,
+        name: typeof data.nome === 'string' && data.nome ? data.nome : docSnapshot.id,
+        city: typeof data.cidade === 'string' ? data.cidade : undefined,
+        state: typeof data.estado === 'string' ? data.estado : undefined,
+        country: typeof data.pais === 'string' ? data.pais : undefined,
+        lineage: typeof data.linhagem === 'string' ? data.linhagem : undefined,
+        observations: typeof data.observacoes === 'string' ? data.observacoes : undefined,
         lat: typeof data.lat === 'number' ? data.lat : undefined,
         lng: typeof data.lng === 'number' ? data.lng : undefined
       };
@@ -182,38 +182,43 @@ export async function fetchIgrejas(): Promise<IgrejaInfo[]> {
   }
 }
 
-export type IgrejaInput = {
-  nome: string;
-  cidade?: string;
-  estado?: string;
-  pais?: string;
-  linhagem?: string;
-  observacoes?: string;
+export type ChurchInput = {
+  name: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  lineage?: string;
+  observations?: string;
   lat?: number;
   lng?: number;
 };
 
-export async function createIgreja(input: IgrejaInput) {
+export async function createChurch(input: ChurchInput) {
   const payload = removeUndefinedDeep({
-    nome: input.nome,
-    cidade: input.cidade || undefined,
-    estado: input.estado || undefined,
-    pais: input.pais || undefined,
-    linhagem: input.linhagem || undefined,
-    observacoes: input.observacoes || undefined,
+    nome: input.name,
+    cidade: input.city || undefined,
+    estado: input.state || undefined,
+    pais: input.country || undefined,
+    linhagem: input.lineage || undefined,
+    observacoes: input.observations || undefined,
     lat: typeof input.lat === 'number' ? input.lat : undefined,
     lng: typeof input.lng === 'number' ? input.lng : undefined,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
   });
 
-  return addDoc(igrejasRef, payload as Record<string, unknown>);
+  return addDoc(churchesRef, payload as Record<string, unknown>);
 }
 
-export async function updateIgreja(id: string, input: Partial<IgrejaInput>) {
-  const ref = doc(igrejasRef, id);
+export async function updateChurch(id: string, input: Partial<ChurchInput>) {
+  const ref = doc(churchesRef, id);
   const payload = removeUndefinedDeep({
-    ...input,
+    nome: input.name,
+    cidade: input.city,
+    estado: input.state,
+    pais: input.country,
+    linhagem: input.lineage,
+    observacoes: input.observations,
     lat: typeof input.lat === 'number' ? input.lat : undefined,
     lng: typeof input.lng === 'number' ? input.lng : undefined,
     updatedAt: Timestamp.now()
@@ -222,12 +227,12 @@ export async function updateIgreja(id: string, input: Partial<IgrejaInput>) {
   return updateDoc(ref, payload as Record<string, unknown>);
 }
 
-export async function deleteIgreja(id: string) {
-  const ref = doc(igrejasRef, id);
+export async function deleteChurch(id: string) {
+  const ref = doc(churchesRef, id);
   return deleteDoc(ref);
 }
 
-export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
+export async function fetchBeverageBatches(): Promise<BeverageInfo[]> {
   try {
     const q = query(collection(db, 'bebidaLotes'));
     const snapshot = await getDocs(q);
@@ -237,7 +242,7 @@ export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
       const desc = descricao
         ? descricao
         : `${data.grau ?? '?'}º grau, ${data.concentracao ?? ''} ${data.ano ?? ''} ${data.localidade ?? ''}`.trim();
-      return { id: docSnapshot.id, descricao: desc };
+      return { id: docSnapshot.id, description: desc };
     });
   } catch {
     return [];
@@ -245,27 +250,79 @@ export async function fetchBebidaLotes(): Promise<BebidaInfo[]> {
 }
 
 export async function createTrabalho(input: TrabalhoInput) {
-  const payload = removeUndefinedDeep({
-    ...input,
-    duracaoEsperadaMin: input.duracaoEsperadaMin ?? null,
-    duracaoEfetivaMin: input.duracaoEfetivaMin ?? null,
+  // Map English field names back to Firestore's Portuguese field names (pending migration)
+  const firestorePayload = removeUndefinedDeep({
+    titulo: input.title,
     data: input.data ?? null,
     horarioInicio: input.horarioInicio ?? null,
+    duracaoEsperadaMin: input.duracaoEsperadaMin ?? null,
+    duracaoEfetivaMin: input.duracaoEfetivaMin ?? null,
+    localId: input.venueId,
+    localNome: input.venueName,
+    localTexto: input.venueText,
+    hinarios: input.hymnals,
+    igrejasResponsaveisIds: input.responsibleChurchIds,
+    igrejasResponsaveisNomes: input.responsibleChurchNames,
+    igrejasResponsaveisTexto: input.responsibleChurchText,
+    participantes: input.attendees ? {
+      total: input.attendees.total,
+      fardados: input.attendees.fardados,
+      homens: input.attendees.homens,
+      mulheres: input.attendees.mulheres,
+      criancas: input.attendees.children,
+      outros: input.attendees.others,
+      outrosDescricao: input.attendees.othersDescription
+    } : undefined,
+    bebida: input.beverage ? {
+      loteId: input.beverage.batchId,
+      loteDescricao: input.beverage.batchDescription,
+      loteTexto: input.beverage.batchText,
+      quantidadeLitros: input.beverage.liters ?? null
+    } : undefined,
+    anotacoes: input.notes,
+    createdBy: input.createdBy,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
   });
 
-  return addDoc(trabalhosRef, payload as Record<string, unknown>);
+  return addDoc(trabalhosRef, firestorePayload as Record<string, unknown>);
 }
 
 export async function updateTrabalho(id: string, input: Partial<TrabalhoInput>) {
   const ref = doc(trabalhosRef, id);
-  const payload = removeUndefinedDeep({
-    ...input,
+  const firestorePayload = removeUndefinedDeep({
+    titulo: input.title,
+    data: input.data,
+    horarioInicio: input.horarioInicio,
+    duracaoEsperadaMin: input.duracaoEsperadaMin,
+    duracaoEfetivaMin: input.duracaoEfetivaMin,
+    localId: input.venueId,
+    localNome: input.venueName,
+    localTexto: input.venueText,
+    hinarios: input.hymnals,
+    igrejasResponsaveisIds: input.responsibleChurchIds,
+    igrejasResponsaveisNomes: input.responsibleChurchNames,
+    igrejasResponsaveisTexto: input.responsibleChurchText,
+    participantes: input.attendees ? {
+      total: input.attendees.total,
+      fardados: input.attendees.fardados,
+      homens: input.attendees.homens,
+      mulheres: input.attendees.mulheres,
+      criancas: input.attendees.children,
+      outros: input.attendees.others,
+      outrosDescricao: input.attendees.othersDescription
+    } : undefined,
+    bebida: input.beverage ? {
+      loteId: input.beverage.batchId,
+      loteDescricao: input.beverage.batchDescription,
+      loteTexto: input.beverage.batchText,
+      quantidadeLitros: input.beverage.liters
+    } : undefined,
+    anotacoes: input.notes,
     updatedAt: Timestamp.now()
   });
 
-  return updateDoc(ref, payload as Record<string, unknown>);
+  return updateDoc(ref, firestorePayload as Record<string, unknown>);
 }
 
 export async function deleteTrabalho(id: string) {

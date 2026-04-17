@@ -4,35 +4,35 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
 import {
-  createEncontroEuropeuRegistration,
-  encontroEuropeuRoomOptions,
-  fetchEncontroEuropeuRoomAvailability
-} from '../lib/encontroEuropeu';
+  createEuropeanGatheringRegistration,
+  europeanGatheringRoomOptions,
+  fetchEuropeanGatheringRoomAvailability
+} from '../lib/europeanGathering';
 import {
-  compressEncontroEuropeuImage,
-  encontroEuropeuImageCompressionThresholdBytes,
-  encontroEuropeuUploadAccept,
-  encontroEuropeuUploadMaxBytes,
+  compressEuropeanGatheringImage,
+  europeanGatheringImageCompressionThresholdBytes,
+  europeanGatheringUploadAccept,
+  europeanGatheringUploadMaxBytes,
   formatFileSize,
-  shouldOfferEncontroEuropeuImageCompression,
-  validateEncontroEuropeuUploadFile
-} from '../lib/encontroEuropeuUpload';
+  shouldOfferEuropeanGatheringImageCompression,
+  validateEuropeanGatheringUploadFile
+} from '../lib/europeanGatheringUpload';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import {
-  buildEncontroEuropeuPayload,
+  buildEuropeanGatheringPayload,
   calculateContribution,
   consentDocumentPaths,
   directionsPaths,
   generalProgramPaths,
-  initialEncontroEuropeuFormValues,
+  initialEuropeanGatheringFormValues,
   resolveInitialLocale,
   suggestedCheckInDate,
   suggestedCheckOutDate,
-  type EncontroEuropeuFormValues,
+  type EuropeanGatheringFormValues,
   type Locale,
   type SpiritualWorkId,
-  validateEncontroEuropeuForm
-} from './encontro-europeu/form';
+  validateEuropeanGatheringForm
+} from './european-gathering/form';
 
 type Copy = {
   pageTitle: string;
@@ -143,9 +143,9 @@ type DraftDateSelections = {
   checkOut: boolean;
 };
 
-type EncontroEuropeuDraft = {
+type EuropeanGatheringDraft = {
   locale?: Locale;
-  values?: Partial<EncontroEuropeuFormValues>;
+  values?: Partial<EuropeanGatheringFormValues>;
   dateSelections?: Partial<DraftDateSelections>;
 };
 
@@ -884,7 +884,7 @@ function FileUploadField({
       return;
     }
 
-    const validationError = validateEncontroEuropeuUploadFile(nextFile);
+    const validationError = validateEuropeanGatheringUploadFile(nextFile);
     if (validationError === 'invalid-type') {
       setErrorMessage(invalidTypeError);
       setCompressionCandidate(null);
@@ -901,11 +901,11 @@ function FileUploadField({
 
     setErrorMessage('');
 
-    if (shouldOfferEncontroEuropeuImageCompression(nextFile)) {
+    if (shouldOfferEuropeanGatheringImageCompression(nextFile)) {
       setIsProcessing(true);
 
       try {
-        const compressed = await compressEncontroEuropeuImage(nextFile);
+        const compressed = await compressEuropeanGatheringImage(nextFile);
         if (compressed !== nextFile) {
           setCompressionCandidate({ compressed, original: nextFile });
           return;
@@ -1170,7 +1170,7 @@ function FileUploadField({
   );
 }
 
-const encontroEuropeuDraftKey = 'encontro-europeu-draft-v1';
+const europeanGatheringDraftKey = 'european-gathering-draft-v1';
 const fallbackDraftLocale = resolveInitialLocale(undefined);
 const initialDraftDateSelections: DraftDateSelections = {
   checkIn: false,
@@ -1178,8 +1178,8 @@ const initialDraftDateSelections: DraftDateSelections = {
 };
 
 function normalizeDraftValues(
-  draft: EncontroEuropeuDraft
-): { values: Partial<EncontroEuropeuFormValues>; dateSelections: DraftDateSelections } {
+  draft: EuropeanGatheringDraft
+): { values: Partial<EuropeanGatheringFormValues>; dateSelections: DraftDateSelections } {
   const values = { ...(draft.values ?? {}) };
   const dateSelections: DraftDateSelections = {
     checkIn: draft.dateSelections?.checkIn ?? false,
@@ -1200,13 +1200,13 @@ function normalizeDraftValues(
   return { values, dateSelections };
 }
 
-type EncontroEuropeuPageProps = {
+type EuropeanGatheringPageProps = {
   showPublicHero?: boolean;
 };
 
-export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroEuropeuPageProps) {
+export default function EuropeanGatheringPage({ showPublicHero = true }: EuropeanGatheringPageProps) {
   const { locale, setLocale } = useSiteLocale();
-  const [values, setValues] = useState<EncontroEuropeuFormValues>(initialEncontroEuropeuFormValues);
+  const [values, setValues] = useState<EuropeanGatheringFormValues>(initialEuropeanGatheringFormValues);
   const [documents, setDocuments] = useState<DocumentState>({
     identityDocument: null,
     paymentProof: null,
@@ -1220,16 +1220,16 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
 
   const copy = copyByLocale[locale];
   const uploadInfoBody = copy.fileInfoBody
-    .replace('XXX', formatFileSize(encontroEuropeuUploadMaxBytes))
-    .replace('YYY', formatFileSize(encontroEuropeuImageCompressionThresholdBytes));
-  const uploadTooLargeError = copy.fileTooLarge.replace('XXX', formatFileSize(encontroEuropeuUploadMaxBytes));
+    .replace('XXX', formatFileSize(europeanGatheringUploadMaxBytes))
+    .replace('YYY', formatFileSize(europeanGatheringImageCompressionThresholdBytes));
+  const uploadTooLargeError = copy.fileTooLarge.replace('XXX', formatFileSize(europeanGatheringUploadMaxBytes));
   const contribution = useMemo(() => calculateContribution(values), [values]);
   const roomAvailabilityQuery = useQuery({
-    queryKey: ['encontro-europeu-room-availability'],
-    queryFn: fetchEncontroEuropeuRoomAvailability
+    queryKey: ['european-gathering-room-availability'],
+    queryFn: fetchEuropeanGatheringRoomAvailability
   });
 
-  const roomAvailability = roomAvailabilityQuery.data ?? encontroEuropeuRoomOptions.map(room => ({ ...room, reserved: 0, available: room.capacity }));
+  const roomAvailability = roomAvailabilityQuery.data ?? europeanGatheringRoomOptions.map(room => ({ ...room, reserved: 0, available: room.capacity }));
   const availableRooms = roomAvailability.filter(room => room.available > 0);
 
   useEffect(() => {
@@ -1237,13 +1237,13 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
       return;
     }
 
-    const rawDraft = window.localStorage.getItem(encontroEuropeuDraftKey);
+    const rawDraft = window.localStorage.getItem(europeanGatheringDraftKey);
     if (!rawDraft) {
       return;
     }
 
     try {
-      const parsedDraft = JSON.parse(rawDraft) as EncontroEuropeuDraft;
+      const parsedDraft = JSON.parse(rawDraft) as EuropeanGatheringDraft;
       const normalizedDraft = normalizeDraftValues(parsedDraft);
 
       if (parsedDraft.locale) {
@@ -1255,7 +1255,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
 
       setDraftMessage(copyByLocale[parsedDraft.locale ?? fallbackDraftLocale].draftLoaded);
     } catch {
-      window.localStorage.removeItem(encontroEuropeuDraftKey);
+      window.localStorage.removeItem(europeanGatheringDraftKey);
     }
   }, [setLocale]);
 
@@ -1273,12 +1273,12 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const validationKey = validateEncontroEuropeuForm(values);
+      const validationKey = validateEuropeanGatheringForm(values);
       if (validationKey) {
         throw new Error(copy.errors[validationKey] ?? 'Invalid form');
       }
 
-      const payload = buildEncontroEuropeuPayload({
+      const payload = buildEuropeanGatheringPayload({
         values,
         locale,
         contribution,
@@ -1289,7 +1289,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
         }
       });
 
-      return createEncontroEuropeuRegistration({
+      return createEuropeanGatheringRegistration({
         input: payload,
         documents: {
           identityDocument: documents.identityDocument,
@@ -1303,7 +1303,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
       setSubmitError('');
       setDraftMessage('');
       if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(encontroEuropeuDraftKey);
+        window.localStorage.removeItem(europeanGatheringDraftKey);
       }
     },
     onError: error => {
@@ -1311,7 +1311,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     }
   });
 
-  const setField = <K extends keyof EncontroEuropeuFormValues>(field: K, value: EncontroEuropeuFormValues[K]) => {
+  const setField = <K extends keyof EuropeanGatheringFormValues>(field: K, value: EuropeanGatheringFormValues[K]) => {
     setValues(current => ({ ...current, [field]: value }));
   };
 
@@ -1325,7 +1325,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
   };
 
   const resetForm = () => {
-    setValues(initialEncontroEuropeuFormValues);
+    setValues(initialEuropeanGatheringFormValues);
     setDocuments({ identityDocument: null, paymentProof: null, consentDocument: null });
     setSubmitError('');
     setDraftMessage('');
@@ -1334,7 +1334,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     setDraftDateSelections(initialDraftDateSelections);
     mutation.reset();
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(encontroEuropeuDraftKey);
+      window.localStorage.removeItem(europeanGatheringDraftKey);
     }
   };
 
@@ -1344,7 +1344,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
     }
 
     window.localStorage.setItem(
-      encontroEuropeuDraftKey,
+      europeanGatheringDraftKey,
       JSON.stringify({
         locale,
         values,
@@ -1365,7 +1365,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
         <button type="button" className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={saveDraft}>
           {copy.saveDraft}
         </button>
-        <button type="submit" form="encontro-europeu-form" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
+        <button type="submit" form="european-gathering-form" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
           {mutation.isPending ? copy.submitting : copy.submit}
         </button>
       </div>
@@ -1446,7 +1446,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
               <h2 className="text-xl font-semibold text-slate-900">{copy.formTitle}</h2>
 
               <form
-                id="encontro-europeu-form"
+                id="european-gathering-form"
                 className="mt-6 space-y-8"
                 onSubmit={event => {
                   event.preventDefault();
@@ -1495,7 +1495,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{copy.participationTitle}</h3>
                   <Field label={copy.attendanceMode}>
-                    <select className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.attendanceMode} onChange={event => setField('attendanceMode', event.target.value as EncontroEuropeuFormValues['attendanceMode'])}>
+                    <select className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.attendanceMode} onChange={event => setField('attendanceMode', event.target.value as EuropeanGatheringFormValues['attendanceMode'])}>
                       <option value="lodging">{copy.modeLodging}</option>
                       <option value="meals">{copy.modeMeals}</option>
                       <option value="spiritual">{copy.modeSpiritual}</option>
@@ -1618,7 +1618,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                 </div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <FileUploadField
-                    accept={encontroEuropeuUploadAccept}
+                    accept={europeanGatheringUploadAccept}
                     className="flex h-full flex-col"
                     closeLabel={copy.close}
                     compressedSizeLabel={copy.fileCompressedSize}
@@ -1643,7 +1643,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                     useCompressedLabel={copy.fileApproveCompressed}
                   />
                   <FileUploadField
-                    accept={encontroEuropeuUploadAccept}
+                    accept={europeanGatheringUploadAccept}
                     className="flex h-full flex-col"
                     closeLabel={copy.close}
                     compressedSizeLabel={copy.fileCompressedSize}
@@ -1670,7 +1670,7 @@ export default function EncontroEuropeuPage({ showPublicHero = true }: EncontroE
                   {values.isNovice ? (
                     <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                       <FileUploadField
-                        accept={encontroEuropeuUploadAccept}
+                        accept={europeanGatheringUploadAccept}
                         className="flex flex-col"
                         closeLabel={copy.close}
                         compressedSizeLabel={copy.fileCompressedSize}

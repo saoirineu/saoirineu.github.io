@@ -1,30 +1,30 @@
 import type { User } from 'firebase/auth';
 
-import type { UsuarioPerfil } from '../../lib/usuarios';
+import type { UserProfile } from '../../lib/users';
 
 export type PerfilFormState = {
   displayName: string;
   email: string;
   phone: string;
   avatarUrl: string;
-  cidade: string;
-  estado: string;
-  pais: string;
-  igrejaAtualId: string;
-  igrejaAtualNome: string;
-  igrejaOrigemNome: string;
+  city: string;
+  state: string;
+  country: string;
+  currentChurchId: string;
+  currentChurchName: string;
+  originChurchName: string;
   fardado: boolean;
-  fardamentoData: string;
-  fardamentoLocal: string;
-  fardamentoIgrejaId: string;
-  fardamentoIgrejaNome: string;
-  fardadorNome: string;
+  fardamentoDate: string;
+  fardamentoVenue: string;
+  fardamentoChurchId: string;
+  fardamentoChurchName: string;
+  fardadorName: string;
   fardadoComQuem: string;
-  padrinhoMadrinha: boolean;
-  padrinhoIgrejasIds: string[];
-  padrinhoIgrejasTexto: string;
-  papeisTexto: string;
-  observacoes: string;
+  isPadrinho: boolean;
+  padrinhoChurchIds: string[];
+  padrinhoChurchesText: string;
+  doctrineRolesText: string;
+  observations: string;
 };
 
 export type PerfilFormFieldSetter = <K extends keyof PerfilFormState>(
@@ -37,24 +37,24 @@ export const initialPerfilForm: PerfilFormState = {
   email: '',
   phone: '',
   avatarUrl: '',
-  cidade: '',
-  estado: '',
-  pais: '',
-  igrejaAtualId: '',
-  igrejaAtualNome: '',
-  igrejaOrigemNome: '',
+  city: '',
+  state: '',
+  country: '',
+  currentChurchId: '',
+  currentChurchName: '',
+  originChurchName: '',
   fardado: false,
-  fardamentoData: '',
-  fardamentoLocal: '',
-  fardamentoIgrejaId: '',
-  fardamentoIgrejaNome: '',
-  fardadorNome: '',
+  fardamentoDate: '',
+  fardamentoVenue: '',
+  fardamentoChurchId: '',
+  fardamentoChurchName: '',
+  fardadorName: '',
   fardadoComQuem: '',
-  padrinhoMadrinha: false,
-  padrinhoIgrejasIds: [],
-  padrinhoIgrejasTexto: '',
-  papeisTexto: '',
-  observacoes: ''
+  isPadrinho: false,
+  padrinhoChurchIds: [],
+  padrinhoChurchesText: '',
+  doctrineRolesText: '',
+  observations: ''
 };
 
 function splitCommaValues(value: string) {
@@ -69,38 +69,38 @@ export function avatarFallback(name?: string, email?: string) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(base)}&background=1e293b&color=fff`;
 }
 
-export function buildPerfilForm(user: User, perfil?: UsuarioPerfil | null): PerfilFormState {
+export function buildPerfilForm(user: User, perfil?: UserProfile | null): PerfilFormState {
   return {
     displayName: perfil?.displayName || user.displayName || '',
     email: user.email || perfil?.email || '',
     phone: perfil?.phone || '',
     avatarUrl: perfil?.avatarUrl || '',
-    cidade: perfil?.cidade || '',
-    estado: perfil?.estado || '',
-    pais: perfil?.pais || '',
-    igrejaAtualId: perfil?.igrejaAtualId || '',
-    igrejaAtualNome: perfil?.igrejaAtualNome || '',
-    igrejaOrigemNome: perfil?.igrejaOrigemNome || '',
+    city: perfil?.city || '',
+    state: perfil?.state || '',
+    country: perfil?.country || '',
+    currentChurchId: perfil?.currentChurchId || '',
+    currentChurchName: perfil?.currentChurchName || '',
+    originChurchName: perfil?.originChurchName || '',
     fardado: perfil?.fardado || false,
-    fardamentoData: perfil?.fardamentoData || '',
-    fardamentoLocal: perfil?.fardamentoLocal || '',
-    fardamentoIgrejaId: perfil?.fardamentoIgrejaId || '',
-    fardamentoIgrejaNome: perfil?.fardamentoIgrejaNome || '',
-    fardadorNome: perfil?.fardadorNome || '',
+    fardamentoDate: perfil?.fardamentoDate || '',
+    fardamentoVenue: perfil?.fardamentoVenue || '',
+    fardamentoChurchId: perfil?.fardamentoChurchId || '',
+    fardamentoChurchName: perfil?.fardamentoChurchName || '',
+    fardadorName: perfil?.fardadorName || '',
     fardadoComQuem: perfil?.fardadoComQuem || '',
-    padrinhoMadrinha: perfil?.padrinhoMadrinha || false,
-    padrinhoIgrejasIds: perfil?.padrinhoIgrejasIds || [],
-    padrinhoIgrejasTexto: perfil?.padrinhoIgrejasNomes?.join(', ') || '',
-    papeisTexto: perfil?.papeisDoutrina?.join(', ') || '',
-    observacoes: perfil?.observacoes || ''
+    isPadrinho: perfil?.isPadrinho || false,
+    padrinhoChurchIds: perfil?.padrinhoChurchIds || [],
+    padrinhoChurchesText: perfil?.padrinhoChurchNames?.join(', ') || '',
+    doctrineRolesText: perfil?.doctrineRoles?.join(', ') || '',
+    observations: perfil?.observations || ''
   };
 }
 
-export function buildUsuarioPayload(user: User, form: PerfilFormState): Partial<UsuarioPerfil> {
+export function buildUsuarioPayload(user: User, form: PerfilFormState): Partial<UserProfile> {
   const isFardado = form.fardado;
-  const isPadrinho = isFardado && form.padrinhoMadrinha;
-  const padrinhoIgrejasNomes = splitCommaValues(form.padrinhoIgrejasTexto);
-  const papeisList = splitCommaValues(form.papeisTexto);
+  const isPadrinho = isFardado && form.isPadrinho;
+  const padrinhoChurchNames = splitCommaValues(form.padrinhoChurchesText);
+  const doctrineRoles = splitCommaValues(form.doctrineRolesText);
 
   return {
     uid: user.uid,
@@ -108,23 +108,23 @@ export function buildUsuarioPayload(user: User, form: PerfilFormState): Partial<
     email: form.email || user.email || undefined,
     phone: form.phone || undefined,
     avatarUrl: form.avatarUrl || undefined,
-    cidade: form.cidade || undefined,
-    estado: form.estado || undefined,
-    pais: form.pais || undefined,
-    igrejaAtualId: form.igrejaAtualId || undefined,
-    igrejaAtualNome: form.igrejaAtualNome || undefined,
-    igrejaOrigemNome: form.igrejaOrigemNome || undefined,
+    city: form.city || undefined,
+    state: form.state || undefined,
+    country: form.country || undefined,
+    currentChurchId: form.currentChurchId || undefined,
+    currentChurchName: form.currentChurchName || undefined,
+    originChurchName: form.originChurchName || undefined,
     fardado: isFardado,
-    fardamentoData: isFardado ? form.fardamentoData || undefined : undefined,
-    fardamentoLocal: isFardado ? form.fardamentoLocal || undefined : undefined,
-    fardamentoIgrejaId: isFardado ? form.fardamentoIgrejaId || undefined : undefined,
-    fardamentoIgrejaNome: isFardado ? form.fardamentoIgrejaNome || undefined : undefined,
-    fardadorNome: isFardado ? form.fardadorNome || undefined : undefined,
+    fardamentoDate: isFardado ? form.fardamentoDate || undefined : undefined,
+    fardamentoVenue: isFardado ? form.fardamentoVenue || undefined : undefined,
+    fardamentoChurchId: isFardado ? form.fardamentoChurchId || undefined : undefined,
+    fardamentoChurchName: isFardado ? form.fardamentoChurchName || undefined : undefined,
+    fardadorName: isFardado ? form.fardadorName || undefined : undefined,
     fardadoComQuem: isFardado ? form.fardadoComQuem || undefined : undefined,
-    padrinhoMadrinha: isPadrinho,
-    padrinhoIgrejasIds: isPadrinho ? form.padrinhoIgrejasIds.filter(Boolean) : undefined,
-    padrinhoIgrejasNomes: isPadrinho ? padrinhoIgrejasNomes : undefined,
-    papeisDoutrina: papeisList.length ? papeisList : undefined,
-    observacoes: form.observacoes || undefined
+    isPadrinho,
+    padrinhoChurchIds: isPadrinho ? form.padrinhoChurchIds.filter(Boolean) : undefined,
+    padrinhoChurchNames: isPadrinho ? padrinhoChurchNames : undefined,
+    doctrineRoles: doctrineRoles.length ? doctrineRoles : undefined,
+    observations: form.observations || undefined
   };
 }

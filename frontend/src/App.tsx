@@ -11,13 +11,13 @@ const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const BeveragePage = lazy(() => import('./pages/BeveragePage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const EncontroEuropeuAdminPage = lazy(() => import('./pages/EncontroEuropeuAdminPage'));
-const EncontroEuropeuPage = lazy(() => import('./pages/EncontroEuropeuPage'));
+const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
+const EuropeanGatheringPage = lazy(() => import('./pages/EuropeanGatheringPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const PeoplePage = lazy(() => import('./pages/PeoplePage'));
-const PerfilPage = lazy(() => import('./pages/PerfilPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const TrabalhosPage = lazy(() => import('./pages/TrabalhosPage'));
 
 function RouteFallback() {
@@ -47,7 +47,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
   );
 }
 
-function EncontroEuropeuRoute() {
+function EuropeanGatheringRoute() {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -57,12 +57,12 @@ function EncontroEuropeuRoute() {
   if (user) {
     return (
       <ShellFrame>
-        <EncontroEuropeuPage showPublicHero={false} />
+        <EuropeanGatheringPage showPublicHero={false} />
       </ShellFrame>
     );
   }
 
-  return <EncontroEuropeuPage showPublicHero />;
+  return <EuropeanGatheringPage showPublicHero />;
 }
 
 function DevOnlyRoute() {
@@ -80,24 +80,24 @@ function App() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/encontro-europeu" element={<EncontroEuropeuRoute />} />
+        <Route path="/european-gathering" element={<EuropeanGatheringRoute />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />
             <Route element={<DevOnlyRoute />}>
-              <Route path="/igrejas" element={<ChurchesPage />} />
-              <Route path="/perfil" element={<PerfilPage />} />
-              <Route path="/pessoas" element={<PeoplePage />} />
-              <Route path="/hinarios" element={<HymnsPage />} />
-              <Route path="/bebida" element={<BeveragePage />} />
+              <Route path="/churches" element={<ChurchesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/people" element={<PeoplePage />} />
+              <Route path="/hymnals" element={<HymnsPage />} />
+              <Route path="/beverage" element={<BeveragePage />} />
               <Route path="/trabalhos" element={<TrabalhosPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
-              <Route path="/admin/inscricoes-encontro" element={<EncontroEuropeuAdminPage />} />
+              <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="superadmin" />}>
               <Route element={<DevOnlyRoute />}>
-                <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
               </Route>
             </Route>
           </Route>

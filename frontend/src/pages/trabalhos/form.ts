@@ -1,61 +1,61 @@
 import { Timestamp } from 'firebase/firestore';
 
-import type { BebidaInfo, IgrejaInfo, Trabalho, TrabalhoInput } from '../../lib/trabalhos';
+import type { BeverageInfo, ChurchInfo, Trabalho, TrabalhoInput } from '../../lib/trabalhos';
 
 export type TrabalhoFormState = {
-  titulo: string;
+  title: string;
   data: string;
   horario: string;
   duracaoEsperadaMin: string;
   duracaoEfetivaMin: string;
-  hinarios: string;
-  igrejaRespId: string;
-  igrejaRespNome: string;
-  igrejasTexto: string;
-  localId: string;
-  localNome: string;
-  localTexto: string;
+  hymnals: string;
+  churchRespId: string;
+  churchRespName: string;
+  churchesText: string;
+  venueId: string;
+  venueName: string;
+  venueText: string;
   total: string;
   fardados: string;
   homens: string;
   mulheres: string;
-  criancas: string;
-  outros: string;
-  outrosDescricao: string;
-  loteId: string;
-  loteDescricao: string;
-  loteTexto: string;
-  quantidadeLitros: string;
-  anotacoes: string;
+  children: string;
+  others: string;
+  othersDescription: string;
+  batchId: string;
+  batchDescription: string;
+  batchText: string;
+  liters: string;
+  notes: string;
 };
 
 type TimestampLike = Timestamp | Date | string | null | undefined;
 
 export const initialTrabalhoForm: TrabalhoFormState = {
-  titulo: '',
+  title: '',
   data: '',
   horario: '',
   duracaoEsperadaMin: '',
   duracaoEfetivaMin: '',
-  hinarios: '',
-  igrejaRespId: '',
-  igrejaRespNome: '',
-  igrejasTexto: '',
-  localId: '',
-  localNome: '',
-  localTexto: '',
+  hymnals: '',
+  churchRespId: '',
+  churchRespName: '',
+  churchesText: '',
+  venueId: '',
+  venueName: '',
+  venueText: '',
   total: '',
   fardados: '',
   homens: '',
   mulheres: '',
-  criancas: '',
-  outros: '',
-  outrosDescricao: '',
-  loteId: '',
-  loteDescricao: '',
-  loteTexto: '',
-  quantidadeLitros: '',
-  anotacoes: ''
+  children: '',
+  others: '',
+  othersDescription: '',
+  batchId: '',
+  batchDescription: '',
+  batchText: '',
+  liters: '',
+  notes: ''
 };
 
 function isTimestampValue(value: unknown): value is Timestamp {
@@ -85,82 +85,82 @@ export function formatTime(value: TimestampLike) {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function totalParticipantes(participantes?: Trabalho['participantes']) {
-  if (!participantes) return null;
+export function totalAttendees(attendees?: Trabalho['attendees']) {
+  if (!attendees) return null;
 
   const total =
-    (participantes.total ?? 0) ||
-    (participantes.homens ?? 0) +
-      (participantes.mulheres ?? 0) +
-      (participantes.criancas ?? 0) +
-      (participantes.outros ?? 0);
+    (attendees.total ?? 0) ||
+    (attendees.homens ?? 0) +
+      (attendees.mulheres ?? 0) +
+      (attendees.children ?? 0) +
+      (attendees.others ?? 0);
 
   return {
     total,
-    fardados: participantes.fardados ?? null,
-    homens: participantes.homens ?? 0,
-    mulheres: participantes.mulheres ?? 0,
-    criancas: participantes.criancas ?? 0,
-    outros: participantes.outros ?? 0,
-    outrosDescricao: participantes.outrosDescricao
+    fardados: attendees.fardados ?? null,
+    homens: attendees.homens ?? 0,
+    mulheres: attendees.mulheres ?? 0,
+    children: attendees.children ?? 0,
+    others: attendees.others ?? 0,
+    othersDescription: attendees.othersDescription
   };
 }
 
 export function buildTrabalhoPayload(args: {
-  bebidaLotes?: BebidaInfo[];
+  beverageBatches?: BeverageInfo[];
   form: TrabalhoFormState;
-  igrejas?: IgrejaInfo[];
+  churches?: ChurchInfo[];
   userId: string;
 }): TrabalhoInput {
-  const { bebidaLotes, form, igrejas, userId } = args;
+  const { beverageBatches, form, churches, userId } = args;
   const dataTs = form.data ? Timestamp.fromDate(new Date(form.data)) : null;
   const horarioTs = form.horario && form.data
     ? Timestamp.fromDate(new Date(`${form.data}T${form.horario}:00`))
     : null;
 
-  const igrejaResp = igrejas?.find(igreja => igreja.id === form.igrejaRespId);
-  const localSelecionado = igrejas?.find(igreja => igreja.id === form.localId);
-  const loteSelecionado = bebidaLotes?.find(lote => lote.id === form.loteId);
+  const churchResp = churches?.find(church => church.id === form.churchRespId);
+  const selectedVenue = churches?.find(church => church.id === form.venueId);
+  const selectedBatch = beverageBatches?.find(batch => batch.id === form.batchId);
 
   const totalManual = form.total ? Number(form.total) : undefined;
-  const totalDerivado =
+  const totalDerived =
     (form.homens ? Number(form.homens) : 0) +
     (form.mulheres ? Number(form.mulheres) : 0) +
-    (form.criancas ? Number(form.criancas) : 0) +
-    (form.outros ? Number(form.outros) : 0);
+    (form.children ? Number(form.children) : 0) +
+    (form.others ? Number(form.others) : 0);
 
   return {
-    titulo: form.titulo || undefined,
+    title: form.title || undefined,
     data: dataTs,
     horarioInicio: horarioTs,
     duracaoEsperadaMin: form.duracaoEsperadaMin ? Number(form.duracaoEsperadaMin) : null,
     duracaoEfetivaMin: form.duracaoEfetivaMin ? Number(form.duracaoEfetivaMin) : null,
-    localId: localSelecionado?.id,
-    localNome: localSelecionado?.nome,
-    localTexto: form.localTexto || undefined,
-    hinarios: form.hinarios
+    venueId: selectedVenue?.id,
+    venueName: selectedVenue?.name,
+    venueText: form.venueText || undefined,
+    hymnals: form.hymnals
       .split(',')
       .map(item => item.trim())
       .filter(Boolean),
-    igrejasResponsaveisIds: igrejaResp ? [igrejaResp.id] : undefined,
-    igrejasResponsaveisNomes: igrejaResp ? [igrejaResp.nome] : undefined,
-    igrejasResponsaveisTexto: form.igrejasTexto || undefined,
-    participantes: {
-      total: totalManual ?? totalDerivado,
+    responsibleChurchIds: churchResp ? [churchResp.id] : undefined,
+    responsibleChurchNames: churchResp ? [churchResp.name] : undefined,
+    responsibleChurchText: form.churchesText || undefined,
+    attendees: {
+      total: totalManual ?? totalDerived,
       fardados: form.fardados ? Number(form.fardados) : undefined,
       homens: form.homens ? Number(form.homens) : undefined,
       mulheres: form.mulheres ? Number(form.mulheres) : undefined,
-      criancas: form.criancas ? Number(form.criancas) : undefined,
-      outros: form.outros ? Number(form.outros) : undefined,
-      outrosDescricao: form.outrosDescricao || undefined
+      children: form.children ? Number(form.children) : undefined,
+      others: form.others ? Number(form.others) : undefined,
+      othersDescription: form.othersDescription || undefined
     },
-    bebida: {
-      loteId: loteSelecionado?.id || undefined,
-      loteDescricao: loteSelecionado?.descricao || form.loteDescricao || undefined,
-      loteTexto: form.loteTexto || undefined,
-      quantidadeLitros: form.quantidadeLitros ? Number(form.quantidadeLitros) : null
+    beverage: {
+      batchId: selectedBatch?.id || undefined,
+      batchDescription: selectedBatch?.description || form.batchDescription || undefined,
+      batchText: form.batchText || undefined,
+      liters: form.liters ? Number(form.liters) : null
     },
-    anotacoes: form.anotacoes || undefined,
+    notes: form.notes || undefined,
     createdBy: userId
   };
 }
@@ -170,32 +170,32 @@ export function prefillTrabalhoForm(trabalho: Trabalho): TrabalhoFormState {
   const horario = asDate(trabalho.horarioInicio);
 
   return {
-    titulo: trabalho.titulo || '',
+    title: trabalho.title || '',
     data: data ? data.toISOString().slice(0, 10) : '',
     horario: horario ? horario.toISOString().slice(11, 16) : '',
     duracaoEsperadaMin: trabalho.duracaoEsperadaMin?.toString() || '',
     duracaoEfetivaMin: trabalho.duracaoEfetivaMin?.toString() || '',
-    hinarios: trabalho.hinarios?.join(', ') || '',
-    igrejaRespId: trabalho.igrejasResponsaveisIds?.[0] || '',
-    igrejaRespNome: trabalho.igrejasResponsaveisNomes?.[0] || '',
-    igrejasTexto: trabalho.igrejasResponsaveisTexto || '',
-    localId: trabalho.localId || '',
-    localNome: trabalho.localNome || '',
-    localTexto: trabalho.localTexto || '',
-    total: trabalho.participantes?.total?.toString() || '',
-    fardados: trabalho.participantes?.fardados?.toString() || '',
-    homens: trabalho.participantes?.homens?.toString() || '',
-    mulheres: trabalho.participantes?.mulheres?.toString() || '',
-    criancas: trabalho.participantes?.criancas?.toString() || '',
-    outros: trabalho.participantes?.outros?.toString() || '',
-    outrosDescricao: trabalho.participantes?.outrosDescricao || '',
-    loteId: trabalho.bebida?.loteId || '',
-    loteDescricao: trabalho.bebida?.loteDescricao || '',
-    loteTexto: trabalho.bebida?.loteTexto || '',
-    quantidadeLitros:
-      (trabalho.bebida?.quantidadeLitros ?? '') === ''
+    hymnals: trabalho.hymnals?.join(', ') || '',
+    churchRespId: trabalho.responsibleChurchIds?.[0] || '',
+    churchRespName: trabalho.responsibleChurchNames?.[0] || '',
+    churchesText: trabalho.responsibleChurchText || '',
+    venueId: trabalho.venueId || '',
+    venueName: trabalho.venueName || '',
+    venueText: trabalho.venueText || '',
+    total: trabalho.attendees?.total?.toString() || '',
+    fardados: trabalho.attendees?.fardados?.toString() || '',
+    homens: trabalho.attendees?.homens?.toString() || '',
+    mulheres: trabalho.attendees?.mulheres?.toString() || '',
+    children: trabalho.attendees?.children?.toString() || '',
+    others: trabalho.attendees?.others?.toString() || '',
+    othersDescription: trabalho.attendees?.othersDescription || '',
+    batchId: trabalho.beverage?.batchId || '',
+    batchDescription: trabalho.beverage?.batchDescription || '',
+    batchText: trabalho.beverage?.batchText || '',
+    liters:
+      (trabalho.beverage?.liters ?? '') === ''
         ? ''
-        : (trabalho.bebida?.quantidadeLitros ?? '').toString(),
-    anotacoes: trabalho.anotacoes || ''
+        : (trabalho.beverage?.liters ?? '').toString(),
+    notes: trabalho.notes || ''
   };
 }

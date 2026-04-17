@@ -107,24 +107,24 @@ export function DashboardPage() {
   const copy = copyByLocale[locale];
 
   const stableCards = [
-    { to: '/encontro-europeu', ...copy.stableCards.meeting },
+    { to: '/european-gathering', ...copy.stableCards.meeting },
     ...(hasRequiredRole(role, 'admin')
-      ? [{ to: '/admin/inscricoes-encontro', ...copy.stableCards.registrations }]
+      ? [{ to: '/admin/european-gathering', ...copy.stableCards.registrations }]
       : [])
   ];
 
   const devCards = [
-    { to: '/perfil', ...copy.devCards.profile },
-    { to: '/pessoas', ...copy.devCards.people },
-    { to: '/igrejas', ...copy.devCards.churches },
-    { to: '/hinarios', ...copy.devCards.hymns },
-    { to: '/bebida', ...copy.devCards.beverage },
+    { to: '/profile', ...copy.devCards.profile },
+    { to: '/people', ...copy.devCards.people },
+    { to: '/churches', ...copy.devCards.churches },
+    { to: '/hymnals', ...copy.devCards.hymns },
+    { to: '/beverage', ...copy.devCards.beverage },
     { to: '/trabalhos', ...copy.devCards.works }
   ];
 
   const cards = devModeEnabled ? devCards : stableCards;
 
-  const isAdminRegistrationsCard = (to: string) => to === '/admin/inscricoes-encontro';
+  const isAdminRegistrationsCard = (to: string) => to === '/admin/european-gathering';
 
   return (
     <div className="space-y-6">

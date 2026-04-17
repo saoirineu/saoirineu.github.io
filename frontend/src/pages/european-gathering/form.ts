@@ -4,7 +4,7 @@ export type AttendanceMode = 'lodging' | 'meals' | 'spiritual';
 
 export type SpiritualWorkId = 'fri-11-19' | 'sat-12-19' | 'mon-14-11' | 'tue-15-19';
 
-export type EncontroEuropeuFormValues = {
+export type EuropeanGatheringFormValues = {
   firstName: string;
   lastName: string;
   country: string;
@@ -41,7 +41,7 @@ export type RegistrationDocumentNames = {
 export const suggestedCheckInDate = '2026-09-10';
 export const suggestedCheckOutDate = '2026-09-16';
 
-export const initialEncontroEuropeuFormValues: EncontroEuropeuFormValues = {
+export const initialEuropeanGatheringFormValues: EuropeanGatheringFormValues = {
   firstName: '',
   lastName: '',
   country: '',
@@ -115,7 +115,7 @@ export function calculateNightCount(checkIn: string, checkOut: string) {
   return diffDays > 0 ? diffDays : 0;
 }
 
-export function calculateContribution(values: Pick<EncontroEuropeuFormValues, 'attendanceMode' | 'checkIn' | 'checkOut' | 'selectedWorks' | 'isIcefluMember' | 'needsExtraLinen'>): ContributionBreakdown {
+export function calculateContribution(values: Pick<EuropeanGatheringFormValues, 'attendanceMode' | 'checkIn' | 'checkOut' | 'selectedWorks' | 'isIcefluMember' | 'needsExtraLinen'>): ContributionBreakdown {
   const nights = values.attendanceMode === 'spiritual' ? 0 : calculateNightCount(values.checkIn, values.checkOut);
   const lodging = nights * 70;
   const selectedWorksCount = Math.min(values.selectedWorks.length, 4);
@@ -133,8 +133,8 @@ export function calculateContribution(values: Pick<EncontroEuropeuFormValues, 'a
   };
 }
 
-export function buildEncontroEuropeuPayload(args: {
-  values: EncontroEuropeuFormValues;
+export function buildEuropeanGatheringPayload(args: {
+  values: EuropeanGatheringFormValues;
   locale: Locale;
   contribution: ContributionBreakdown;
   documents: RegistrationDocumentNames;
@@ -168,7 +168,7 @@ export function buildEncontroEuropeuPayload(args: {
   };
 }
 
-export function validateEncontroEuropeuForm(values: EncontroEuropeuFormValues) {
+export function validateEuropeanGatheringForm(values: EuropeanGatheringFormValues) {
   if (!values.firstName.trim()) return 'firstName';
   if (!values.lastName.trim()) return 'lastName';
   if (!values.country.trim()) return 'country';

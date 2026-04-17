@@ -1,12 +1,12 @@
-export const encontroEuropeuUploadAccept = '.pdf,.jpg,.jpeg,.png';
-export const encontroEuropeuUploadMaxBytes = 10 * 1024 * 1024;
-export const encontroEuropeuImageCompressionThresholdBytes = 3 * 1024 * 1024;
-const encontroEuropeuImageCompressionMaxDimension = 2200;
+export const europeanGatheringUploadAccept = '.pdf,.jpg,.jpeg,.png';
+export const europeanGatheringUploadMaxBytes = 10 * 1024 * 1024;
+export const europeanGatheringImageCompressionThresholdBytes = 3 * 1024 * 1024;
+const europeanGatheringImageCompressionMaxDimension = 2200;
 
 const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
 
-export type EncontroEuropeuUploadValidationError = 'invalid-type' | 'file-too-large';
+export type EuropeanGatheringUploadValidationError = 'invalid-type' | 'file-too-large';
 
 export function formatFileSize(bytes: number) {
   if (bytes < 1024) {
@@ -30,29 +30,29 @@ function hasAllowedExtension(fileName: string) {
   return allowedExtensions.some(extension => normalizedName.endsWith(extension));
 }
 
-export function isEncontroEuropeuUploadTypeAllowed(file: Pick<File, 'name' | 'type'>) {
+export function isEuropeanGatheringUploadTypeAllowed(file: Pick<File, 'name' | 'type'>) {
   const normalizedType = file.type.toLowerCase();
   return allowedMimeTypes.has(normalizedType) || (!normalizedType && hasAllowedExtension(file.name));
 }
 
-export function isEncontroEuropeuCompressibleImage(file: Pick<File, 'type'>) {
+export function isEuropeanGatheringCompressibleImage(file: Pick<File, 'type'>) {
   return file.type === 'image/jpeg' || file.type === 'image/png';
 }
 
-export function validateEncontroEuropeuUploadFile(file: Pick<File, 'name' | 'size' | 'type'>): EncontroEuropeuUploadValidationError | null {
-  if (!isEncontroEuropeuUploadTypeAllowed(file)) {
+export function validateEuropeanGatheringUploadFile(file: Pick<File, 'name' | 'size' | 'type'>): EuropeanGatheringUploadValidationError | null {
+  if (!isEuropeanGatheringUploadTypeAllowed(file)) {
     return 'invalid-type';
   }
 
-  if (file.size > encontroEuropeuUploadMaxBytes) {
+  if (file.size > europeanGatheringUploadMaxBytes) {
     return 'file-too-large';
   }
 
   return null;
 }
 
-export function shouldOfferEncontroEuropeuImageCompression(file: Pick<File, 'size' | 'type'>) {
-  return isEncontroEuropeuCompressibleImage(file) && file.size > encontroEuropeuImageCompressionThresholdBytes;
+export function shouldOfferEuropeanGatheringImageCompression(file: Pick<File, 'size' | 'type'>) {
+  return isEuropeanGatheringCompressibleImage(file) && file.size > europeanGatheringImageCompressionThresholdBytes;
 }
 
 function loadImage(file: File) {
@@ -87,15 +87,15 @@ function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality?: num
   });
 }
 
-export async function compressEncontroEuropeuImage(file: File) {
-  if (!isEncontroEuropeuCompressibleImage(file)) {
+export async function compressEuropeanGatheringImage(file: File) {
+  if (!isEuropeanGatheringCompressibleImage(file)) {
     return file;
   }
 
   const image = await loadImage(file);
   const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
-  const scale = longestSide > encontroEuropeuImageCompressionMaxDimension
-    ? encontroEuropeuImageCompressionMaxDimension / longestSide
+  const scale = longestSide > europeanGatheringImageCompressionMaxDimension
+    ? europeanGatheringImageCompressionMaxDimension / longestSide
     : 1;
 
   const canvas = document.createElement('canvas');
