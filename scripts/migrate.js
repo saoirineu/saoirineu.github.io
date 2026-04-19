@@ -291,6 +291,12 @@ const MIGRATIONS = [
     transform: transformUser
   },
   {
+    // In-place field rename for docs already in users
+    from: 'users',
+    to: 'users',
+    transform: transformUser
+  },
+  {
     from: 'igrejas',
     to: 'churches',
     transform: transformChurch
@@ -307,6 +313,12 @@ const MIGRATIONS = [
   },
   {
     from: 'encontroEuropeuInscricoes',
+    to: 'europeanGatheringRegistrations',
+    transform: transformRegistration
+  },
+  {
+    // In-place field rename for docs already in europeanGatheringRegistrations
+    from: 'europeanGatheringRegistrations',
     to: 'europeanGatheringRegistrations',
     transform: transformRegistration
   },
