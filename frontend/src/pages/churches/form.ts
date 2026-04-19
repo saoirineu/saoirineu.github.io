@@ -1,4 +1,4 @@
-import type { ChurchInfo, ChurchInput, Session } from '../../lib/sessions';
+import type { ChurchInfo, ChurchInput, Work } from '../../lib/works';
 import type { UserProfile } from '../../lib/users';
 
 export type ChurchFormState = {
@@ -13,15 +13,15 @@ export type ChurchFormState = {
 };
 
 export type ChurchUsageStats = {
-  sessionsVenue: number;
-  sessionsResponsible: number;
+  worksVenue: number;
+  worksResponsible: number;
   membersCurrentChurch: number;
   membersInitiationChurch: number;
 };
 
 export const emptyChurchUsageStats: ChurchUsageStats = {
-  sessionsVenue: 0,
-  sessionsResponsible: 0,
+  worksVenue: 0,
+  worksResponsible: 0,
   membersCurrentChurch: 0,
   membersInitiationChurch: 0
 };
@@ -76,16 +76,16 @@ export function sortChurches(churches: ChurchInfo[]) {
   return churches.slice().sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export function buildChurchUsageMap(sessions: Session[], users: UserProfile[]) {
+export function buildChurchUsageMap(works: Work[], users: UserProfile[]) {
   const map = new Map<string, ChurchUsageStats>();
 
-  sessions.forEach(session => {
-    if (session.venueId) {
-      incrementUsage(map, session.venueId, 'sessionsVenue');
+  works.forEach(work => {
+    if (work.venueId) {
+      incrementUsage(map, work.venueId, 'worksVenue');
     }
 
-    (session.responsibleChurchIds ?? []).forEach(id => {
-      incrementUsage(map, id, 'sessionsResponsible');
+    (work.responsibleChurchIds ?? []).forEach(id => {
+      incrementUsage(map, id, 'worksResponsible');
     });
   });
 

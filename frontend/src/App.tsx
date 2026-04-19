@@ -18,7 +18,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const PeoplePage = lazy(() => import('./pages/PeoplePage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const SessionsPage = lazy(() => import('./pages/SessionsPage'));
+const WorksPage = lazy(() => import('./pages/WorksPage'));
 
 function RouteFallback() {
   return (
@@ -90,7 +90,7 @@ function App() {
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/hymnals" element={<HymnsPage />} />
               <Route path="/beverage" element={<BeveragePage />} />
-              <Route path="/sessions" element={<SessionsPage />} />
+              <Route path="/works" element={<WorksPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
               <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />

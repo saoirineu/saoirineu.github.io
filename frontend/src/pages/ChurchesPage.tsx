@@ -5,9 +5,9 @@ import {
   createChurch,
   deleteChurch,
   fetchChurches,
-  fetchSessions,
+  fetchWorks,
   updateChurch
-} from '../lib/sessions';
+} from '../lib/works';
 import { fetchUsers } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -26,7 +26,7 @@ export default function ChurchesPage() {
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
-  const sessionsQuery = useQuery({ queryKey: ['sessions'], queryFn: fetchSessions });
+  const worksQuery = useQuery({ queryKey: ['works'], queryFn: fetchWorks });
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: fetchUsers });
 
   const [form, setForm] = useState<ChurchFormState>(initialChurchForm);
@@ -97,8 +97,8 @@ export default function ChurchesPage() {
 
   const sortedChurches = useMemo(() => sortChurches(churchesQuery.data ?? []), [churchesQuery.data]);
   const churchUsage = useMemo(
-    () => buildChurchUsageMap(sessionsQuery.data ?? [], usersQuery.data ?? []),
-    [sessionsQuery.data, usersQuery.data]
+    () => buildChurchUsageMap(worksQuery.data ?? [], usersQuery.data ?? []),
+    [worksQuery.data, usersQuery.data]
   );
 
   return (

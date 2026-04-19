@@ -1,8 +1,8 @@
 import { Timestamp } from 'firebase/firestore';
 
-import type { BeverageInfo, ChurchInfo, Session, SessionInput } from '../../lib/sessions';
+import type { BeverageInfo, ChurchInfo, Work, WorkInput } from '../../lib/works';
 
-export type SessionFormState = {
+export type WorkFormState = {
   title: string;
   date: string;
   startTime: string;
@@ -31,7 +31,7 @@ export type SessionFormState = {
 
 type TimestampLike = Timestamp | Date | string | null | undefined;
 
-export const initialSessionForm: SessionFormState = {
+export const initialWorkForm: WorkFormState = {
   title: '',
   date: '',
   startTime: '',
@@ -85,7 +85,7 @@ export function formatTime(value: TimestampLike) {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function totalAttendees(attendees?: Session['attendees']) {
+export function totalAttendees(attendees?: Work['attendees']) {
   if (!attendees) return null;
 
   const total =
@@ -106,12 +106,12 @@ export function totalAttendees(attendees?: Session['attendees']) {
   };
 }
 
-export function buildSessionPayload(args: {
+export function buildWorkPayload(args: {
   beverageBatches?: BeverageInfo[];
-  form: SessionFormState;
+  form: WorkFormState;
   churches?: ChurchInfo[];
   userId: string;
-}): SessionInput {
+}): WorkInput {
   const { beverageBatches, form, churches, userId } = args;
   const dateTs = form.date ? Timestamp.fromDate(new Date(form.date)) : null;
   const startTimeTs = form.startTime && form.date
@@ -165,37 +165,37 @@ export function buildSessionPayload(args: {
   };
 }
 
-export function prefillSessionForm(session: Session): SessionFormState {
-  const date = asDate(session.date);
-  const startTime = asDate(session.startTime);
+export function prefillWorkForm(work: Work): WorkFormState {
+  const date = asDate(work.date);
+  const startTime = asDate(work.startTime);
 
   return {
-    title: session.title || '',
+    title: work.title || '',
     date: date ? date.toISOString().slice(0, 10) : '',
     startTime: startTime ? startTime.toISOString().slice(11, 16) : '',
-    expectedDurationMin: session.expectedDurationMin?.toString() || '',
-    actualDurationMin: session.actualDurationMin?.toString() || '',
-    hymnals: session.hymnals?.join(', ') || '',
-    churchRespId: session.responsibleChurchIds?.[0] || '',
-    churchRespName: session.responsibleChurchNames?.[0] || '',
-    churchesText: session.responsibleChurchText || '',
-    venueId: session.venueId || '',
-    venueName: session.venueName || '',
-    venueText: session.venueText || '',
-    total: session.attendees?.total?.toString() || '',
-    initiated: session.attendees?.initiated?.toString() || '',
-    men: session.attendees?.men?.toString() || '',
-    women: session.attendees?.women?.toString() || '',
-    children: session.attendees?.children?.toString() || '',
-    others: session.attendees?.others?.toString() || '',
-    othersDescription: session.attendees?.othersDescription || '',
-    batchId: session.beverage?.batchId || '',
-    batchDescription: session.beverage?.batchDescription || '',
-    batchText: session.beverage?.batchText || '',
+    expectedDurationMin: work.expectedDurationMin?.toString() || '',
+    actualDurationMin: work.actualDurationMin?.toString() || '',
+    hymnals: work.hymnals?.join(', ') || '',
+    churchRespId: work.responsibleChurchIds?.[0] || '',
+    churchRespName: work.responsibleChurchNames?.[0] || '',
+    churchesText: work.responsibleChurchText || '',
+    venueId: work.venueId || '',
+    venueName: work.venueName || '',
+    venueText: work.venueText || '',
+    total: work.attendees?.total?.toString() || '',
+    initiated: work.attendees?.initiated?.toString() || '',
+    men: work.attendees?.men?.toString() || '',
+    women: work.attendees?.women?.toString() || '',
+    children: work.attendees?.children?.toString() || '',
+    others: work.attendees?.others?.toString() || '',
+    othersDescription: work.attendees?.othersDescription || '',
+    batchId: work.beverage?.batchId || '',
+    batchDescription: work.beverage?.batchDescription || '',
+    batchText: work.beverage?.batchText || '',
     liters:
-      (session.beverage?.liters ?? '') === ''
+      (work.beverage?.liters ?? '') === ''
         ? ''
-        : (session.beverage?.liters ?? '').toString(),
-    notes: session.notes || ''
+        : (work.beverage?.liters ?? '').toString(),
+    notes: work.notes || ''
   };
 }

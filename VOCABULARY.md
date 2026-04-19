@@ -23,19 +23,19 @@ Intended to become a SKOS vocabulary / OWL ontology.
 | `currentChurchName` | igrejaAtualNome   | |
 | `originChurchName` | igrejaOrigemNome   | |
 
-## Sessions (Spiritual Works)
+## Works (Spiritual Works / Ceremonies)
 
 | English (code)         | Portuguese (domain)        | Notes |
 |------------------------|----------------------------|-------|
-| `Session`              | Trabalho                   | A spiritual work/ceremony |
-| `session.date`         | trabalho.data              | Firestore field: `data` |
-| `session.startTime`    | trabalho.horarioInicio     | Firestore field: `horarioInicio` |
-| `expectedDurationMin`  | duracaoEsperadaMin         | Firestore field: `duracaoEsperadaMin` |
-| `actualDurationMin`    | duracaoEfetivaMin          | Firestore field: `duracaoEfetivaMin` |
-| `attendees.initiated`  | participantes.fardados     | Firestore field: `fardados` |
-| `attendees.men`        | participantes.homens       | Firestore field: `homens` |
-| `attendees.women`      | participantes.mulheres     | Firestore field: `mulheres` |
-| `hymnals`              | hinarios                   | List of hymnal names used in the session |
+| `Work`                 | Trabalho                   | A spiritual work/ceremony |
+| `work.date`            | trabalho.data              | Firestore field: `date` |
+| `work.startTime`       | trabalho.horarioInicio     | Firestore field: `startTime` |
+| `expectedDurationMin`  | duracaoEsperadaMin         | Firestore field: `expectedDurationMin` |
+| `actualDurationMin`    | duracaoEfetivaMin          | Firestore field: `actualDurationMin` |
+| `attendees.initiated`  | participantes.fardados     | Firestore field: `initiated` |
+| `attendees.men`        | participantes.homens       | Firestore field: `men` |
+| `attendees.women`      | participantes.mulheres     | Firestore field: `women` |
+| `hymnals`              | hinarios                   | List of hymnal names used in the work |
 | `venueId`              | localId                    | |
 | `venueName`            | localNome                  | |
 | `venueText`            | localTexto                 | Free-text for unregistered venues |
@@ -68,8 +68,8 @@ Intended to become a SKOS vocabulary / OWL ontology.
 
 | English (code)          | Portuguese (domain)   | Notes |
 |-------------------------|-----------------------|-------|
-| `sessionsVenue`         | trabalhosLocal        | Sessions where this church was the venue |
-| `sessionsResponsible`   | trabalhosResponsavel  | Sessions where this church was responsible |
+| `worksVenue`            | trabalhosLocal        | Works where this church was the venue |
+| `worksResponsible`      | trabalhosResponsavel  | Works where this church was responsible |
 | `membersCurrentChurch`  | pessoasAtuais         | Members currently affiliated |
 | `membersInitiationChurch` | pessoasFardamento   | Members who were initiated here |
 

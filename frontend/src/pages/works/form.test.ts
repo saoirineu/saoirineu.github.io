@@ -1,11 +1,11 @@
 import { Timestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
 
-import { asDate, buildSessionPayload, formatDate, formatTime, prefillSessionForm, totalAttendees } from './form';
+import { asDate, buildWorkPayload, formatDate, formatTime, prefillWorkForm, totalAttendees } from './form';
 
-describe('sessions form helpers', () => {
+describe('works form helpers', () => {
   it('builds payload resolving selected church and beverage data', () => {
-    const payload = buildSessionPayload({
+    const payload = buildWorkPayload({
       userId: 'user-1',
       churches: [
         { id: 'resp', name: 'Responsavel' },
@@ -75,7 +75,7 @@ describe('sessions form helpers', () => {
       othersDescription: 'visitantes'
     });
 
-    const form = prefillSessionForm({
+    const form = prefillWorkForm({
       id: 't1',
       title: 'Sessao',
       date: Timestamp.fromDate(new Date('2024-01-02T00:00:00.000Z')),

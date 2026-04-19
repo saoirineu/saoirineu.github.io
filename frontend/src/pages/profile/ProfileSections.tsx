@@ -1,4 +1,4 @@
-import type { ChurchInfo } from '../../lib/sessions';
+import type { ChurchInfo } from '../../lib/works';
 import { avatarFallback, type ProfileFormFieldSetter, type ProfileFormState } from './form';
 
 type ChurchesProps = {

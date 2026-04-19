@@ -2,38 +2,38 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
-  fetchSessions,
-  createSession,
+  fetchWorks,
+  createWork,
   fetchChurches,
   fetchBeverageBatches,
-  updateSession,
-  deleteSession
-} from '../lib/sessions';
+  updateWork,
+  deleteWork
+} from '../lib/works';
 import { useAuth } from '../providers/useAuth';
 import {
-  buildSessionPayload,
+  buildWorkPayload,
   formatDate,
   formatTime,
-  initialSessionForm,
-  prefillSessionForm,
+  initialWorkForm,
+  prefillWorkForm,
   totalAttendees
-} from './sessions/form';
+} from './works/form';
 
-export function SessionsPage() {
+export function WorksPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data, isLoading, error } = useQuery({ queryKey: ['sessions'], queryFn: fetchSessions });
+  const { data, isLoading, error } = useQuery({ queryKey: ['works'], queryFn: fetchWorks });
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
   const beverageQuery = useQuery({ queryKey: ['beverageBatches'], queryFn: fetchBeverageBatches });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(initialSessionForm);
+  const [form, setForm] = useState(initialWorkForm);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sessão expirada');
 
-      const payload = buildSessionPayload({
+      const payload = buildWorkPayload({
         beverageBatches: beverageQuery.data,
         form,
         churches: churchesQuery.data,
@@ -41,14 +41,14 @@ export function SessionsPage() {
       });
 
       if (editingId) {
-        return updateSession(editingId, { ...payload, createdBy: undefined });
+        return updateWork(editingId, { ...payload, createdBy: undefined });
       }
 
-      return createSession(payload);
+      return createWork(payload);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['sessions'] });
-      setForm(initialSessionForm);
+      await qc.invalidateQueries({ queryKey: ['works'] });
+      setForm(initialWorkForm);
       setEditingId(null);
     }
   });
@@ -56,10 +56,10 @@ export function SessionsPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Sessão expirada');
-      return deleteSession(id);
+      return deleteWork(id);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['sessions'] });
+      await qc.invalidateQueries({ queryKey: ['works'] });
       if (editingId) setEditingId(null);
     }
   });
@@ -353,7 +353,7 @@ export function SessionsPage() {
               className="text-xs text-slate-600 underline"
               onClick={() => {
                 setEditingId(null);
-                setForm(initialSessionForm);
+                setForm(initialWorkForm);
               }}
             >
               Cancelar edição
@@ -375,31 +375,31 @@ export function SessionsPage() {
           </div>
         )}
 
-        {data?.map(session => {
-          const attendees = totalAttendees(session.attendees);
+        {data?.map(work => {
+          const attendees = totalAttendees(work.attendees);
           const editPrefill = () => {
-            setEditingId(session.id);
-            setForm(prefillSessionForm(session));
+            setEditingId(work.id);
+            setForm(prefillWorkForm(work));
           };
 
           return (
             <div
-              key={session.id}
+              key={work.id}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
             >
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-slate-900">{session.title || 'Trabalho'}</div>
+                  <div className="text-lg font-semibold text-slate-900">{work.title || 'Trabalho'}</div>
                   <div className="text-sm text-slate-600">
-                    {formatDate(session.date)} • {formatTime(session.startTime)} •{' '}
-                    {session.venueName || session.venueText || 'Local a definir'}
+                    {formatDate(work.date)} • {formatTime(work.startTime)} •{' '}
+                    {work.venueName || work.venueText || 'Local a definir'}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  {session.beverage?.batchId || session.beverage?.batchDescription || session.beverage?.batchText ? (
+                  {work.beverage?.batchId || work.beverage?.batchDescription || work.beverage?.batchText ? (
                     <div className="text-xs font-medium text-blue-700">
-                      Daime: {session.beverage.batchDescription || session.beverage.batchId || session.beverage.batchText}
-                      {session.beverage.liters ? ` • ${session.beverage.liters} L` : ''}
+                      Daime: {work.beverage.batchDescription || work.beverage.batchId || work.beverage.batchText}
+                      {work.beverage.liters ? ` • ${work.beverage.liters} L` : ''}
                     </div>
                   ) : null}
                   <button
@@ -410,14 +410,14 @@ export function SessionsPage() {
                   </button>
                   <button
                     className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
-                    disabled={deleteMutation.isPending && deleteMutation.variables === session.id}
+                    disabled={deleteMutation.isPending && deleteMutation.variables === work.id}
                     onClick={() => {
                       const ok = window.confirm('Excluir este trabalho?');
                       if (!ok) return;
-                      deleteMutation.mutate(session.id);
+                      deleteMutation.mutate(work.id);
                     }}
                   >
-                    {deleteMutation.isPending && deleteMutation.variables === session.id
+                    {deleteMutation.isPending && deleteMutation.variables === work.id
                       ? 'Excluindo...'
                       : 'Excluir'}
                   </button>
@@ -427,13 +427,13 @@ export function SessionsPage() {
               <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
                 <div>
                   <span className="font-medium">Igrejas responsáveis:</span>{' '}
-                  {session.responsibleChurchNames?.length
-                    ? session.responsibleChurchNames.join(', ')
-                    : session.responsibleChurchText || '—'}
+                  {work.responsibleChurchNames?.length
+                    ? work.responsibleChurchNames.join(', ')
+                    : work.responsibleChurchText || '—'}
                 </div>
                 <div>
                   <span className="font-medium">Hinários:</span>{' '}
-                  {session.hymnals?.length ? session.hymnals.join(', ') : '—'}
+                  {work.hymnals?.length ? work.hymnals.join(', ') : '—'}
                 </div>
                 <div>
                   <span className="font-medium">Participantes:</span>{' '}
@@ -445,13 +445,13 @@ export function SessionsPage() {
                 </div>
                 <div>
                   <span className="font-medium">Duração esperada:</span>{' '}
-                  {session.expectedDurationMin ? `${session.expectedDurationMin} min` : '—'}
-                  {session.actualDurationMin ? ` • Efetiva: ${session.actualDurationMin} min` : ''}
+                  {work.expectedDurationMin ? `${work.expectedDurationMin} min` : '—'}
+                  {work.actualDurationMin ? ` • Efetiva: ${work.actualDurationMin} min` : ''}
                 </div>
               </div>
 
-              {session.notes ? (
-                <p className="mt-3 text-sm text-slate-600">{session.notes}</p>
+              {work.notes ? (
+                <p className="mt-3 text-sm text-slate-600">{work.notes}</p>
               ) : null}
             </div>
           );
@@ -461,4 +461,4 @@ export function SessionsPage() {
   );
 }
 
-export default SessionsPage;
+export default WorksPage;

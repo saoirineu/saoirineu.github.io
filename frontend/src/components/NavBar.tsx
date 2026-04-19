@@ -21,7 +21,7 @@ const devLinks: Array<{ to: string; key: NavCopyKey }> = [
   { to: '/people', key: 'people' },
   { to: '/hymnals', key: 'hymns' },
   { to: '/beverage', key: 'beverage' },
-  { to: '/sessions', key: 'works' }
+  { to: '/works', key: 'works' }
 ];
 
 const copyByLocale = {

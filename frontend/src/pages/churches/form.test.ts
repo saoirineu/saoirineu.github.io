@@ -34,11 +34,11 @@ describe('churches form helpers', () => {
       city: 'Rio Branco',
       lat: -9.9,
       lng: -67.8
-    } as import('../../lib/sessions').ChurchInfo);
+    } as import('../../lib/works').ChurchInfo);
 
     expect(form.name).toBe('Centro');
     expect(form.lat).toBe('-9.9');
-    expect(sortChurches([{ id: 'b', name: 'Zulu' }, { id: 'a', name: 'Alpha' }] as import('../../lib/sessions').ChurchInfo[]).map(item => item.name)).toEqual([
+    expect(sortChurches([{ id: 'b', name: 'Zulu' }, { id: 'a', name: 'Alpha' }] as import('../../lib/works').ChurchInfo[]).map(item => item.name)).toEqual([
       'Alpha',
       'Zulu'
     ]);
@@ -57,14 +57,14 @@ describe('churches form helpers', () => {
     );
 
     expect(usage.get('i1')).toEqual({
-      sessionsVenue: 1,
-      sessionsResponsible: 1,
+      worksVenue: 1,
+      worksResponsible: 1,
       membersCurrentChurch: 1,
       membersInitiationChurch: 0
     });
     expect(usage.get('i2')).toEqual({
-      sessionsVenue: 1,
-      sessionsResponsible: 2,
+      worksVenue: 1,
+      worksResponsible: 2,
       membersCurrentChurch: 1,
       membersInitiationChurch: 2
     });

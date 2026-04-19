@@ -20,7 +20,7 @@ import {
   removeUndefinedDeep
 } from './firestoreData';
 
-export type Session = {
+export type Work = {
   id: string;
   title?: string;
   date?: Timestamp | null;
@@ -54,10 +54,10 @@ export type Session = {
   createdBy?: string;
 };
 
-const sessionsRef = collection(db, 'trabalhos');
+const worksRef = collection(db, 'trabalhos');
 const churchesRef = collection(db, 'churches');
 
-function mapAttendees(value: unknown): Session['attendees'] {
+function mapAttendees(value: unknown): Work['attendees'] {
   const data = asRecord(value);
   return {
     total: asOptionalNumber(data.total),
@@ -70,7 +70,7 @@ function mapAttendees(value: unknown): Session['attendees'] {
   };
 }
 
-function mapBeverage(value: unknown): Session['beverage'] {
+function mapBeverage(value: unknown): Work['beverage'] {
   const data = asRecord(value);
   return {
     batchRef: asOptionalString(data.batchRef),
@@ -81,7 +81,7 @@ function mapBeverage(value: unknown): Session['beverage'] {
   };
 }
 
-function mapSession(id: string, value: unknown): Session {
+function mapWork(id: string, value: unknown): Work {
   const data = asRecord(value);
   return {
     id,
@@ -104,13 +104,13 @@ function mapSession(id: string, value: unknown): Session {
   };
 }
 
-export async function fetchSessions(): Promise<Session[]> {
-  const q = query(sessionsRef, orderBy('date', 'desc'));
+export async function fetchWorks(): Promise<Work[]> {
+  const q = query(worksRef, orderBy('date', 'desc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(docSnapshot => mapSession(docSnapshot.id, docSnapshot.data()));
+  return snapshot.docs.map(docSnapshot => mapWork(docSnapshot.id, docSnapshot.data()));
 }
 
-export type SessionInput = {
+export type WorkInput = {
   title?: string;
   date?: Timestamp | null;
   startTime?: Timestamp | null;
@@ -249,7 +249,7 @@ export async function fetchBeverageBatches(): Promise<BeverageInfo[]> {
   }
 }
 
-export async function createSession(input: SessionInput) {
+export async function createWork(input: WorkInput) {
   const firestorePayload = removeUndefinedDeep({
     title: input.title,
     date: input.date ?? null,
@@ -284,11 +284,11 @@ export async function createSession(input: SessionInput) {
     updatedAt: Timestamp.now()
   });
 
-  return addDoc(sessionsRef, firestorePayload as Record<string, unknown>);
+  return addDoc(worksRef, firestorePayload as Record<string, unknown>);
 }
 
-export async function updateSession(id: string, input: Partial<SessionInput>) {
-  const ref = doc(sessionsRef, id);
+export async function updateWork(id: string, input: Partial<WorkInput>) {
+  const ref = doc(worksRef, id);
   const firestorePayload = removeUndefinedDeep({
     title: input.title,
     date: input.date,
@@ -324,7 +324,7 @@ export async function updateSession(id: string, input: Partial<SessionInput>) {
   return updateDoc(ref, firestorePayload as Record<string, unknown>);
 }
 
-export async function deleteSession(id: string) {
-  const ref = doc(sessionsRef, id);
+export async function deleteWork(id: string) {
+  const ref = doc(worksRef, id);
   return deleteDoc(ref);
 }

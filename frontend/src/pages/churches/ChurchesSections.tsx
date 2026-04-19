@@ -1,6 +1,6 @@
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import type { ChurchInfo } from '../../lib/sessions';
+import type { ChurchInfo } from '../../lib/works';
 import { emptyChurchUsageStats, type ChurchFormState, type ChurchUsageStats } from './form';
 
 type FormSectionProps = {
@@ -238,8 +238,8 @@ function ChurchCard({
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
         <div className="rounded-md bg-slate-100 px-2 py-1">
           <div className="font-semibold text-slate-800">{copy.works}</div>
-          <div>{copy.local}: {uso.sessionsVenue}</div>
-          <div>{copy.responsible}: {uso.sessionsResponsible}</div>
+          <div>{copy.local}: {uso.worksVenue}</div>
+          <div>{copy.responsible}: {uso.worksResponsible}</div>
         </div>
         <div className="rounded-md bg-slate-100 px-2 py-1">
           <div className="font-semibold text-slate-800">{copy.people}</div>
