@@ -139,7 +139,7 @@ function formatWorkDays(selectedWorks: string[]) {
 
 function formatMembershipSummary(registration: EuropeanGatheringRegistrationRecord) {
   return [
-    registration.isFardado ? 'Fardado' : 'Não fardado',
+    registration.isInitiated ? 'Fardado' : 'Não fardado',
     registration.isIcefluMember ? 'ICEFLU em dia' : 'ICEFLU não informado',
     registration.isNovice ? 'Primeira vez' : 'Não é primeira vez'
   ].join(' · ');
@@ -438,8 +438,8 @@ function RegistrationCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.isFardado ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
-          {registration.isFardado ? 'Fardado' : 'Não fardado'}
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.isInitiated ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+          {registration.isInitiated ? 'Fardado' : 'Não fardado'}
         </span>
         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${registration.isIcefluMember ? 'bg-sky-50 text-sky-800' : 'bg-slate-100 text-slate-600'}`}>
           {registration.isIcefluMember ? 'ICEFLU em dia' : 'ICEFLU não informado'}

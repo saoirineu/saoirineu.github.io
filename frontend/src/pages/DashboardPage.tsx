@@ -119,7 +119,7 @@ export function DashboardPage() {
     { to: '/churches', ...copy.devCards.churches },
     { to: '/hymnals', ...copy.devCards.hymns },
     { to: '/beverage', ...copy.devCards.beverage },
-    { to: '/trabalhos', ...copy.devCards.works }
+    { to: '/sessions', ...copy.devCards.works }
   ];
 
   const cards = devModeEnabled ? devCards : stableCards;

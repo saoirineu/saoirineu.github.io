@@ -10,7 +10,7 @@ export type EuropeanGatheringFormValues = {
   country: string;
   church: string;
   centerLeader: string;
-  isFardado: boolean;
+  isInitiated: boolean;
   isIcefluMember: boolean;
   isNovice: boolean;
   attendanceMode: AttendanceMode;
@@ -47,7 +47,7 @@ export const initialEuropeanGatheringFormValues: EuropeanGatheringFormValues = {
   country: '',
   church: '',
   centerLeader: '',
-  isFardado: false,
+  isInitiated: false,
   isIcefluMember: false,
   isNovice: false,
   attendanceMode: 'lodging',
@@ -148,7 +148,7 @@ export function buildEuropeanGatheringPayload(args: {
     country: values.country.trim(),
     church: values.church.trim(),
     centerLeader: values.centerLeader.trim(),
-    isFardado: values.isFardado,
+    isInitiated: values.isInitiated,
     isIcefluMember: values.isIcefluMember,
     isNovice: values.isNovice,
     attendanceMode: values.attendanceMode,

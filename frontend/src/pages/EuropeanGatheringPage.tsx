@@ -54,7 +54,7 @@ type Copy = {
   church: string;
   centerLeader: string;
   statusTitle: string;
-  fardado: string;
+  initiated: string;
   icefluMember: string;
   novice: string;
   participationTitle: string;
@@ -184,7 +184,7 @@ const copyByLocale: Record<Locale, Copy> = {
     church: 'Igreja ou centro de referência',
     centerLeader: 'Nome do dirigente do centro',
     statusTitle: 'Vínculo com a doutrina',
-    fardado: 'Fardado',
+    initiated: 'Fardado',
     icefluMember: 'Membro ICEFLU em dia',
     novice: 'Novizio / primeira vez',
     participationTitle: 'Participação e estadia',
@@ -290,7 +290,7 @@ const copyByLocale: Record<Locale, Copy> = {
     church: 'Reference church or center',
     centerLeader: 'Leader name of the reference center',
     statusTitle: 'Doctrinal status',
-    fardado: 'Fardado',
+    initiated: 'Fardado',
     icefluMember: 'ICEFLU member in good standing',
     novice: 'Novice / first time',
     participationTitle: 'Participation and stay',
@@ -396,7 +396,7 @@ const copyByLocale: Record<Locale, Copy> = {
     church: 'Iglesia o centro de referencia',
     centerLeader: 'Nombre del dirigente del centro',
     statusTitle: 'Vínculo con la doctrina',
-    fardado: 'Fardado',
+    initiated: 'Fardado',
     icefluMember: 'Miembro ICEFLU al día',
     novice: 'Novizio / primera vez',
     participationTitle: 'Participación y estancia',
@@ -502,7 +502,7 @@ const copyByLocale: Record<Locale, Copy> = {
     church: 'Chiesa o centro di riferimento',
     centerLeader: 'Nome del dirigente del centro',
     statusTitle: 'Rapporto con la dottrina',
-    fardado: 'Fardado',
+    initiated: 'Fardado',
     icefluMember: 'Membro ICEFLU in regola',
     novice: 'Novizio / prima volta',
     participationTitle: 'Partecipazione e permanenza',
@@ -1478,8 +1478,8 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                   <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{copy.statusTitle}</h3>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                      <input type="checkbox" checked={values.isFardado} onChange={event => setField('isFardado', event.target.checked)} />
-                      {copy.fardado}
+                      <input type="checkbox" checked={values.isInitiated} onChange={event => setField('isInitiated', event.target.checked)} />
+                      {copy.initiated}
                     </label>
                     <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                       <input type="checkbox" checked={values.isIcefluMember} onChange={event => setField('isIcefluMember', event.target.checked)} />

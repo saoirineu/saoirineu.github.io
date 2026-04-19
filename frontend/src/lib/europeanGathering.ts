@@ -42,7 +42,7 @@ export type EuropeanGatheringRegistrationInput = {
   country: string;
   church: string;
   centerLeader: string;
-  isFardado: boolean;
+  isInitiated: boolean;
   isIcefluMember: boolean;
   isNovice: boolean;
   attendanceMode: 'lodging' | 'meals' | 'spiritual';
@@ -75,7 +75,7 @@ export type EuropeanGatheringRegistrationRecord = {
   country: string;
   church: string;
   centerLeader: string;
-  isFardado: boolean;
+  isInitiated: boolean;
   isIcefluMember: boolean;
   isNovice: boolean;
   attendanceMode: 'lodging' | 'meals' | 'spiritual';
@@ -259,7 +259,7 @@ function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrat
     country: asOptionalString(data.country) ?? '',
     church: asOptionalString(data.church) ?? '',
     centerLeader: asOptionalString(data.centerLeader) ?? '',
-    isFardado: asOptionalBoolean(data.isFardado) ?? false,
+    isInitiated: asOptionalBoolean(data.isInitiated) ?? false,
     isIcefluMember: asOptionalBoolean(data.isIcefluMember) ?? false,
     isNovice: asOptionalBoolean(data.isNovice) ?? false,
     attendanceMode: (asOptionalString(data.attendanceMode) as EuropeanGatheringRegistrationRecord['attendanceMode']) ?? 'lodging',

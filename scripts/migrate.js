@@ -66,6 +66,7 @@ function initFirebase() {
  */
 function transformUser(data) {
   const {
+    // phase 1 renames
     cidade,
     estado,
     pais,
@@ -82,28 +83,52 @@ function transformUser(data) {
     padrinhoIgrejasNomes,
     papeisDoutrina,
     observacoes,
+    // phase 2 renames (semi-English names from phase 1 → fully English)
+    fardado,
+    fardamentoDate,
+    fardamentoVenue,
+    fardamentoChurchId,
+    fardamentoChurchName,
+    fardadorName,
+    fardadoComQuem,
+    isPadrinho,
+    padrinhoChurchIds,
+    padrinhoChurchNames,
     // pass-through fields
     ...rest
   } = data;
 
   return {
     ...rest,
+    // phase 1
     ...(cidade !== undefined && { city: cidade }),
     ...(estado !== undefined && { state: estado }),
     ...(pais !== undefined && { country: pais }),
     ...(igrejaAtualId !== undefined && { currentChurchId: igrejaAtualId }),
     ...(igrejaAtualNome !== undefined && { currentChurchName: igrejaAtualNome }),
     ...(igrejaOrigemNome !== undefined && { originChurchName: igrejaOrigemNome }),
-    ...(fardamentoData !== undefined && { fardamentoDate: fardamentoData }),
-    ...(fardamentoLocal !== undefined && { fardamentoVenue: fardamentoLocal }),
-    ...(fardamentoIgrejaId !== undefined && { fardamentoChurchId: fardamentoIgrejaId }),
-    ...(fardamentoIgrejaNome !== undefined && { fardamentoChurchName: fardamentoIgrejaNome }),
-    ...(fardadorNome !== undefined && { fardadorName: fardadorNome }),
-    ...(padrinhoMadrinha !== undefined && { isPadrinho: padrinhoMadrinha }),
-    ...(padrinhoIgrejasIds !== undefined && { padrinhoChurchIds: padrinhoIgrejasIds }),
-    ...(padrinhoIgrejasNomes !== undefined && { padrinhoChurchNames: padrinhoIgrejasNomes }),
+    // phase 1→2 intermediate names (in case some docs only had phase 1 applied)
+    ...(fardamentoData !== undefined && { initiationDate: fardamentoData }),
+    ...(fardamentoLocal !== undefined && { initiationVenue: fardamentoLocal }),
+    ...(fardamentoIgrejaId !== undefined && { initiationChurchId: fardamentoIgrejaId }),
+    ...(fardamentoIgrejaNome !== undefined && { initiationChurchName: fardamentoIgrejaNome }),
+    ...(fardadorNome !== undefined && { initiatorName: fardadorNome }),
+    ...(padrinhoMadrinha !== undefined && { isSponsor: padrinhoMadrinha }),
+    ...(padrinhoIgrejasIds !== undefined && { sponsorChurchIds: padrinhoIgrejasIds }),
+    ...(padrinhoIgrejasNomes !== undefined && { sponsorChurchNames: padrinhoIgrejasNomes }),
     ...(papeisDoutrina !== undefined && { doctrineRoles: papeisDoutrina }),
     ...(observacoes !== undefined && { observations: observacoes }),
+    // phase 2 (semi-English intermediate names → fully English)
+    ...(fardado !== undefined && { isInitiated: fardado }),
+    ...(fardamentoDate !== undefined && { initiationDate: fardamentoDate }),
+    ...(fardamentoVenue !== undefined && { initiationVenue: fardamentoVenue }),
+    ...(fardamentoChurchId !== undefined && { initiationChurchId: fardamentoChurchId }),
+    ...(fardamentoChurchName !== undefined && { initiationChurchName: fardamentoChurchName }),
+    ...(fardadorName !== undefined && { initiatorName: fardadorName }),
+    ...(fardadoComQuem !== undefined && { initiatedWith: fardadoComQuem }),
+    ...(isPadrinho !== undefined && { isSponsor: isPadrinho }),
+    ...(padrinhoChurchIds !== undefined && { sponsorChurchIds: padrinhoChurchIds }),
+    ...(padrinhoChurchNames !== undefined && { sponsorChurchNames: padrinhoChurchNames }),
   };
 }
 
@@ -133,10 +158,15 @@ function transformChurch(data) {
 }
 
 /**
- * trabalhos — collection name kept, field names renamed
+ * trabalhos — collection name kept, field names renamed (phase 1 + phase 2)
+ * Phase 1: titulo→title, anotacoes→notes, localId→venueId, etc.
+ * Phase 2: data→date, horarioInicio→startTime, duracaoEsperadaMin→expectedDurationMin,
+ *           duracaoEfetivaMin→actualDurationMin,
+ *           attendees.fardados→initiated, attendees.homens→men, attendees.mulheres→women
  */
 function transformTrabalho(data) {
   const {
+    // phase 1 renames
     titulo,
     anotacoes,
     hinarios,
@@ -148,18 +178,33 @@ function transformTrabalho(data) {
     igrejasResponsaveisTexto,
     participantes,
     bebida,
+    // phase 2 renames (top-level)
+    data: sessionDate,
+    horarioInicio,
+    duracaoEsperadaMin,
+    duracaoEfetivaMin,
+    // attendees is handled below (may come from participantes or directly)
+    attendees: attendeesDirect,
     ...rest
   } = data;
 
-  // attendees sub-object
+  // attendees sub-object — may be called `participantes` (old) or `attendees` (phase-1 migrated)
+  const rawAttendees = participantes ?? attendeesDirect;
   let attendees;
-  if (participantes !== undefined) {
-    const { criancas, outros, outrosDescricao, ...attendeesRest } = participantes ?? {};
+  if (rawAttendees !== undefined) {
+    const {
+      criancas, outros, outrosDescricao,   // phase-1 Portuguese names
+      fardados, homens, mulheres,           // phase-2 Portuguese names
+      ...attendeesRest
+    } = rawAttendees ?? {};
     attendees = {
       ...attendeesRest,
       ...(criancas !== undefined && { children: criancas }),
       ...(outros !== undefined && { others: outros }),
       ...(outrosDescricao !== undefined && { othersDescription: outrosDescricao }),
+      ...(fardados !== undefined && { initiated: fardados }),
+      ...(homens !== undefined && { men: homens }),
+      ...(mulheres !== undefined && { women: mulheres }),
     };
   }
 
@@ -179,6 +224,7 @@ function transformTrabalho(data) {
 
   return {
     ...rest,
+    // phase 1
     ...(titulo !== undefined && { title: titulo }),
     ...(anotacoes !== undefined && { notes: anotacoes }),
     ...(hinarios !== undefined && { hymnals: hinarios }),
@@ -188,6 +234,11 @@ function transformTrabalho(data) {
     ...(igrejasResponsaveisIds !== undefined && { responsibleChurchIds: igrejasResponsaveisIds }),
     ...(igrejasResponsaveisNomes !== undefined && { responsibleChurchNames: igrejasResponsaveisNomes }),
     ...(igrejasResponsaveisTexto !== undefined && { responsibleChurchText: igrejasResponsaveisTexto }),
+    // phase 2
+    ...(sessionDate !== undefined && { date: sessionDate }),
+    ...(horarioInicio !== undefined && { startTime: horarioInicio }),
+    ...(duracaoEsperadaMin !== undefined && { expectedDurationMin: duracaoEsperadaMin }),
+    ...(duracaoEfetivaMin !== undefined && { actualDurationMin: duracaoEfetivaMin }),
     ...(attendees !== undefined && { attendees }),
     ...(beverage !== undefined && { beverage }),
   };
@@ -211,12 +262,13 @@ function transformBeverageBatch(data) {
  * identityDocumentPath which embeds the old storage path.
  */
 function transformRegistration(data) {
-  const { identityDocumentPath, paymentProofPath, ...rest } = data;
+  const { identityDocumentPath, paymentProofPath, isFardado, ...rest } = data;
   const rewrite = s => s?.replace('encontroEuropeuInscricoes/', 'europeanGatheringRegistrations/');
   return {
     ...rest,
     ...(identityDocumentPath !== undefined && { identityDocumentPath: rewrite(identityDocumentPath) }),
     ...(paymentProofPath !== undefined && { paymentProofPath: rewrite(paymentProofPath) }),
+    ...(isFardado !== undefined && { isInitiated: isFardado }),
   };
 }
 

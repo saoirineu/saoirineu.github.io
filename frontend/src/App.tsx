@@ -90,7 +90,7 @@ function App() {
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/hymnals" element={<HymnsPage />} />
               <Route path="/beverage" element={<BeveragePage />} />
-              <Route path="/trabalhos" element={<SessionsPage />} />
+              <Route path="/sessions" element={<SessionsPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
               <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />

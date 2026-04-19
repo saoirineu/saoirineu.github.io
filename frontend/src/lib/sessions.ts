@@ -61,9 +61,9 @@ function mapAttendees(value: unknown): Session['attendees'] {
   const data = asRecord(value);
   return {
     total: asOptionalNumber(data.total),
-    initiated: asOptionalNumber(data.fardados),
-    men: asOptionalNumber(data.homens),
-    women: asOptionalNumber(data.mulheres),
+    initiated: asOptionalNumber(data.initiated),
+    men: asOptionalNumber(data.men),
+    women: asOptionalNumber(data.women),
     children: asOptionalNumber(data.children),
     others: asOptionalNumber(data.others),
     othersDescription: asOptionalString(data.othersDescription)
@@ -86,10 +86,10 @@ function mapSession(id: string, value: unknown): Session {
   return {
     id,
     title: asOptionalString(data.title),
-    date: asOptionalTimestamp(data.data),
-    startTime: asOptionalTimestamp(data.horarioInicio),
-    expectedDurationMin: asOptionalNumber(data.duracaoEsperadaMin),
-    actualDurationMin: asOptionalNumber(data.duracaoEfetivaMin),
+    date: asOptionalTimestamp(data.date),
+    startTime: asOptionalTimestamp(data.startTime),
+    expectedDurationMin: asOptionalNumber(data.expectedDurationMin),
+    actualDurationMin: asOptionalNumber(data.actualDurationMin),
     notes: asOptionalString(data.notes),
     attendees: mapAttendees(data.attendees),
     hymnals: asStringArray(data.hymnals),
@@ -105,7 +105,7 @@ function mapSession(id: string, value: unknown): Session {
 }
 
 export async function fetchSessions(): Promise<Session[]> {
-  const q = query(sessionsRef, orderBy('data', 'desc'));
+  const q = query(sessionsRef, orderBy('date', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(docSnapshot => mapSession(docSnapshot.id, docSnapshot.data()));
 }
@@ -252,10 +252,10 @@ export async function fetchBeverageBatches(): Promise<BeverageInfo[]> {
 export async function createSession(input: SessionInput) {
   const firestorePayload = removeUndefinedDeep({
     title: input.title,
-    data: input.date ?? null,
-    horarioInicio: input.startTime ?? null,
-    duracaoEsperadaMin: input.expectedDurationMin ?? null,
-    duracaoEfetivaMin: input.actualDurationMin ?? null,
+    date: input.date ?? null,
+    startTime: input.startTime ?? null,
+    expectedDurationMin: input.expectedDurationMin ?? null,
+    actualDurationMin: input.actualDurationMin ?? null,
     venueId: input.venueId,
     venueName: input.venueName,
     venueText: input.venueText,
@@ -265,9 +265,9 @@ export async function createSession(input: SessionInput) {
     responsibleChurchText: input.responsibleChurchText,
     attendees: input.attendees ? {
       total: input.attendees.total,
-      fardados: input.attendees.initiated,
-      homens: input.attendees.men,
-      mulheres: input.attendees.women,
+      initiated: input.attendees.initiated,
+      men: input.attendees.men,
+      women: input.attendees.women,
       children: input.attendees.children,
       others: input.attendees.others,
       othersDescription: input.attendees.othersDescription
@@ -291,10 +291,10 @@ export async function updateSession(id: string, input: Partial<SessionInput>) {
   const ref = doc(sessionsRef, id);
   const firestorePayload = removeUndefinedDeep({
     title: input.title,
-    data: input.date,
-    horarioInicio: input.startTime,
-    duracaoEsperadaMin: input.expectedDurationMin,
-    duracaoEfetivaMin: input.actualDurationMin,
+    date: input.date,
+    startTime: input.startTime,
+    expectedDurationMin: input.expectedDurationMin,
+    actualDurationMin: input.actualDurationMin,
     venueId: input.venueId,
     venueName: input.venueName,
     venueText: input.venueText,
@@ -304,9 +304,9 @@ export async function updateSession(id: string, input: Partial<SessionInput>) {
     responsibleChurchText: input.responsibleChurchText,
     attendees: input.attendees ? {
       total: input.attendees.total,
-      fardados: input.attendees.initiated,
-      homens: input.attendees.men,
-      mulheres: input.attendees.women,
+      initiated: input.attendees.initiated,
+      men: input.attendees.men,
+      women: input.attendees.women,
       children: input.attendees.children,
       others: input.attendees.others,
       othersDescription: input.attendees.othersDescription
