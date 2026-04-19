@@ -1,11 +1,11 @@
 import { Timestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
 
-import { asDate, buildTrabalhoPayload, formatDate, formatTime, prefillTrabalhoForm, totalAttendees } from './form';
+import { asDate, buildSessionPayload, formatDate, formatTime, prefillSessionForm, totalAttendees } from './form';
 
-describe('trabalhos form helpers', () => {
+describe('sessions form helpers', () => {
   it('builds payload resolving selected church and beverage data', () => {
-    const payload = buildTrabalhoPayload({
+    const payload = buildSessionPayload({
       userId: 'user-1',
       churches: [
         { id: 'resp', name: 'Responsavel' },
@@ -14,10 +14,10 @@ describe('trabalhos form helpers', () => {
       beverageBatches: [{ id: 'l1', description: 'Lote A' }],
       form: {
         title: 'Trabalho de Cura',
-        data: '2024-01-02',
-        horario: '19:30',
-        duracaoEsperadaMin: '120',
-        duracaoEfetivaMin: '',
+        date: '2024-01-02',
+        startTime: '19:30',
+        expectedDurationMin: '120',
+        actualDurationMin: '',
         hymnals: ' hinario 1, hinario 2 ',
         churchRespId: 'resp',
         churchRespName: '',
@@ -26,9 +26,9 @@ describe('trabalhos form helpers', () => {
         venueName: '',
         venueText: 'salao',
         total: '',
-        fardados: '20',
-        homens: '10',
-        mulheres: '11',
+        initiated: '20',
+        men: '10',
+        women: '11',
         children: '2',
         others: '1',
         othersDescription: 'visitantes',
@@ -49,8 +49,8 @@ describe('trabalhos form helpers', () => {
     expect(payload.attendees?.total).toBe(24);
     expect(payload.beverage?.batchDescription).toBe('Lote A');
     expect(payload.createdBy).toBe('user-1');
-    expect(payload.data).toBeInstanceOf(Timestamp);
-    expect(payload.horarioInicio).toBeInstanceOf(Timestamp);
+    expect(payload.date).toBeInstanceOf(Timestamp);
+    expect(payload.startTime).toBeInstanceOf(Timestamp);
   });
 
   it('formats and converts date-like values', () => {
@@ -64,34 +64,34 @@ describe('trabalhos form helpers', () => {
 
   it('summarizes attendees and prefills edit form', () => {
     expect(
-      totalAttendees({ homens: 10, mulheres: 8, children: 2, others: 1, fardados: 12, othersDescription: 'visitantes' })
+      totalAttendees({ men: 10, women: 8, children: 2, others: 1, initiated: 12, othersDescription: 'visitantes' })
     ).toEqual({
       total: 21,
-      fardados: 12,
-      homens: 10,
-      mulheres: 8,
+      initiated: 12,
+      men: 10,
+      women: 8,
       children: 2,
       others: 1,
       othersDescription: 'visitantes'
     });
 
-    const form = prefillTrabalhoForm({
+    const form = prefillSessionForm({
       id: 't1',
       title: 'Sessao',
-      data: Timestamp.fromDate(new Date('2024-01-02T00:00:00.000Z')),
-      horarioInicio: Timestamp.fromDate(new Date('2024-01-02T19:30:00.000Z')),
-      duracaoEsperadaMin: 90,
+      date: Timestamp.fromDate(new Date('2024-01-02T00:00:00.000Z')),
+      startTime: Timestamp.fromDate(new Date('2024-01-02T19:30:00.000Z')),
+      expectedDurationMin: 90,
       hymnals: ['hinario'],
       responsibleChurchIds: ['i1'],
       responsibleChurchNames: ['Igreja 1'],
-      attendees: { total: 30, fardados: 20 },
+      attendees: { total: 30, initiated: 20 },
       beverage: { batchId: 'l1', batchDescription: 'Lote A', liters: 2 },
       notes: 'nota'
     });
 
     expect(form.title).toBe('Sessao');
-    expect(form.data).toBe('2024-01-02');
-    expect(form.horario).toBe('19:30');
+    expect(form.date).toBe('2024-01-02');
+    expect(form.startTime).toBe('19:30');
     expect(form.hymnals).toBe('hinario');
     expect(form.churchRespId).toBe('i1');
     expect(form.liters).toBe('2');

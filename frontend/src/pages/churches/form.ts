@@ -1,4 +1,4 @@
-import type { ChurchInfo, ChurchInput, Trabalho } from '../../lib/trabalhos';
+import type { ChurchInfo, ChurchInput, Session } from '../../lib/sessions';
 import type { UserProfile } from '../../lib/users';
 
 export type ChurchFormState = {
@@ -13,17 +13,17 @@ export type ChurchFormState = {
 };
 
 export type ChurchUsageStats = {
-  trabalhosLocal: number;
-  trabalhosResponsavel: number;
-  pessoasAtuais: number;
-  pessoasFardamento: number;
+  sessionsVenue: number;
+  sessionsResponsible: number;
+  membersCurrentChurch: number;
+  membersInitiationChurch: number;
 };
 
 export const emptyChurchUsageStats: ChurchUsageStats = {
-  trabalhosLocal: 0,
-  trabalhosResponsavel: 0,
-  pessoasAtuais: 0,
-  pessoasFardamento: 0
+  sessionsVenue: 0,
+  sessionsResponsible: 0,
+  membersCurrentChurch: 0,
+  membersInitiationChurch: 0
 };
 
 export const initialChurchForm: ChurchFormState = {
@@ -76,26 +76,26 @@ export function sortChurches(churches: ChurchInfo[]) {
   return churches.slice().sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export function buildChurchUsageMap(trabalhos: Trabalho[], users: UserProfile[]) {
+export function buildChurchUsageMap(sessions: Session[], users: UserProfile[]) {
   const map = new Map<string, ChurchUsageStats>();
 
-  trabalhos.forEach(trabalho => {
-    if (trabalho.venueId) {
-      incrementUsage(map, trabalho.venueId, 'trabalhosLocal');
+  sessions.forEach(session => {
+    if (session.venueId) {
+      incrementUsage(map, session.venueId, 'sessionsVenue');
     }
 
-    (trabalho.responsibleChurchIds ?? []).forEach(id => {
-      incrementUsage(map, id, 'trabalhosResponsavel');
+    (session.responsibleChurchIds ?? []).forEach(id => {
+      incrementUsage(map, id, 'sessionsResponsible');
     });
   });
 
   users.forEach(user => {
     if (user.currentChurchId) {
-      incrementUsage(map, user.currentChurchId, 'pessoasAtuais');
+      incrementUsage(map, user.currentChurchId, 'membersCurrentChurch');
     }
 
-    if (user.fardamentoChurchId) {
-      incrementUsage(map, user.fardamentoChurchId, 'pessoasFardamento');
+    if (user.initiationChurchId) {
+      incrementUsage(map, user.initiationChurchId, 'membersInitiationChurch');
     }
   });
 

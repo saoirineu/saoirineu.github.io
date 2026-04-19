@@ -34,39 +34,39 @@ describe('churches form helpers', () => {
       city: 'Rio Branco',
       lat: -9.9,
       lng: -67.8
-    } as import('../../lib/trabalhos').ChurchInfo);
+    } as import('../../lib/sessions').ChurchInfo);
 
     expect(form.name).toBe('Centro');
     expect(form.lat).toBe('-9.9');
-    expect(sortChurches([{ id: 'b', name: 'Zulu' }, { id: 'a', name: 'Alpha' }] as import('../../lib/trabalhos').ChurchInfo[]).map(item => item.name)).toEqual([
+    expect(sortChurches([{ id: 'b', name: 'Zulu' }, { id: 'a', name: 'Alpha' }] as import('../../lib/sessions').ChurchInfo[]).map(item => item.name)).toEqual([
       'Alpha',
       'Zulu'
     ]);
   });
 
-  it('aggregates usage stats from trabalhos and users', () => {
+  it('aggregates usage stats from sessions and users', () => {
     const usage = buildChurchUsageMap(
       [
         { id: 't1', venueId: 'i1', responsibleChurchIds: ['i1', 'i2'] },
         { id: 't2', venueId: 'i2', responsibleChurchIds: ['i2'] }
       ],
       [
-        { uid: 'u1', currentChurchId: 'i1', fardamentoChurchId: 'i2' },
-        { uid: 'u2', currentChurchId: 'i2', fardamentoChurchId: 'i2' }
+        { uid: 'u1', currentChurchId: 'i1', initiationChurchId: 'i2' },
+        { uid: 'u2', currentChurchId: 'i2', initiationChurchId: 'i2' }
       ]
     );
 
     expect(usage.get('i1')).toEqual({
-      trabalhosLocal: 1,
-      trabalhosResponsavel: 1,
-      pessoasAtuais: 1,
-      pessoasFardamento: 0
+      sessionsVenue: 1,
+      sessionsResponsible: 1,
+      membersCurrentChurch: 1,
+      membersInitiationChurch: 0
     });
     expect(usage.get('i2')).toEqual({
-      trabalhosLocal: 1,
-      trabalhosResponsavel: 2,
-      pessoasAtuais: 1,
-      pessoasFardamento: 2
+      sessionsVenue: 1,
+      sessionsResponsible: 2,
+      membersCurrentChurch: 1,
+      membersInitiationChurch: 2
     });
   });
 });

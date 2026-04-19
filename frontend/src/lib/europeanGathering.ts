@@ -101,8 +101,8 @@ export type EuropeanGatheringRegistrationRecord = {
   submittedAt?: Date | null;
 };
 
-const registrationsRef = collection(db, 'encontroEuropeuInscricoes');
-const roomAvailabilityRef = collection(db, 'encontroEuropeuQuartos');
+const registrationsRef = collection(db, 'europeanGatheringRegistrations');
+const roomAvailabilityRef = collection(db, 'europeanGatheringRooms');
 
 export const europeanGatheringRoomOptions: EuropeanGatheringRoomOption[] = [
   { name: 'Cedro', capacity: 6 },
@@ -207,7 +207,7 @@ async function adjustRoomAvailability(roomName: string, delta: number, transacti
 }
 
 function buildDocumentPath(registrationId: string, key: EuropeanGatheringDocumentKey, fileName: string) {
-  return `encontroEuropeuInscricoes/${registrationId}/${key}-${sanitizeFileName(fileName)}`;
+  return `europeanGatheringRegistrations/${registrationId}/${key}-${sanitizeFileName(fileName)}`;
 }
 
 export async function uploadEuropeanGatheringDocuments(args: { documents: EuropeanGatheringUploadableDocuments; registrationId: string }) {

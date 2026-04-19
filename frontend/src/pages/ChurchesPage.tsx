@@ -5,9 +5,9 @@ import {
   createChurch,
   deleteChurch,
   fetchChurches,
-  fetchTrabalhos,
+  fetchSessions,
   updateChurch
-} from '../lib/trabalhos';
+} from '../lib/sessions';
 import { fetchUsers } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -26,7 +26,7 @@ export default function ChurchesPage() {
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
-  const trabalhosQuery = useQuery({ queryKey: ['trabalhos'], queryFn: fetchTrabalhos });
+  const sessionsQuery = useQuery({ queryKey: ['sessions'], queryFn: fetchSessions });
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: fetchUsers });
 
   const [form, setForm] = useState<ChurchFormState>(initialChurchForm);
@@ -42,16 +42,16 @@ export default function ChurchesPage() {
     sections: ChurchesCopy;
   }> = {
     pt: {
-      title: 'Igrejas', intro: 'Cadastro simples de casas com localização e linhagem.', loginToCreate: 'Faça login para cadastrar', requiredName: 'Nome é obrigatório', loginToDelete: 'Faça login para excluir', confirmDelete: 'Excluir esta igreja?', sections: { newChurch: 'Nova igreja', formHint: 'Preencha o nome e, se quiser, localização, linhagem e coordenadas (para mapa).', editing: 'Editando', loginToSave: 'Faça login para salvar', name: 'Nome', lineage: 'Linhagem / casa', city: 'Cidade', state: 'Estado', country: 'País', latitude: 'Latitude', longitude: 'Longitude', notes: 'Observações', saveChanges: 'Salvar alterações', createChurch: 'Cadastrar igreja', saving: 'Salvando...', cancelEdit: 'Cancelar edição', saved: 'Salvo.', map: 'Ver no mapa', works: 'Trabalhos', local: 'Local', responsible: 'Responsável', people: 'Pessoas', current: 'Atuais', fardamento: 'Fardamento', edit: 'Editar', deleting: 'Excluindo...', delete: 'Excluir', churchesRegistered: 'Igrejas cadastradas', loading: 'Carregando...', noChurches: 'Nenhuma igreja cadastrada ainda.' }
+      title: 'Igrejas', intro: 'Cadastro simples de casas com localização e linhagem.', loginToCreate: 'Faça login para cadastrar', requiredName: 'Nome é obrigatório', loginToDelete: 'Faça login para excluir', confirmDelete: 'Excluir esta igreja?', sections: { newChurch: 'Nova igreja', formHint: 'Preencha o nome e, se quiser, localização, linhagem e coordenadas (para mapa).', editing: 'Editando', loginToSave: 'Faça login para salvar', name: 'Nome', lineage: 'Linhagem / casa', city: 'Cidade', state: 'Estado', country: 'País', latitude: 'Latitude', longitude: 'Longitude', notes: 'Observações', saveChanges: 'Salvar alterações', createChurch: 'Cadastrar igreja', saving: 'Salvando...', cancelEdit: 'Cancelar edição', saved: 'Salvo.', map: 'Ver no mapa', works: 'Trabalhos', local: 'Local', responsible: 'Responsável', people: 'Pessoas', current: 'Atuais', initiation: 'Fardamento', edit: 'Editar', deleting: 'Excluindo...', delete: 'Excluir', churchesRegistered: 'Igrejas cadastradas', loading: 'Carregando...', noChurches: 'Nenhuma igreja cadastrada ainda.' }
     },
     en: {
-      title: 'Churches', intro: 'Simple church registry with location and lineage.', loginToCreate: 'Sign in to create', requiredName: 'Name is required', loginToDelete: 'Sign in to delete', confirmDelete: 'Delete this church?', sections: { newChurch: 'New church', formHint: 'Fill in the name and, if desired, location, lineage, and coordinates (for maps).', editing: 'Editing', loginToSave: 'Sign in to save', name: 'Name', lineage: 'Lineage / house', city: 'City', state: 'State', country: 'Country', latitude: 'Latitude', longitude: 'Longitude', notes: 'Notes', saveChanges: 'Save changes', createChurch: 'Create church', saving: 'Saving...', cancelEdit: 'Cancel edit', saved: 'Saved.', map: 'View on map', works: 'Works', local: 'Location', responsible: 'Responsible', people: 'People', current: 'Current', fardamento: 'Fardamento', edit: 'Edit', deleting: 'Deleting...', delete: 'Delete', churchesRegistered: 'Registered churches', loading: 'Loading...', noChurches: 'No churches registered yet.' }
+      title: 'Churches', intro: 'Simple church registry with location and lineage.', loginToCreate: 'Sign in to create', requiredName: 'Name is required', loginToDelete: 'Sign in to delete', confirmDelete: 'Delete this church?', sections: { newChurch: 'New church', formHint: 'Fill in the name and, if desired, location, lineage, and coordinates (for maps).', editing: 'Editing', loginToSave: 'Sign in to save', name: 'Name', lineage: 'Lineage / house', city: 'City', state: 'State', country: 'Country', latitude: 'Latitude', longitude: 'Longitude', notes: 'Notes', saveChanges: 'Save changes', createChurch: 'Create church', saving: 'Saving...', cancelEdit: 'Cancel edit', saved: 'Saved.', map: 'View on map', works: 'Works', local: 'Location', responsible: 'Responsible', people: 'People', current: 'Current', initiation: 'Fardamento', edit: 'Edit', deleting: 'Deleting...', delete: 'Delete', churchesRegistered: 'Registered churches', loading: 'Loading...', noChurches: 'No churches registered yet.' }
     },
     es: {
-      title: 'Iglesias', intro: 'Registro simple de casas con ubicación y linaje.', loginToCreate: 'Inicie sesión para registrar', requiredName: 'El nombre es obligatorio', loginToDelete: 'Inicie sesión para eliminar', confirmDelete: '¿Eliminar esta iglesia?', sections: { newChurch: 'Nueva iglesia', formHint: 'Complete el nombre y, si quiere, ubicación, linaje y coordenadas (para el mapa).', editing: 'Editando', loginToSave: 'Inicie sesión para guardar', name: 'Nombre', lineage: 'Linaje / casa', city: 'Ciudad', state: 'Estado', country: 'País', latitude: 'Latitud', longitude: 'Longitud', notes: 'Observaciones', saveChanges: 'Guardar cambios', createChurch: 'Registrar iglesia', saving: 'Guardando...', cancelEdit: 'Cancelar edición', saved: 'Guardado.', map: 'Ver en el mapa', works: 'Trabajos', local: 'Local', responsible: 'Responsable', people: 'Personas', current: 'Actuales', fardamento: 'Fardamento', edit: 'Editar', deleting: 'Eliminando...', delete: 'Eliminar', churchesRegistered: 'Iglesias registradas', loading: 'Cargando...', noChurches: 'Todavía no hay iglesias registradas.' }
+      title: 'Iglesias', intro: 'Registro simple de casas con ubicación y linaje.', loginToCreate: 'Inicie sesión para registrar', requiredName: 'El nombre es obligatorio', loginToDelete: 'Inicie sesión para eliminar', confirmDelete: '¿Eliminar esta iglesia?', sections: { newChurch: 'Nueva iglesia', formHint: 'Complete el nombre y, si quiere, ubicación, linaje y coordenadas (para el mapa).', editing: 'Editando', loginToSave: 'Inicie sesión para guardar', name: 'Nombre', lineage: 'Linaje / casa', city: 'Ciudad', state: 'Estado', country: 'País', latitude: 'Latitud', longitude: 'Longitud', notes: 'Observaciones', saveChanges: 'Guardar cambios', createChurch: 'Registrar iglesia', saving: 'Guardando...', cancelEdit: 'Cancelar edición', saved: 'Guardado.', map: 'Ver en el mapa', works: 'Trabajos', local: 'Local', responsible: 'Responsable', people: 'Personas', current: 'Actuales', initiation: 'Fardamento', edit: 'Editar', deleting: 'Eliminando...', delete: 'Eliminar', churchesRegistered: 'Iglesias registradas', loading: 'Cargando...', noChurches: 'Todavía no hay iglesias registradas.' }
     },
     it: {
-      title: 'Chiese', intro: 'Registro semplice delle case con posizione e linea.', loginToCreate: 'Accedi per registrare', requiredName: 'Il nome è obbligatorio', loginToDelete: 'Accedi per eliminare', confirmDelete: 'Eliminare questa chiesa?', sections: { newChurch: 'Nuova chiesa', formHint: 'Compila il nome e, se vuoi, posizione, linea e coordinate (per la mappa).', editing: 'Modifica', loginToSave: 'Accedi per salvare', name: 'Nome', lineage: 'Linea / casa', city: 'Città', state: 'Stato', country: 'Paese', latitude: 'Latitudine', longitude: 'Longitudine', notes: 'Osservazioni', saveChanges: 'Salva modifiche', createChurch: 'Registra chiesa', saving: 'Salvataggio...', cancelEdit: 'Annulla modifica', saved: 'Salvato.', map: 'Vedi sulla mappa', works: 'Lavori', local: 'Luogo', responsible: 'Responsabile', people: 'Persone', current: 'Attuali', fardamento: 'Fardamento', edit: 'Modifica', deleting: 'Eliminazione...', delete: 'Elimina', churchesRegistered: 'Chiese registrate', loading: 'Caricamento...', noChurches: 'Nessuna chiesa registrata.' }
+      title: 'Chiese', intro: 'Registro semplice delle case con posizione e linea.', loginToCreate: 'Accedi per registrare', requiredName: 'Il nome è obbligatorio', loginToDelete: 'Accedi per eliminare', confirmDelete: 'Eliminare questa chiesa?', sections: { newChurch: 'Nuova chiesa', formHint: 'Compila il nome e, se vuoi, posizione, linea e coordinate (per la mappa).', editing: 'Modifica', loginToSave: 'Accedi per salvare', name: 'Nome', lineage: 'Linea / casa', city: 'Città', state: 'Stato', country: 'Paese', latitude: 'Latitudine', longitude: 'Longitudine', notes: 'Osservazioni', saveChanges: 'Salva modifiche', createChurch: 'Registra chiesa', saving: 'Salvataggio...', cancelEdit: 'Annulla modifica', saved: 'Salvato.', map: 'Vedi sulla mappa', works: 'Lavori', local: 'Luogo', responsible: 'Responsabile', people: 'Persone', current: 'Attuali', initiation: 'Fardamento', edit: 'Modifica', deleting: 'Eliminazione...', delete: 'Elimina', churchesRegistered: 'Chiese registrate', loading: 'Caricamento...', noChurches: 'Nessuna chiesa registrata.' }
     }
   };
 
@@ -97,8 +97,8 @@ export default function ChurchesPage() {
 
   const sortedChurches = useMemo(() => sortChurches(churchesQuery.data ?? []), [churchesQuery.data]);
   const churchUsage = useMemo(
-    () => buildChurchUsageMap(trabalhosQuery.data ?? [], usersQuery.data ?? []),
-    [trabalhosQuery.data, usersQuery.data]
+    () => buildChurchUsageMap(sessionsQuery.data ?? [], usersQuery.data ?? []),
+    [sessionsQuery.data, usersQuery.data]
   );
 
   return (

@@ -149,7 +149,7 @@ function formatExtraItems(registration: EuropeanGatheringRegistrationRecord) {
   return registration.needsExtraLinen ? 'Lençol extra + toalhas' : 'Sem extras';
 }
 
-export default function EncontroEuropeuAdminPage() {
+export default function EuropeanGatheringAdminPage() {
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');

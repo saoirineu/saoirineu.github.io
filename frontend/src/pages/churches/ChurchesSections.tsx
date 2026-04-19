@@ -1,6 +1,6 @@
 import type { UseMutationResult } from '@tanstack/react-query';
 
-import type { ChurchInfo } from '../../lib/trabalhos';
+import type { ChurchInfo } from '../../lib/sessions';
 import { emptyChurchUsageStats, type ChurchFormState, type ChurchUsageStats } from './form';
 
 type FormSectionProps = {
@@ -50,7 +50,7 @@ export type ChurchesCopy = {
   responsible: string;
   people: string;
   current: string;
-  fardamento: string;
+  initiation: string;
   edit: string;
   deleting: string;
   delete: string;
@@ -238,13 +238,13 @@ function ChurchCard({
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
         <div className="rounded-md bg-slate-100 px-2 py-1">
           <div className="font-semibold text-slate-800">{copy.works}</div>
-          <div>{copy.local}: {uso.trabalhosLocal}</div>
-          <div>{copy.responsible}: {uso.trabalhosResponsavel}</div>
+          <div>{copy.local}: {uso.sessionsVenue}</div>
+          <div>{copy.responsible}: {uso.sessionsResponsible}</div>
         </div>
         <div className="rounded-md bg-slate-100 px-2 py-1">
           <div className="font-semibold text-slate-800">{copy.people}</div>
-          <div>{copy.current}: {uso.pessoasAtuais}</div>
-          <div>{copy.fardamento}: {uso.pessoasFardamento}</div>
+          <div>{copy.current}: {uso.membersCurrentChurch}</div>
+          <div>{copy.initiation}: {uso.membersInitiationChurch}</div>
         </div>
       </div>
 

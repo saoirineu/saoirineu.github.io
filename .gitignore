@@ -25,3 +25,9 @@ frontend/dist
 
 # logs & temp files
 docs/reunioes/
+
+# Firestore backups
+backup/
+
+# Scripts deps
+scripts/node_modules/

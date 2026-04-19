@@ -70,7 +70,7 @@ describe('european gathering helpers', () => {
       },
       documents: {
         identityDocumentName: 'id.pdf',
-        identityDocumentPath: 'encontroEuropeuInscricoes/abc/identity-id.pdf',
+        identityDocumentPath: 'europeanGatheringRegistrations/abc/identity-id.pdf',
         consentDocumentName: 'consent.pdf'
       }
     });
@@ -79,7 +79,7 @@ describe('european gathering helpers', () => {
     expect(payload.lastName).toBe('Silva');
     expect(payload.country).toBe('Italia');
     expect(payload.identityDocumentName).toBe('id.pdf');
-    expect(payload.identityDocumentPath).toBe('encontroEuropeuInscricoes/abc/identity-id.pdf');
+    expect(payload.identityDocumentPath).toBe('europeanGatheringRegistrations/abc/identity-id.pdf');
     expect(payload.consentDocumentName).toBe('consent.pdf');
     expect(payload.status).toBe('pending');
   });

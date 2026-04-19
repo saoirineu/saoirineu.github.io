@@ -1,13 +1,13 @@
 import { Timestamp } from 'firebase/firestore';
 
-import type { BeverageInfo, ChurchInfo, Trabalho, TrabalhoInput } from '../../lib/trabalhos';
+import type { BeverageInfo, ChurchInfo, Session, SessionInput } from '../../lib/sessions';
 
-export type TrabalhoFormState = {
+export type SessionFormState = {
   title: string;
-  data: string;
-  horario: string;
-  duracaoEsperadaMin: string;
-  duracaoEfetivaMin: string;
+  date: string;
+  startTime: string;
+  expectedDurationMin: string;
+  actualDurationMin: string;
   hymnals: string;
   churchRespId: string;
   churchRespName: string;
@@ -16,9 +16,9 @@ export type TrabalhoFormState = {
   venueName: string;
   venueText: string;
   total: string;
-  fardados: string;
-  homens: string;
-  mulheres: string;
+  initiated: string;
+  men: string;
+  women: string;
   children: string;
   others: string;
   othersDescription: string;
@@ -31,12 +31,12 @@ export type TrabalhoFormState = {
 
 type TimestampLike = Timestamp | Date | string | null | undefined;
 
-export const initialTrabalhoForm: TrabalhoFormState = {
+export const initialSessionForm: SessionFormState = {
   title: '',
-  data: '',
-  horario: '',
-  duracaoEsperadaMin: '',
-  duracaoEfetivaMin: '',
+  date: '',
+  startTime: '',
+  expectedDurationMin: '',
+  actualDurationMin: '',
   hymnals: '',
   churchRespId: '',
   churchRespName: '',
@@ -45,9 +45,9 @@ export const initialTrabalhoForm: TrabalhoFormState = {
   venueName: '',
   venueText: '',
   total: '',
-  fardados: '',
-  homens: '',
-  mulheres: '',
+  initiated: '',
+  men: '',
+  women: '',
   children: '',
   others: '',
   othersDescription: '',
@@ -85,37 +85,37 @@ export function formatTime(value: TimestampLike) {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function totalAttendees(attendees?: Trabalho['attendees']) {
+export function totalAttendees(attendees?: Session['attendees']) {
   if (!attendees) return null;
 
   const total =
     (attendees.total ?? 0) ||
-    (attendees.homens ?? 0) +
-      (attendees.mulheres ?? 0) +
+    (attendees.men ?? 0) +
+      (attendees.women ?? 0) +
       (attendees.children ?? 0) +
       (attendees.others ?? 0);
 
   return {
     total,
-    fardados: attendees.fardados ?? null,
-    homens: attendees.homens ?? 0,
-    mulheres: attendees.mulheres ?? 0,
+    initiated: attendees.initiated ?? null,
+    men: attendees.men ?? 0,
+    women: attendees.women ?? 0,
     children: attendees.children ?? 0,
     others: attendees.others ?? 0,
     othersDescription: attendees.othersDescription
   };
 }
 
-export function buildTrabalhoPayload(args: {
+export function buildSessionPayload(args: {
   beverageBatches?: BeverageInfo[];
-  form: TrabalhoFormState;
+  form: SessionFormState;
   churches?: ChurchInfo[];
   userId: string;
-}): TrabalhoInput {
+}): SessionInput {
   const { beverageBatches, form, churches, userId } = args;
-  const dataTs = form.data ? Timestamp.fromDate(new Date(form.data)) : null;
-  const horarioTs = form.horario && form.data
-    ? Timestamp.fromDate(new Date(`${form.data}T${form.horario}:00`))
+  const dateTs = form.date ? Timestamp.fromDate(new Date(form.date)) : null;
+  const startTimeTs = form.startTime && form.date
+    ? Timestamp.fromDate(new Date(`${form.date}T${form.startTime}:00`))
     : null;
 
   const churchResp = churches?.find(church => church.id === form.churchRespId);
@@ -124,17 +124,17 @@ export function buildTrabalhoPayload(args: {
 
   const totalManual = form.total ? Number(form.total) : undefined;
   const totalDerived =
-    (form.homens ? Number(form.homens) : 0) +
-    (form.mulheres ? Number(form.mulheres) : 0) +
+    (form.men ? Number(form.men) : 0) +
+    (form.women ? Number(form.women) : 0) +
     (form.children ? Number(form.children) : 0) +
     (form.others ? Number(form.others) : 0);
 
   return {
     title: form.title || undefined,
-    data: dataTs,
-    horarioInicio: horarioTs,
-    duracaoEsperadaMin: form.duracaoEsperadaMin ? Number(form.duracaoEsperadaMin) : null,
-    duracaoEfetivaMin: form.duracaoEfetivaMin ? Number(form.duracaoEfetivaMin) : null,
+    date: dateTs,
+    startTime: startTimeTs,
+    expectedDurationMin: form.expectedDurationMin ? Number(form.expectedDurationMin) : null,
+    actualDurationMin: form.actualDurationMin ? Number(form.actualDurationMin) : null,
     venueId: selectedVenue?.id,
     venueName: selectedVenue?.name,
     venueText: form.venueText || undefined,
@@ -147,9 +147,9 @@ export function buildTrabalhoPayload(args: {
     responsibleChurchText: form.churchesText || undefined,
     attendees: {
       total: totalManual ?? totalDerived,
-      fardados: form.fardados ? Number(form.fardados) : undefined,
-      homens: form.homens ? Number(form.homens) : undefined,
-      mulheres: form.mulheres ? Number(form.mulheres) : undefined,
+      initiated: form.initiated ? Number(form.initiated) : undefined,
+      men: form.men ? Number(form.men) : undefined,
+      women: form.women ? Number(form.women) : undefined,
       children: form.children ? Number(form.children) : undefined,
       others: form.others ? Number(form.others) : undefined,
       othersDescription: form.othersDescription || undefined
@@ -165,37 +165,37 @@ export function buildTrabalhoPayload(args: {
   };
 }
 
-export function prefillTrabalhoForm(trabalho: Trabalho): TrabalhoFormState {
-  const data = asDate(trabalho.data);
-  const horario = asDate(trabalho.horarioInicio);
+export function prefillSessionForm(session: Session): SessionFormState {
+  const date = asDate(session.date);
+  const startTime = asDate(session.startTime);
 
   return {
-    title: trabalho.title || '',
-    data: data ? data.toISOString().slice(0, 10) : '',
-    horario: horario ? horario.toISOString().slice(11, 16) : '',
-    duracaoEsperadaMin: trabalho.duracaoEsperadaMin?.toString() || '',
-    duracaoEfetivaMin: trabalho.duracaoEfetivaMin?.toString() || '',
-    hymnals: trabalho.hymnals?.join(', ') || '',
-    churchRespId: trabalho.responsibleChurchIds?.[0] || '',
-    churchRespName: trabalho.responsibleChurchNames?.[0] || '',
-    churchesText: trabalho.responsibleChurchText || '',
-    venueId: trabalho.venueId || '',
-    venueName: trabalho.venueName || '',
-    venueText: trabalho.venueText || '',
-    total: trabalho.attendees?.total?.toString() || '',
-    fardados: trabalho.attendees?.fardados?.toString() || '',
-    homens: trabalho.attendees?.homens?.toString() || '',
-    mulheres: trabalho.attendees?.mulheres?.toString() || '',
-    children: trabalho.attendees?.children?.toString() || '',
-    others: trabalho.attendees?.others?.toString() || '',
-    othersDescription: trabalho.attendees?.othersDescription || '',
-    batchId: trabalho.beverage?.batchId || '',
-    batchDescription: trabalho.beverage?.batchDescription || '',
-    batchText: trabalho.beverage?.batchText || '',
+    title: session.title || '',
+    date: date ? date.toISOString().slice(0, 10) : '',
+    startTime: startTime ? startTime.toISOString().slice(11, 16) : '',
+    expectedDurationMin: session.expectedDurationMin?.toString() || '',
+    actualDurationMin: session.actualDurationMin?.toString() || '',
+    hymnals: session.hymnals?.join(', ') || '',
+    churchRespId: session.responsibleChurchIds?.[0] || '',
+    churchRespName: session.responsibleChurchNames?.[0] || '',
+    churchesText: session.responsibleChurchText || '',
+    venueId: session.venueId || '',
+    venueName: session.venueName || '',
+    venueText: session.venueText || '',
+    total: session.attendees?.total?.toString() || '',
+    initiated: session.attendees?.initiated?.toString() || '',
+    men: session.attendees?.men?.toString() || '',
+    women: session.attendees?.women?.toString() || '',
+    children: session.attendees?.children?.toString() || '',
+    others: session.attendees?.others?.toString() || '',
+    othersDescription: session.attendees?.othersDescription || '',
+    batchId: session.beverage?.batchId || '',
+    batchDescription: session.beverage?.batchDescription || '',
+    batchText: session.beverage?.batchText || '',
     liters:
-      (trabalho.beverage?.liters ?? '') === ''
+      (session.beverage?.liters ?? '') === ''
         ? ''
-        : (trabalho.beverage?.liters ?? '').toString(),
-    notes: trabalho.notes || ''
+        : (session.beverage?.liters ?? '').toString(),
+    notes: session.notes || ''
   };
 }

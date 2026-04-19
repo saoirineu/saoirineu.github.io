@@ -24,23 +24,23 @@ export type UserProfile = {
   currentChurchId?: string;
   currentChurchName?: string;
   originChurchName?: string;
-  fardado?: boolean;
-  fardamentoDate?: string;
-  fardamentoVenue?: string;
-  fardamentoChurchId?: string;
-  fardamentoChurchName?: string;
-  fardadorName?: string;
-  fardadoComQuem?: string;
-  isPadrinho?: boolean;
-  padrinhoChurchIds?: string[];
-  padrinhoChurchNames?: string[];
+  isInitiated?: boolean;
+  initiationDate?: string;
+  initiationVenue?: string;
+  initiationChurchId?: string;
+  initiationChurchName?: string;
+  initiatorName?: string;
+  initiatedWith?: string;
+  isSponsor?: boolean;
+  sponsorChurchIds?: string[];
+  sponsorChurchNames?: string[];
   doctrineRoles?: string[];
   observations?: string;
   updatedAt?: Timestamp;
   createdAt?: Timestamp;
 };
 
-const usersRef = collection(db, 'usuarios');
+const usersRef = collection(db, 'users');
 
 function mapUserProfile(uid: string, value: unknown): UserProfile {
   const data = asRecord(value);
@@ -51,24 +51,26 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     email: asOptionalString(data.email),
     phone: asOptionalString(data.phone),
     avatarUrl: asOptionalString(data.avatarUrl),
-    city: asOptionalString(data.cidade),
-    state: asOptionalString(data.estado),
-    country: asOptionalString(data.pais),
-    currentChurchId: asOptionalString(data.igrejaAtualId),
-    currentChurchName: asOptionalString(data.igrejaAtualNome),
-    originChurchName: asOptionalString(data.igrejaOrigemNome),
-    fardado: asOptionalBoolean(data.fardado),
-    fardamentoDate: asOptionalString(data.fardamentoData),
-    fardamentoVenue: asOptionalString(data.fardamentoLocal),
-    fardamentoChurchId: asOptionalString(data.fardamentoIgrejaId),
-    fardamentoChurchName: asOptionalString(data.fardamentoIgrejaNome),
-    fardadorName: asOptionalString(data.fardadorNome),
-    fardadoComQuem: asOptionalString(data.fardadoComQuem),
-    isPadrinho: asOptionalBoolean(data.padrinhoMadrinha),
-    padrinhoChurchIds: asStringArray(data.padrinhoIgrejasIds),
-    padrinhoChurchNames: asStringArray(data.padrinhoIgrejasNomes),
-    doctrineRoles: asStringArray(data.papeisDoutrina),
-    observations: asOptionalString(data.observacoes),
+    city: asOptionalString(data.city),
+    state: asOptionalString(data.state),
+    country: asOptionalString(data.country),
+    currentChurchId: asOptionalString(data.currentChurchId),
+    currentChurchName: asOptionalString(data.currentChurchName),
+    originChurchName: asOptionalString(data.originChurchName),
+    // Firestore field: fardado → isInitiated
+    isInitiated: asOptionalBoolean(data.fardado),
+    // Firestore field: fardamentoDate → initiationDate (migrated)
+    initiationDate: asOptionalString(data.fardamentoDate),
+    initiationVenue: asOptionalString(data.fardamentoVenue),
+    initiationChurchId: asOptionalString(data.fardamentoChurchId),
+    initiationChurchName: asOptionalString(data.fardamentoChurchName),
+    initiatorName: asOptionalString(data.fardadorName),
+    initiatedWith: asOptionalString(data.fardadoComQuem),
+    isSponsor: asOptionalBoolean(data.isPadrinho),
+    sponsorChurchIds: asStringArray(data.padrinhoChurchIds),
+    sponsorChurchNames: asStringArray(data.padrinhoChurchNames),
+    doctrineRoles: asStringArray(data.doctrineRoles),
+    observations: asOptionalString(data.observations),
     updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined
   };
@@ -88,7 +90,6 @@ export async function fetchUser(uid: string): Promise<UserProfile | null> {
 export async function upsertUser(uid: string, data: Partial<UserProfile>) {
   const ref = doc(usersRef, uid);
 
-  // Map English field names back to Firestore's Portuguese field names (pending migration)
   const firestorePayload = {
     uid,
     systemRole: data.systemRole,
@@ -96,24 +97,24 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     email: data.email,
     phone: data.phone,
     avatarUrl: data.avatarUrl,
-    cidade: data.city,
-    estado: data.state,
-    pais: data.country,
-    igrejaAtualId: data.currentChurchId,
-    igrejaAtualNome: data.currentChurchName,
-    igrejaOrigemNome: data.originChurchName,
-    fardado: data.fardado,
-    fardamentoData: data.fardamentoDate,
-    fardamentoLocal: data.fardamentoVenue,
-    fardamentoIgrejaId: data.fardamentoChurchId,
-    fardamentoIgrejaNome: data.fardamentoChurchName,
-    fardadorNome: data.fardadorName,
-    fardadoComQuem: data.fardadoComQuem,
-    padrinhoMadrinha: data.isPadrinho,
-    padrinhoIgrejasIds: data.padrinhoChurchIds,
-    padrinhoIgrejasNomes: data.padrinhoChurchNames,
-    papeisDoutrina: data.doctrineRoles,
-    observacoes: data.observations,
+    city: data.city,
+    state: data.state,
+    country: data.country,
+    currentChurchId: data.currentChurchId,
+    currentChurchName: data.currentChurchName,
+    originChurchName: data.originChurchName,
+    fardado: data.isInitiated,
+    fardamentoDate: data.initiationDate,
+    fardamentoVenue: data.initiationVenue,
+    fardamentoChurchId: data.initiationChurchId,
+    fardamentoChurchName: data.initiationChurchName,
+    fardadorName: data.initiatorName,
+    fardadoComQuem: data.initiatedWith,
+    isPadrinho: data.isSponsor,
+    padrinhoChurchIds: data.sponsorChurchIds,
+    padrinhoChurchNames: data.sponsorChurchNames,
+    doctrineRoles: data.doctrineRoles,
+    observations: data.observations,
     updatedAt: Timestamp.now()
   };
 

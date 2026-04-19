@@ -2,38 +2,38 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
-  fetchTrabalhos,
-  createTrabalho,
+  fetchSessions,
+  createSession,
   fetchChurches,
   fetchBeverageBatches,
-  updateTrabalho,
-  deleteTrabalho
-} from '../lib/trabalhos';
+  updateSession,
+  deleteSession
+} from '../lib/sessions';
 import { useAuth } from '../providers/useAuth';
 import {
-  buildTrabalhoPayload,
+  buildSessionPayload,
   formatDate,
   formatTime,
-  initialTrabalhoForm,
-  prefillTrabalhoForm,
+  initialSessionForm,
+  prefillSessionForm,
   totalAttendees
-} from './trabalhos/form';
+} from './sessions/form';
 
-export function TrabalhosPage() {
+export function SessionsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data, isLoading, error } = useQuery({ queryKey: ['trabalhos'], queryFn: fetchTrabalhos });
+  const { data, isLoading, error } = useQuery({ queryKey: ['sessions'], queryFn: fetchSessions });
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
   const beverageQuery = useQuery({ queryKey: ['beverageBatches'], queryFn: fetchBeverageBatches });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(initialTrabalhoForm);
+  const [form, setForm] = useState(initialSessionForm);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sessão expirada');
 
-      const payload = buildTrabalhoPayload({
+      const payload = buildSessionPayload({
         beverageBatches: beverageQuery.data,
         form,
         churches: churchesQuery.data,
@@ -41,14 +41,14 @@ export function TrabalhosPage() {
       });
 
       if (editingId) {
-        return updateTrabalho(editingId, { ...payload, createdBy: undefined });
+        return updateSession(editingId, { ...payload, createdBy: undefined });
       }
 
-      return createTrabalho(payload);
+      return createSession(payload);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['trabalhos'] });
-      setForm(initialTrabalhoForm);
+      await qc.invalidateQueries({ queryKey: ['sessions'] });
+      setForm(initialSessionForm);
       setEditingId(null);
     }
   });
@@ -56,10 +56,10 @@ export function TrabalhosPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Sessão expirada');
-      return deleteTrabalho(id);
+      return deleteSession(id);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['trabalhos'] });
+      await qc.invalidateQueries({ queryKey: ['sessions'] });
       if (editingId) setEditingId(null);
     }
   });
@@ -107,8 +107,8 @@ export function TrabalhosPage() {
               <input
                 type="date"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.data}
-                onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
+                value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
               />
             </label>
             <label className="text-sm text-slate-700">
@@ -116,8 +116,8 @@ export function TrabalhosPage() {
               <input
                 type="time"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.horario}
-                onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}
+                value={form.startTime}
+                onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
               />
             </label>
           </div>
@@ -127,8 +127,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.duracaoEsperadaMin}
-                onChange={e => setForm(f => ({ ...f, duracaoEsperadaMin: e.target.value }))}
+                value={form.expectedDurationMin}
+                onChange={e => setForm(f => ({ ...f, expectedDurationMin: e.target.value }))}
               />
             </label>
             <label className="text-sm text-slate-700">
@@ -136,8 +136,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.duracaoEfetivaMin}
-                onChange={e => setForm(f => ({ ...f, duracaoEfetivaMin: e.target.value }))}
+                value={form.actualDurationMin}
+                onChange={e => setForm(f => ({ ...f, actualDurationMin: e.target.value }))}
               />
             </label>
           </div>
@@ -232,8 +232,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.fardados}
-                onChange={e => setForm(f => ({ ...f, fardados: e.target.value }))}
+                value={form.initiated}
+                onChange={e => setForm(f => ({ ...f, initiated: e.target.value }))}
               />
             </label>
             <label className="text-sm text-slate-700">
@@ -241,8 +241,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.homens}
-                onChange={e => setForm(f => ({ ...f, homens: e.target.value }))}
+                value={form.men}
+                onChange={e => setForm(f => ({ ...f, men: e.target.value }))}
               />
             </label>
             <label className="text-sm text-slate-700">
@@ -250,8 +250,8 @@ export function TrabalhosPage() {
               <input
                 type="number"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.mulheres}
-                onChange={e => setForm(f => ({ ...f, mulheres: e.target.value }))}
+                value={form.women}
+                onChange={e => setForm(f => ({ ...f, women: e.target.value }))}
               />
             </label>
             <label className="text-sm text-slate-700">
@@ -353,7 +353,7 @@ export function TrabalhosPage() {
               className="text-xs text-slate-600 underline"
               onClick={() => {
                 setEditingId(null);
-                setForm(initialTrabalhoForm);
+                setForm(initialSessionForm);
               }}
             >
               Cancelar edição
@@ -375,31 +375,31 @@ export function TrabalhosPage() {
           </div>
         )}
 
-        {data?.map(trabalho => {
-          const attendees = totalAttendees(trabalho.attendees);
+        {data?.map(session => {
+          const attendees = totalAttendees(session.attendees);
           const editPrefill = () => {
-            setEditingId(trabalho.id);
-            setForm(prefillTrabalhoForm(trabalho));
+            setEditingId(session.id);
+            setForm(prefillSessionForm(session));
           };
 
           return (
             <div
-              key={trabalho.id}
+              key={session.id}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
             >
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-slate-900">{trabalho.title || 'Trabalho'}</div>
+                  <div className="text-lg font-semibold text-slate-900">{session.title || 'Trabalho'}</div>
                   <div className="text-sm text-slate-600">
-                    {formatDate(trabalho.data)} • {formatTime(trabalho.horarioInicio)} •{' '}
-                    {trabalho.venueName || trabalho.venueText || 'Local a definir'}
+                    {formatDate(session.date)} • {formatTime(session.startTime)} •{' '}
+                    {session.venueName || session.venueText || 'Local a definir'}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  {trabalho.beverage?.batchId || trabalho.beverage?.batchDescription || trabalho.beverage?.batchText ? (
+                  {session.beverage?.batchId || session.beverage?.batchDescription || session.beverage?.batchText ? (
                     <div className="text-xs font-medium text-blue-700">
-                      Daime: {trabalho.beverage.batchDescription || trabalho.beverage.batchId || trabalho.beverage.batchText}
-                      {trabalho.beverage.liters ? ` • ${trabalho.beverage.liters} L` : ''}
+                      Daime: {session.beverage.batchDescription || session.beverage.batchId || session.beverage.batchText}
+                      {session.beverage.liters ? ` • ${session.beverage.liters} L` : ''}
                     </div>
                   ) : null}
                   <button
@@ -410,14 +410,14 @@ export function TrabalhosPage() {
                   </button>
                   <button
                     className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
-                    disabled={deleteMutation.isPending && deleteMutation.variables === trabalho.id}
+                    disabled={deleteMutation.isPending && deleteMutation.variables === session.id}
                     onClick={() => {
                       const ok = window.confirm('Excluir este trabalho?');
                       if (!ok) return;
-                      deleteMutation.mutate(trabalho.id);
+                      deleteMutation.mutate(session.id);
                     }}
                   >
-                    {deleteMutation.isPending && deleteMutation.variables === trabalho.id
+                    {deleteMutation.isPending && deleteMutation.variables === session.id
                       ? 'Excluindo...'
                       : 'Excluir'}
                   </button>
@@ -427,31 +427,31 @@ export function TrabalhosPage() {
               <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
                 <div>
                   <span className="font-medium">Igrejas responsáveis:</span>{' '}
-                  {trabalho.responsibleChurchNames?.length
-                    ? trabalho.responsibleChurchNames.join(', ')
-                    : trabalho.responsibleChurchText || '—'}
+                  {session.responsibleChurchNames?.length
+                    ? session.responsibleChurchNames.join(', ')
+                    : session.responsibleChurchText || '—'}
                 </div>
                 <div>
                   <span className="font-medium">Hinários:</span>{' '}
-                  {trabalho.hymnals?.length ? trabalho.hymnals.join(', ') : '—'}
+                  {session.hymnals?.length ? session.hymnals.join(', ') : '—'}
                 </div>
                 <div>
                   <span className="font-medium">Participantes:</span>{' '}
                   {attendees
-                    ? `${attendees.total} (F:${attendees.fardados ?? '0'} H:${attendees.homens} M:${attendees.mulheres}` +
+                    ? `${attendees.total} (F:${attendees.initiated ?? '0'} H:${attendees.men} M:${attendees.women}` +
                       ` C:${attendees.children} ` +
                       `${attendees.others ? ` O:${attendees.others}` : ''})`
                     : '—'}
                 </div>
                 <div>
                   <span className="font-medium">Duração esperada:</span>{' '}
-                  {trabalho.duracaoEsperadaMin ? `${trabalho.duracaoEsperadaMin} min` : '—'}
-                  {trabalho.duracaoEfetivaMin ? ` • Efetiva: ${trabalho.duracaoEfetivaMin} min` : ''}
+                  {session.expectedDurationMin ? `${session.expectedDurationMin} min` : '—'}
+                  {session.actualDurationMin ? ` • Efetiva: ${session.actualDurationMin} min` : ''}
                 </div>
               </div>
 
-              {trabalho.notes ? (
-                <p className="mt-3 text-sm text-slate-600">{trabalho.notes}</p>
+              {session.notes ? (
+                <p className="mt-3 text-sm text-slate-600">{session.notes}</p>
               ) : null}
             </div>
           );
@@ -461,4 +461,4 @@ export function TrabalhosPage() {
   );
 }
 
-export default TrabalhosPage;
+export default SessionsPage;
