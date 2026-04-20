@@ -36,7 +36,7 @@ service firebase.storage {
     }
 
     match /europeanGatheringRegistrations/{registrationId}/{fileName} {
-      allow read: if isAdmin();
+      allow read: if isAdmin() || isSignedIn();
       allow create: if isSignedIn()
         && isAllowedDocument()
         && fileName.matches('(identityDocument|paymentProof|consentDocument)-.*');

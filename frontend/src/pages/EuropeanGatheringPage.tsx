@@ -10,6 +10,7 @@ import {
   europeanGatheringRoomOptions,
   fetchEuropeanGatheringRoomAvailability,
   fetchMyEuropeanGatheringRegistration,
+  resolveEuropeanGatheringDocumentUrl,
   updateMyEuropeanGatheringRegistration
 } from '../lib/europeanGathering';
 import {
@@ -1361,6 +1362,8 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [draftDateSelections, setDraftDateSelections] = useState<DraftDateSelections>(initialDraftDateSelections);
+  const [existingDocUrls, setExistingDocUrls] = useState<{ identityDocument?: string; paymentProof?: string; consentDocument?: string }>({});
+  const [removedExistingDocs, setRemovedExistingDocs] = useState<Set<string>>(new Set());
 
   const existingRegistrationQuery = useQuery({
     queryKey: ['myEuropeanGatheringRegistration', user?.uid],
@@ -1408,6 +1411,31 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
       roomNumber: r.roomNumber ?? ''
     });
   }, [existingRegistration, existingRegistrationQuery.isFetching]);
+
+  useEffect(() => {
+    if (existingRegistrationQuery.isFetching || !existingRegistration) return;
+    setRemovedExistingDocs(new Set());
+    const paths = {
+      identityDocument: existingRegistration.identityDocumentPath,
+      paymentProof: existingRegistration.paymentProofPath,
+      consentDocument: existingRegistration.consentDocumentPath
+    };
+    const entries = Object.entries(paths).filter((e): e is [string, string] => !!e[1]);
+    if (!entries.length) return;
+    Promise.all(
+      entries.map(async ([key, path]) => {
+        try {
+          const url = await resolveEuropeanGatheringDocumentUrl(path);
+          return [key, url] as const;
+        } catch {
+          return null;
+        }
+      })
+    ).then(results => {
+      const resolved = results.filter((r): r is readonly [string, string] => r !== null);
+      setExistingDocUrls(Object.fromEntries(resolved));
+    });
+  }, [existingRegistration?.id, existingRegistrationQuery.isFetching]);
 
   useEffect(() => {
     if (user?.email) {
@@ -1464,10 +1492,14 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const keptIdentityPath = !removedExistingDocs.has('identityDocument') ? existingRegistration?.identityDocumentPath : undefined;
+      const keptPaymentPath = !removedExistingDocs.has('paymentProof') ? existingRegistration?.paymentProofPath : undefined;
+      const keptConsentPath = !removedExistingDocs.has('consentDocument') ? existingRegistration?.consentDocumentPath : undefined;
+
       const validationKey = validateEuropeanGatheringForm(values, documents, {
-        identityDocumentPath: existingRegistration?.identityDocumentPath,
-        paymentProofPath: existingRegistration?.paymentProofPath,
-        consentDocumentPath: existingRegistration?.consentDocumentPath
+        identityDocumentPath: keptIdentityPath,
+        paymentProofPath: keptPaymentPath,
+        consentDocumentPath: keptConsentPath
       });
       if (validationKey) {
         throw new Error(copy.errors[validationKey] ?? 'Invalid form');
@@ -1478,12 +1510,12 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         locale,
         contribution,
         documents: {
-          identityDocumentName: documents.identityDocument?.name ?? existingRegistration?.identityDocumentName,
-          identityDocumentPath: existingRegistration?.identityDocumentPath,
-          paymentProofName: documents.paymentProof?.name ?? existingRegistration?.paymentProofName,
-          paymentProofPath: existingRegistration?.paymentProofPath,
-          consentDocumentName: documents.consentDocument?.name ?? existingRegistration?.consentDocumentName,
-          consentDocumentPath: existingRegistration?.consentDocumentPath
+          identityDocumentName: documents.identityDocument?.name ?? (keptIdentityPath ? existingRegistration?.identityDocumentName : undefined),
+          identityDocumentPath: keptIdentityPath,
+          paymentProofName: documents.paymentProof?.name ?? (keptPaymentPath ? existingRegistration?.paymentProofName : undefined),
+          paymentProofPath: keptPaymentPath,
+          consentDocumentName: documents.consentDocument?.name ?? (keptConsentPath ? existingRegistration?.consentDocumentName : undefined),
+          consentDocumentPath: keptConsentPath
         }
       });
 
@@ -1904,6 +1936,10 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     compressionTitle={copy.fileCompressionTitle}
                     downloadLabel={copy.fileDownload}
                     file={documents.identityDocument}
+                    existingStoredFile={!documents.identityDocument && existingRegistration?.identityDocumentPath && !removedExistingDocs.has('identityDocument') && existingDocUrls.identityDocument
+                      ? { name: existingRegistration.identityDocumentName ?? existingRegistration.identityDocumentPath, url: existingDocUrls.identityDocument }
+                      : null}
+                    onRemoveExisting={() => setRemovedExistingDocs(prev => new Set([...prev, 'identityDocument']))}
                     invalidTypeError={copy.fileInvalidType}
                     keepOriginalLabel={copy.fileKeepOriginal}
                     label={copy.identityDocument}
@@ -1929,6 +1965,10 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     compressionTitle={copy.fileCompressionTitle}
                     downloadLabel={copy.fileDownload}
                     file={documents.paymentProof}
+                    existingStoredFile={!documents.paymentProof && existingRegistration?.paymentProofPath && !removedExistingDocs.has('paymentProof') && existingDocUrls.paymentProof
+                      ? { name: existingRegistration.paymentProofName ?? existingRegistration.paymentProofPath, url: existingDocUrls.paymentProof }
+                      : null}
+                    onRemoveExisting={() => setRemovedExistingDocs(prev => new Set([...prev, 'paymentProof']))}
                     invalidTypeError={copy.fileInvalidType}
                     keepOriginalLabel={copy.fileKeepOriginal}
                     label={copy.paymentProof}
@@ -1956,6 +1996,10 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                         compressionTitle={copy.fileCompressionTitle}
                         downloadLabel={copy.fileDownload}
                         file={documents.consentDocument}
+                        existingStoredFile={!documents.consentDocument && existingRegistration?.consentDocumentPath && !removedExistingDocs.has('consentDocument') && existingDocUrls.consentDocument
+                          ? { name: existingRegistration.consentDocumentName ?? existingRegistration.consentDocumentPath, url: existingDocUrls.consentDocument }
+                          : null}
+                        onRemoveExisting={() => setRemovedExistingDocs(prev => new Set([...prev, 'consentDocument']))}
                         invalidTypeError={copy.fileInvalidType}
                         keepOriginalLabel={copy.fileKeepOriginal}
                         label={<span className="inline-flex flex-wrap items-baseline gap-x-2">{copy.consentDocument}<a className="text-xs font-normal text-amber-700 underline underline-offset-2 hover:text-amber-900" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">({copy.consentDownloadInline})</a></span>}

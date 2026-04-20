@@ -10,7 +10,7 @@ const smtpPort = defineSecret('SMTP_PORT');
 const smtpUser = defineSecret('SMTP_USER');
 const smtpPass = defineSecret('SMTP_PASS');
 
-const NOTIFY_TO = 'international.secretariat@stellazzurra.org';
+const NOTIFY_TO = 'renato@junto.space'; // TODO: change to international.secretariat@stellazzurra.org before production
 
 export const onEuropeanGatheringRegistration = onDocumentCreated(
   {
