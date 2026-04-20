@@ -365,7 +365,7 @@ const copyByLocale: Record<Locale, Copy> = {
     worksTitle: 'Spiritual works',
     worksHint: 'Select one or more works. The contribution is calculated automatically.',
     documentsTitle: 'Documents',
-    identityDocument: 'Identity document copy',
+    identityDocument: 'Identity document',
     paymentProof: 'Payment proof',
     consentDocument: 'Signed informed consent',
     fileSelect: 'Choose or drop file',
