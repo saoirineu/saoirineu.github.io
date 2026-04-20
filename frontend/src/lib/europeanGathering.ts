@@ -1,5 +1,5 @@
 import { FirebaseError } from 'firebase/app';
-import { Timestamp, Transaction, collection, doc, getDocs, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { Timestamp, Transaction, collection, doc, getDocs, limit, query, runTransaction, serverTimestamp, where, writeBatch } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
@@ -57,6 +57,9 @@ export type EuropeanGatheringRegistrationInput = {
   paymentProofPath?: string;
   consentDocumentName?: string;
   consentDocumentPath?: string;
+  phone?: string;
+  phoneCountryCode?: string;
+  email?: string;
   contribution: {
     nights: number;
     lodging: number;
@@ -65,6 +68,7 @@ export type EuropeanGatheringRegistrationInput = {
     total: number;
   };
   status: 'pending';
+  userId?: string;
 };
 
 export type EuropeanGatheringRegistrationRecord = {
@@ -90,6 +94,9 @@ export type EuropeanGatheringRegistrationRecord = {
   paymentProofPath?: string;
   consentDocumentName?: string;
   consentDocumentPath?: string;
+  phone?: string;
+  phoneCountryCode?: string;
+  email?: string;
   contribution: {
     nights: number;
     lodging: number;
@@ -99,6 +106,7 @@ export type EuropeanGatheringRegistrationRecord = {
   };
   status: EuropeanGatheringRegistrationStatus;
   submittedAt?: Date | null;
+  userId?: string;
 };
 
 const registrationsRef = collection(db, 'europeanGatheringRegistrations');
@@ -281,14 +289,19 @@ function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrat
       extras: asOptionalNumber(contribution.extras) ?? 0,
       total: asOptionalNumber(contribution.total) ?? 0
     },
+    phone: asOptionalString(data.phone),
+    phoneCountryCode: asOptionalString(data.phoneCountryCode),
+    email: asOptionalString(data.email),
     status: normalizeStatus(data.status),
-    submittedAt: submittedAt instanceof Timestamp ? submittedAt.toDate() : null
+    submittedAt: submittedAt instanceof Timestamp ? submittedAt.toDate() : null,
+    userId: asOptionalString(data.userId)
   };
 }
 
 export async function createEuropeanGatheringRegistration(args: {
   documents?: EuropeanGatheringUploadableDocuments;
   input: EuropeanGatheringRegistrationInput;
+  userId?: string;
 }) {
   const registrationRef = doc(registrationsRef);
   const registrationId = registrationRef.id;
@@ -300,6 +313,7 @@ export async function createEuropeanGatheringRegistration(args: {
 
   const payload = removeUndefinedDeep({
     ...args.input,
+    userId: args.userId,
     identityDocumentName: uploadedDocuments.identityDocument?.name ?? args.input.identityDocumentName,
     identityDocumentPath: uploadedDocuments.identityDocument?.path ?? args.input.identityDocumentPath,
     paymentProofName: uploadedDocuments.paymentProof?.name ?? args.input.paymentProofName,
@@ -328,6 +342,50 @@ export async function createEuropeanGatheringRegistration(args: {
       throw new Error(error.message);
     }
 
+    throw error;
+  }
+}
+
+export async function fetchMyEuropeanGatheringRegistration(userId: string) {
+  const q = query(registrationsRef, where('userId', '==', userId), limit(1));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const docSnap = snapshot.docs[0];
+  return mapRegistration(docSnap.id, docSnap.data());
+}
+
+export async function updateMyEuropeanGatheringRegistration(args: {
+  id: string;
+  documents?: EuropeanGatheringUploadableDocuments;
+  input: Omit<EuropeanGatheringRegistrationInput, 'status'>;
+}) {
+  const registrationRef = doc(registrationsRef, args.id);
+  const uploadedDocuments = await uploadEuropeanGatheringDocuments({
+    registrationId: args.id,
+    documents: args.documents ?? {}
+  });
+
+  const patch = removeUndefinedDeep({
+    ...args.input,
+    identityDocumentName: uploadedDocuments.identityDocument?.name ?? args.input.identityDocumentName,
+    identityDocumentPath: uploadedDocuments.identityDocument?.path ?? args.input.identityDocumentPath,
+    paymentProofName: uploadedDocuments.paymentProof?.name ?? args.input.paymentProofName,
+    paymentProofPath: uploadedDocuments.paymentProof?.path ?? args.input.paymentProofPath,
+    consentDocumentName: uploadedDocuments.consentDocument?.name ?? args.input.consentDocumentName,
+    consentDocumentPath: uploadedDocuments.consentDocument?.path ?? args.input.consentDocumentPath
+  });
+
+  try {
+    await runTransaction(db, async transaction => {
+      const snap = await transaction.get(registrationRef);
+      if (!snap.exists()) throw new Error('Registration not found.');
+      transaction.update(registrationRef, patch);
+    });
+  } catch (error) {
+    await Promise.all(
+      Object.values(uploadedDocuments).map(d => deleteStoredDocumentIfPresent(d.path).catch(() => undefined))
+    );
+    if (error instanceof FirebaseError) throw new Error(error.message);
     throw error;
   }
 }

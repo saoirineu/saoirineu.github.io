@@ -107,15 +107,17 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    match /encontroEuropeuInscricoes/{id} {
-      allow create: if request.resource.data.keys().hasAll([
+    match /europeanGatheringRegistrations/{id} {
+      allow create: if isSignedIn()
+      && request.resource.data.keys().hasAll([
         'locale',
         'firstName',
         'lastName',
+        'userId',
         'country',
         'church',
         'centerLeader',
-        'isFardado',
+        'isInitiated',
         'isIcefluMember',
         'isNovice',
         'attendanceMode',
@@ -132,6 +134,7 @@ service cloud.firestore {
       && request.resource.data.lastName is string
       && request.resource.data.lastName.size() > 0
       && request.resource.data.lastName.size() <= 120
+      && request.resource.data.userId == request.auth.uid
       && request.resource.data.country is string
       && request.resource.data.country.size() > 0
       && request.resource.data.country.size() <= 120
@@ -141,15 +144,16 @@ service cloud.firestore {
       && request.resource.data.centerLeader is string
       && request.resource.data.centerLeader.size() > 0
       && request.resource.data.centerLeader.size() <= 240
-      && request.resource.data.isFardado is bool
+      && request.resource.data.isInitiated is bool
       && request.resource.data.isIcefluMember is bool
       && request.resource.data.isNovice is bool
       && request.resource.data.attendanceMode in ['lodging', 'meals', 'spiritual']
       && request.resource.data.selectedWorks is list
-      && request.resource.data.selectedWorks.size() > 0
       && request.resource.data.selectedWorks.size() <= 4
       && request.resource.data.needsExtraLinen is bool
       && (!request.resource.data.keys().hasAny(['roomNumber']) || isValidEncontroEuropeuRoom(request.resource.data.roomNumber))
+      && (!request.resource.data.keys().hasAny(['phone']) || request.resource.data.phone is string)
+      && (!request.resource.data.keys().hasAny(['email']) || request.resource.data.email is string)
       && request.resource.data.contribution is map
       && request.resource.data.contribution.nights is number
       && request.resource.data.contribution.lodging is number
@@ -161,11 +165,14 @@ service cloud.firestore {
       && (!request.resource.data.keys().hasAny(['consentDocumentPath']) || request.resource.data.consentDocumentPath is string)
       && request.resource.data.status == 'pending'
       && request.resource.data.submittedAt == request.time;
-      allow read, delete: if isAdmin();
-      allow update: if isAdmin() && hasValidEncontroEuropeuStatus();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+      allow update: if (isAdmin() && hasValidEncontroEuropeuStatus())
+        || (isSignedIn() && resource.data.userId == request.auth.uid
+          && !request.resource.data.diff(resource.data).changedKeys().hasAny(['status', 'userId']));
     }
 
-    match /encontroEuropeuQuartos/{room} {
+    match /europeanGatheringRooms/{room} {
       allow read: if true;
       allow create, update: if isValidEncontroEuropeuRoom(room)
         && request.resource.data.keys().hasOnly(['capacity', 'reserved', 'available', 'updatedAt'])

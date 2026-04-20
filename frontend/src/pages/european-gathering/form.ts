@@ -10,6 +10,9 @@ export type EuropeanGatheringFormValues = {
   country: string;
   church: string;
   centerLeader: string;
+  phone: string;
+  phoneCountryCode: string;
+  email: string;
   isInitiated: boolean;
   isIcefluMember: boolean;
   isNovice: boolean;
@@ -47,6 +50,9 @@ export const initialEuropeanGatheringFormValues: EuropeanGatheringFormValues = {
   country: '',
   church: '',
   centerLeader: '',
+  phone: '',
+  phoneCountryCode: '+39',
+  email: '',
   isInitiated: false,
   isIcefluMember: false,
   isNovice: false,
@@ -59,8 +65,9 @@ export const initialEuropeanGatheringFormValues: EuropeanGatheringFormValues = {
 };
 
 const worksContributionByCount = {
-  regular: [0, 100, 180, 240, 300],
-  iceflu: [0, 80, 150, 210, 260]
+  anyone:   [0, 100, 180, 240, 300],
+  initiated: [0,  80, 150, 210, 260],
+  iceflu:   [0,  60, 110, 150, 190]
 } as const;
 
 export const consentDocumentPaths: Record<Locale, string> = {
@@ -115,13 +122,15 @@ export function calculateNightCount(checkIn: string, checkOut: string) {
   return diffDays > 0 ? diffDays : 0;
 }
 
-export function calculateContribution(values: Pick<EuropeanGatheringFormValues, 'attendanceMode' | 'checkIn' | 'checkOut' | 'selectedWorks' | 'isIcefluMember' | 'needsExtraLinen'>): ContributionBreakdown {
+export function calculateContribution(values: Pick<EuropeanGatheringFormValues, 'attendanceMode' | 'checkIn' | 'checkOut' | 'selectedWorks' | 'isInitiated' | 'isIcefluMember' | 'needsExtraLinen'>): ContributionBreakdown {
   const nights = values.attendanceMode === 'spiritual' ? 0 : calculateNightCount(values.checkIn, values.checkOut);
-  const lodging = nights * 70;
+  const nightRate = values.attendanceMode === 'meals' ? 30 : 70;
+  const lodging = nights * nightRate;
   const selectedWorksCount = Math.min(values.selectedWorks.length, 4);
-  const spiritualWorks = values.isIcefluMember
-    ? worksContributionByCount.iceflu[selectedWorksCount]
-    : worksContributionByCount.regular[selectedWorksCount];
+  const worksTable = values.isIcefluMember ? worksContributionByCount.iceflu
+    : values.isInitiated ? worksContributionByCount.initiated
+    : worksContributionByCount.anyone;
+  const spiritualWorks = worksTable[selectedWorksCount];
   const extras = values.attendanceMode === 'lodging' && values.needsExtraLinen ? 20 : 0;
 
   return {
@@ -163,14 +172,23 @@ export function buildEuropeanGatheringPayload(args: {
     paymentProofPath: documents.paymentProofPath,
     consentDocumentName: values.isNovice ? documents.consentDocumentName : undefined,
     consentDocumentPath: values.isNovice ? documents.consentDocumentPath : undefined,
+    phone: values.phone.trim() || undefined,
+    phoneCountryCode: values.phone.trim() ? values.phoneCountryCode : undefined,
+    email: values.email.trim() || undefined,
     contribution,
     status: 'pending' as const
   };
 }
 
-export function validateEuropeanGatheringForm(values: EuropeanGatheringFormValues) {
+export function validateEuropeanGatheringForm(
+  values: EuropeanGatheringFormValues,
+  docs: { identityDocument: File | null; paymentProof: File | null; consentDocument: File | null },
+  existingPaths: { identityDocumentPath?: string; paymentProofPath?: string; consentDocumentPath?: string }
+) {
   if (!values.firstName.trim()) return 'firstName';
   if (!values.lastName.trim()) return 'lastName';
+  if (!values.email.trim()) return 'email';
+  if (!values.phone.trim()) return 'phone';
   if (!values.country.trim()) return 'country';
   if (!values.church.trim()) return 'church';
   if (!values.centerLeader.trim()) return 'centerLeader';
@@ -181,6 +199,10 @@ export function validateEuropeanGatheringForm(values: EuropeanGatheringFormValue
     if (!values.checkOut) return 'checkOut';
     if (calculateNightCount(values.checkIn, values.checkOut) <= 0) return 'checkOut';
   }
+
+  if (!docs.identityDocument && !existingPaths.identityDocumentPath) return 'identityDocument';
+  if (!docs.paymentProof && !existingPaths.paymentProofPath) return 'paymentProof';
+  if (values.isNovice && !docs.consentDocument && !existingPaths.consentDocumentPath) return 'consentDocument';
 
   return null;
 }

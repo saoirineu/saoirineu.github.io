@@ -1,12 +1,16 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
 import {
   createEuropeanGatheringRegistration,
+  deleteEuropeanGatheringRegistration,
   europeanGatheringRoomOptions,
-  fetchEuropeanGatheringRoomAvailability
+  fetchEuropeanGatheringRoomAvailability,
+  fetchMyEuropeanGatheringRegistration,
+  updateMyEuropeanGatheringRegistration
 } from '../lib/europeanGathering';
 import {
   compressEuropeanGatheringImage,
@@ -17,6 +21,7 @@ import {
   shouldOfferEuropeanGatheringImageCompression,
   validateEuropeanGatheringUploadFile
 } from '../lib/europeanGatheringUpload';
+import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import {
   buildEuropeanGatheringPayload,
@@ -41,15 +46,20 @@ type Copy = {
   languageLabel: string;
   anonymousNote: string;
   resourcesTitle: string;
-  resourcesIntro: string;
   generalProgram: string;
   directions: string;
+  paymentInfoButton: string;
+  paymentInfoTitle: string;
+  paymentCausale: string;
+  paymentBeneficiary: string;
   consentDownload: string;
-  consentHint: string;
+  noviceApprovalNote: string;
   formTitle: string;
   personalTitle: string;
   firstName: string;
   lastName: string;
+  email: string;
+  phone: string;
   country: string;
   church: string;
   centerLeader: string;
@@ -57,6 +67,8 @@ type Copy = {
   initiated: string;
   icefluMember: string;
   novice: string;
+  yes: string;
+  no: string;
   participationTitle: string;
   attendanceMode: string;
   modeLodging: string;
@@ -74,6 +86,7 @@ type Copy = {
   roomSelectPlaceholder: string;
   noRoomsAvailable: string;
   noRoomsAvailableDetail: string;
+  bedNote: string;
   extraLinen: string;
   worksTitle: string;
   worksHint: string;
@@ -101,18 +114,27 @@ type Copy = {
   fileDownload: string;
   fileOpenNewTab: string;
   consentDownloadInline: string;
-  documentsHint: string;
   contributionTitle: string;
+  worksTableTitle: string;
+  worksTableColAnyone: string;
+  worksTableColInitiated: string;
+  worksTableColIceflu: string;
   nights: string;
   lodging: string;
+  lodgingRate: string;
+  mealsRate: string;
   spiritualWorks: string;
   extras: string;
   total: string;
   submit: string;
+  update: string;
+  deleteRegistration: string;
   saveDraft: string;
   draftSaved: string;
   draftLoaded: string;
   draftHint: string;
+  privacyConsent: string;
+  contactInfo: string;
   submitting: string;
   successTitle: string;
   successIntro: string;
@@ -166,31 +188,38 @@ const monthLabelsByLocale: Record<Locale, string[]> = {
 const copyByLocale: Record<Locale, Copy> = {
   pt: {
     pageTitle: 'Inscrição no Encontro Europeu',
-    pageIntro: 'Preencha o formulário abaixo para registrar sua participação. Não é necessário fazer login.',
+    pageIntro: 'Entre na sua conta e preencha o formulário abaixo para registrar sua participação.',
     loggedIntro: 'Preencha ou retome seu rascunho e envie a inscrição quando estiver completa.',
     languageLabel: 'Idioma',
-    anonymousNote: 'Esta inscrição é pública e pode ser enviada sem conta no site.',
-    resourcesTitle: 'Documentos e informações',
-    resourcesIntro: 'Os arquivos abaixo estão publicados como PDFs temporários enquanto o conteúdo final é preparado.',
+    anonymousNote: 'Esta inscrição exige uma conta no site.',
+    resourcesTitle: 'Informações',
     generalProgram: 'Programa geral',
     directions: 'Como chegar',
+    paymentInfoButton: 'Dados bancários',
+    paymentInfoTitle: 'Dados para o pagamento',
+    paymentCausale: 'Causale',
+    paymentBeneficiary: 'Beneficiário',
     consentDownload: 'Consentimento informado',
-    consentHint: 'Se você marcar que é novizio, baixe, assine e envie o arquivo.',
+    noviceApprovalNote: 'Primeira participação: após o envio da documentação, haverá um colóquio. Se a participação não for aprovada, o valor será devolvido.',
     formTitle: 'Formulário de inscrição',
     personalTitle: 'Dados pessoais',
     firstName: 'Nome',
     lastName: 'Sobrenome',
+    email: 'Email',
+    phone: 'Telefone (com código do país)',
     country: 'País',
     church: 'Igreja ou centro de referência',
     centerLeader: 'Nome do dirigente do centro',
     statusTitle: 'Vínculo com a doutrina',
     initiated: 'Fardado',
-    icefluMember: 'Membro ICEFLU em dia',
-    novice: 'Novizio / primeira vez',
+    icefluMember: 'Membro ICEFLU em dia com as mensalidades',
+    novice: 'Primeira participação',
+    yes: 'Sim',
+    no: 'Não',
     participationTitle: 'Participação e estadia',
     attendanceMode: 'Modalidade',
-    modeLodging: 'Hospedagem e alimentação',
-    modeMeals: 'Somente alimentação',
+    modeLodging: 'Hospedagem, alimentação e trabalhos espirituais',
+    modeMeals: 'Somente alimentação e trabalhos espirituais',
     modeSpiritual: 'Somente trabalhos espirituais',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
@@ -204,7 +233,8 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Selecione um quarto',
     noRoomsAvailable: 'Sem vagas disponíveis no momento',
     noRoomsAvailableDetail: 'Todos os quartos estão ocupados no momento. Tente novamente mais tarde ou fale com a organização.',
-    extraLinen: 'Quero segundo lençol superior e toalhas (+20 euro)',
+    bedNote: 'Nota: no leito está incluído apenas o lençol de baixo.',
+    extraLinen: 'Quero lençol de cima e kit de toalhas (+20 euro por toda a estadia)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Selecione um ou mais trabalhos. O valor é calculado automaticamente.',
     documentsTitle: 'Documentos',
@@ -230,19 +260,28 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Visualizar arquivo',
     fileDownload: 'Baixar',
     fileOpenNewTab: 'Abrir em nova aba',
-    consentDownloadInline: 'Baixar PDF do consentimento informado',
-    documentsHint: 'Os arquivos enviados ficam associados à inscrição e armazenados com segurança.',
+    consentDownloadInline: 'Download',
     contributionTitle: 'Resumo da contribuição',
+    worksTableTitle: 'Contribuição por trabalhos espirituais',
+    worksTableColAnyone: 'Visitante',
+    worksTableColInitiated: 'Fardado',
+    worksTableColIceflu: 'ICEFLU',
     nights: 'Noites',
     lodging: 'Hospedagem / alimentação',
+    lodgingRate: '70 € / noite (hospedagem e alimentação)',
+    mealsRate: '30 € / noite (somente alimentação)',
     spiritualWorks: 'Lavori spirituali',
     extras: 'Extras',
     total: 'Total',
     submit: 'Enviar inscrição',
+    update: 'Atualizar inscrição',
+    deleteRegistration: 'Excluir inscrição',
     saveDraft: 'Salvar rascunho',
     draftSaved: 'Rascunho salvo neste navegador.',
     draftLoaded: 'Rascunho carregado automaticamente.',
     draftHint: 'Os arquivos anexados não podem ser guardados no rascunho; será preciso selecioná-los novamente antes do envio.',
+    privacyConsent: 'Autorizo o tratamento dos meus dados pessoais para as finalidades relativas à realização e participação neste evento (Encontro Europeu 2026) e em outros eventos organizados pelo ICEFLU Santo Daime Europa e centros associados.',
+    contactInfo: 'Dúvidas? Escreva para international.secretariat@stellazzurra.org',
     submitting: 'Enviando...',
     successTitle: 'Inscrição recebida',
     successIntro: 'Sua inscrição foi registrada. A organização agora aguarda a transferência e o envio do comprovante.',
@@ -256,12 +295,17 @@ const copyByLocale: Record<Locale, Copy> = {
     errors: {
       firstName: 'Preencha o nome.',
       lastName: 'Preencha o sobrenome.',
+      email: 'Preencha o e-mail.',
+      phone: 'Preencha o telefone.',
       country: 'Preencha o país.',
       church: 'Preencha a igreja ou centro de referência.',
       centerLeader: 'Preencha o nome do dirigente do centro.',
       selectedWorks: 'Selecione pelo menos um trabalho espiritual.',
       checkIn: 'Informe a data de check-in.',
-      checkOut: 'Informe uma data de check-out válida.'
+      checkOut: 'Informe uma data de check-out válida.',
+      identityDocument: 'Anexe uma cópia do documento de identidade.',
+      paymentProof: 'Anexe o comprovante de pagamento.',
+      consentDocument: 'Anexe o consentimento informado assinado.'
     },
     workLabels: {
       'fri-11-19': 'Sexta-feira, 11 de setembro, 19:00',
@@ -272,31 +316,38 @@ const copyByLocale: Record<Locale, Copy> = {
   },
   en: {
     pageTitle: 'European Meeting Registration',
-    pageIntro: 'Fill in the form below to register for the event. No sign-in is required.',
+    pageIntro: 'Sign in and fill in the form below to register for the event.',
     loggedIntro: 'Fill in or resume your draft and submit the registration once it is complete.',
     languageLabel: 'Language',
-    anonymousNote: 'This registration is public and can be submitted without an account.',
-    resourcesTitle: 'Documents and information',
-    resourcesIntro: 'The files below are temporary PDFs published until the final content is ready.',
+    anonymousNote: 'This registration requires a site account.',
+    resourcesTitle: 'Information',
     generalProgram: 'General program',
     directions: 'How to get there',
+    paymentInfoButton: 'Payment details',
+    paymentInfoTitle: 'Payment information',
+    paymentCausale: 'Payment reason',
+    paymentBeneficiary: 'Beneficiary',
     consentDownload: 'Informed consent',
-    consentHint: 'If you mark yourself as a novice, download it, sign it, and upload it.',
+    noviceApprovalNote: 'First participation: after uploading the documents, there will be a brief interview. If participation is not approved, the contribution will be refunded.',
     formTitle: 'Registration form',
     personalTitle: 'Personal details',
     firstName: 'First name',
     lastName: 'Last name',
+    email: 'Email',
+    phone: 'Phone (with country code)',
     country: 'Country',
     church: 'Reference church or center',
     centerLeader: 'Leader name of the reference center',
     statusTitle: 'Doctrinal status',
     initiated: 'Fardado',
-    icefluMember: 'ICEFLU member in good standing',
-    novice: 'Novice / first time',
+    icefluMember: 'ICEFLU member up to date with monthly dues',
+    novice: 'First participation',
+    yes: 'Yes',
+    no: 'No',
     participationTitle: 'Participation and stay',
     attendanceMode: 'Attendance mode',
-    modeLodging: 'Meals and lodging',
-    modeMeals: 'Meals only',
+    modeLodging: 'Meals, lodging and spiritual works',
+    modeMeals: 'Meals and spiritual works only',
     modeSpiritual: 'Spiritual works only',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
@@ -310,7 +361,8 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Select a room',
     noRoomsAvailable: 'No rooms currently available',
     noRoomsAvailableDetail: 'All rooms are currently occupied. Please try again later or contact the organizers.',
-    extraLinen: 'I need an extra top sheet and towels (+20 euro)',
+    bedNote: 'Note: the bed includes only the bottom sheet.',
+    extraLinen: 'I need a top sheet and towel kit (+20 euro for the entire stay)',
     worksTitle: 'Spiritual works',
     worksHint: 'Select one or more works. The contribution is calculated automatically.',
     documentsTitle: 'Documents',
@@ -336,19 +388,28 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Preview file',
     fileDownload: 'Download',
     fileOpenNewTab: 'Open in new tab',
-    consentDownloadInline: 'Download the informed consent PDF',
-    documentsHint: 'Uploaded files are attached to the registration and stored securely.',
+    consentDownloadInline: 'Download',
     contributionTitle: 'Contribution summary',
+    worksTableTitle: 'Contribution by spiritual works',
+    worksTableColAnyone: 'Visitor',
+    worksTableColInitiated: 'Fardado',
+    worksTableColIceflu: 'ICEFLU',
     nights: 'Nights',
     lodging: 'Lodging / meals',
+    lodgingRate: '70 € / night (lodging and meals)',
+    mealsRate: '30 € / night (meals only)',
     spiritualWorks: 'Spiritual works',
     extras: 'Extras',
     total: 'Total',
     submit: 'Submit registration',
+    update: 'Update registration',
+    deleteRegistration: 'Delete registration',
     saveDraft: 'Save draft',
     draftSaved: 'Draft saved in this browser.',
     draftLoaded: 'Draft loaded automatically.',
     draftHint: 'Attached files cannot be stored in the draft; you will need to select them again before submitting.',
+    privacyConsent: 'I consent to the processing of my personal data for the purposes related to the organisation and participation in this event (Encontro Europeu 2026) and other events organised by ICEFLU Santo Daime Europe and affiliated centres.',
+    contactInfo: 'Questions? Write to international.secretariat@stellazzurra.org',
     submitting: 'Submitting...',
     successTitle: 'Registration received',
     successIntro: 'Your registration has been recorded. The organization is now waiting for the transfer and the payment proof.',
@@ -362,12 +423,17 @@ const copyByLocale: Record<Locale, Copy> = {
     errors: {
       firstName: 'Please fill in the first name.',
       lastName: 'Please fill in the last name.',
+      email: 'Please fill in the email.',
+      phone: 'Please fill in the phone number.',
       country: 'Please fill in the country.',
       church: 'Please fill in the church or center.',
       centerLeader: 'Please fill in the center leader name.',
       selectedWorks: 'Select at least one spiritual work.',
       checkIn: 'Please provide the check-in date.',
-      checkOut: 'Please provide a valid check-out date.'
+      checkOut: 'Please provide a valid check-out date.',
+      identityDocument: 'Please attach a copy of your identity document.',
+      paymentProof: 'Please attach the payment proof.',
+      consentDocument: 'Please attach the signed informed consent.'
     },
     workLabels: {
       'fri-11-19': 'Friday, September 11, 19:00',
@@ -378,31 +444,38 @@ const copyByLocale: Record<Locale, Copy> = {
   },
   es: {
     pageTitle: 'Inscripción al Encuentro Europeo',
-    pageIntro: 'Complete el siguiente formulario para registrar su participación. No es necesario iniciar sesión.',
+    pageIntro: 'Inicia sesión y completa el siguiente formulario para registrar tu participación.',
     loggedIntro: 'Complete o retome su borrador y envíe la inscripción cuando esté completa.',
     languageLabel: 'Idioma',
-    anonymousNote: 'Esta inscripción es pública y puede enviarse sin cuenta en el sitio.',
-    resourcesTitle: 'Documentos e información',
-    resourcesIntro: 'Los archivos siguientes son PDFs temporales publicados mientras se prepara el contenido final.',
+    anonymousNote: 'Esta inscripción requiere una cuenta en el sitio.',
+    resourcesTitle: 'Información',
     generalProgram: 'Programa general',
     directions: 'Cómo llegar',
+    paymentInfoButton: 'Datos bancarios',
+    paymentInfoTitle: 'Información de pago',
+    paymentCausale: 'Concepto',
+    paymentBeneficiary: 'Beneficiario',
     consentDownload: 'Consentimiento informado',
-    consentHint: 'Si marca que es novizio, descárguelo, fírmelo y súbalo.',
+    noviceApprovalNote: 'Primera participación: tras cargar la documentación, se realizará una breve entrevista. Si la participación no es aprobada, la contribución será devuelta.',
     formTitle: 'Formulario de inscripción',
     personalTitle: 'Datos personales',
     firstName: 'Nombre',
     lastName: 'Apellido',
+    email: 'Email',
+    phone: 'Teléfono (con código de país)',
     country: 'País',
     church: 'Iglesia o centro de referencia',
     centerLeader: 'Nombre del dirigente del centro',
     statusTitle: 'Vínculo con la doctrina',
     initiated: 'Fardado',
-    icefluMember: 'Miembro ICEFLU al día',
-    novice: 'Novizio / primera vez',
+    icefluMember: 'Miembro ICEFLU al día con las mensualidades',
+    novice: 'Primera participación',
+    yes: 'Sí',
+    no: 'No',
     participationTitle: 'Participación y estancia',
     attendanceMode: 'Modalidad',
-    modeLodging: 'Alojamiento y comidas',
-    modeMeals: 'Solo comidas',
+    modeLodging: 'Alojamiento, comidas y trabajos espirituales',
+    modeMeals: 'Solo comidas y trabajos espirituales',
     modeSpiritual: 'Solo trabajos espirituales',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
@@ -416,7 +489,8 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Seleccione una habitación',
     noRoomsAvailable: 'No hay plazas disponibles por ahora',
     noRoomsAvailableDetail: 'Todas las habitaciones están ocupadas en este momento. Inténtelo más tarde o contacte a la organización.',
-    extraLinen: 'Quiero una sábana superior adicional y toallas (+20 euro)',
+    bedNote: 'Nota: la cama incluye solo la sábana de abajo.',
+    extraLinen: 'Quiero sábana de encima y kit de toallas (+20 euro por toda la estancia)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleccione uno o más trabajos. El valor se calcula automáticamente.',
     documentsTitle: 'Documentos',
@@ -442,19 +516,28 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Ver archivo',
     fileDownload: 'Descargar',
     fileOpenNewTab: 'Abrir en una pestaña nueva',
-    consentDownloadInline: 'Descargar el PDF del consentimiento informado',
-    documentsHint: 'Los archivos enviados quedan asociados a la inscripción y almacenados de forma segura.',
+    consentDownloadInline: 'Download',
     contributionTitle: 'Resumen de la contribución',
+    worksTableTitle: 'Contribución por trabajos espirituales',
+    worksTableColAnyone: 'Visitante',
+    worksTableColInitiated: 'Fardado',
+    worksTableColIceflu: 'ICEFLU',
     nights: 'Noches',
     lodging: 'Alojamiento / comidas',
+    lodgingRate: '70 € / noche (alojamiento y comidas)',
+    mealsRate: '30 € / noche (solo comidas)',
     spiritualWorks: 'Trabajos espirituales',
     extras: 'Extras',
     total: 'Total',
     submit: 'Enviar inscripción',
+    update: 'Actualizar inscripción',
+    deleteRegistration: 'Eliminar inscripción',
     saveDraft: 'Guardar borrador',
     draftSaved: 'Borrador guardado en este navegador.',
     draftLoaded: 'Borrador cargado automáticamente.',
     draftHint: 'Los archivos adjuntos no se pueden guardar en el borrador; tendrás que seleccionarlos de nuevo antes de enviar.',
+    privacyConsent: 'Autorizo el tratamiento de mis datos personales para las finalidades relativas a la realización y participación en este evento (Encontro Europeu 2026) y en otros eventos organizados por ICEFLU Santo Daime Europa y centros asociados.',
+    contactInfo: '¿Preguntas? Escríbenos a international.secretariat@stellazzurra.org',
     submitting: 'Enviando...',
     successTitle: 'Inscripción recibida',
     successIntro: 'Su inscripción ha sido registrada. La organización ahora espera la transferencia y el envío del comprobante.',
@@ -468,12 +551,17 @@ const copyByLocale: Record<Locale, Copy> = {
     errors: {
       firstName: 'Complete el nombre.',
       lastName: 'Complete el apellido.',
+      email: 'Complete el correo electrónico.',
+      phone: 'Complete el número de teléfono.',
       country: 'Complete el país.',
       church: 'Complete la iglesia o centro de referencia.',
       centerLeader: 'Complete el nombre del dirigente del centro.',
       selectedWorks: 'Seleccione al menos un trabajo espiritual.',
       checkIn: 'Indique la fecha de check-in.',
-      checkOut: 'Indique una fecha de check-out válida.'
+      checkOut: 'Indique una fecha de check-out válida.',
+      identityDocument: 'Adjunte una copia del documento de identidad.',
+      paymentProof: 'Adjunte el comprobante de pago.',
+      consentDocument: 'Adjunte el consentimiento informado firmado.'
     },
     workLabels: {
       'fri-11-19': 'Viernes 11 de septiembre, 19:00',
@@ -484,31 +572,38 @@ const copyByLocale: Record<Locale, Copy> = {
   },
   it: {
     pageTitle: 'Iscrizione all\'Incontro Europeo',
-    pageIntro: 'Compila il modulo qui sotto per registrare la tua partecipazione. Non è necessario effettuare il login.',
+    pageIntro: 'Accedi e compila il modulo qui sotto per registrare la tua partecipazione.',
     loggedIntro: 'Compila o riprendi la tua bozza e invia l\'iscrizione quando è completa.',
     languageLabel: 'Lingua',
-    anonymousNote: 'Questa iscrizione è pubblica e può essere inviata senza un account.',
-    resourcesTitle: 'Documenti e informazioni',
-    resourcesIntro: 'I file qui sotto sono PDF temporanei pubblicati finché il contenuto finale non sarà pronto.',
+    anonymousNote: 'Questa iscrizione richiede un account sul sito.',
+    resourcesTitle: 'Informazioni',
     generalProgram: 'Programma generale',
     directions: 'Come arrivare',
+    paymentInfoButton: 'Dati bancari',
+    paymentInfoTitle: 'Informazioni di pagamento',
+    paymentCausale: 'Causale',
+    paymentBeneficiary: 'Beneficiario',
     consentDownload: 'Consenso informato',
-    consentHint: 'Se indichi che sei novizio, scaricalo, firmalo e caricalo.',
+    noviceApprovalNote: 'Prima partecipazione: dopo aver caricato la documentazione, si svolgerà un colloquio. Se la partecipazione non viene approvata, il contributo sarà restituito.',
     formTitle: 'Modulo di iscrizione',
     personalTitle: 'Dati personali',
     firstName: 'Nome',
     lastName: 'Cognome',
+    email: 'Email',
+    phone: 'Telefono (con prefisso internazionale)',
     country: 'Paese',
     church: 'Chiesa o centro di riferimento',
     centerLeader: 'Nome del dirigente del centro',
     statusTitle: 'Rapporto con la dottrina',
     initiated: 'Fardado',
-    icefluMember: 'Membro ICEFLU in regola',
-    novice: 'Novizio / prima volta',
+    icefluMember: 'Membro ICEFLU in pari con le mensilità',
+    novice: 'Prima partecipazione',
+    yes: 'Sì',
+    no: 'No',
     participationTitle: 'Partecipazione e permanenza',
     attendanceMode: 'Modalità',
-    modeLodging: 'Vitto e alloggio',
-    modeMeals: 'Solo vitto',
+    modeLodging: 'Vitto e alloggio e lavori spirituali',
+    modeMeals: 'Solo vitto e lavori spirituali',
     modeSpiritual: 'Solo lavori spirituali',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
@@ -522,7 +617,8 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Seleziona una camera',
     noRoomsAvailable: 'Nessuna camera disponibile al momento',
     noRoomsAvailableDetail: 'Tutte le camere sono occupate al momento. Riprova più tardi o contatta l\'organizzazione.',
-    extraLinen: 'Desidero un secondo lenzuolo superiore e asciugamani (+20 euro)',
+    bedNote: 'Nota: nel letto è incluso soltanto il lenzuolo di sotto.',
+    extraLinen: 'Desidero lenzuolo di sopra e kit asciugamani (+20 euro per tutto il soggiorno)',
     worksTitle: 'Lavori spirituali',
     worksHint: 'Seleziona uno o più lavori. Il contributo viene calcolato automaticamente.',
     documentsTitle: 'Documenti',
@@ -548,19 +644,28 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Anteprima file',
     fileDownload: 'Scarica',
     fileOpenNewTab: 'Apri in una nuova scheda',
-    consentDownloadInline: 'Scarica il PDF del consenso informato',
-    documentsHint: 'I file inviati restano associati all\'iscrizione e vengono archiviati in modo sicuro.',
+    consentDownloadInline: 'Download',
     contributionTitle: 'Riepilogo del contributo',
+    worksTableTitle: 'Contributo per lavori spirituali',
+    worksTableColAnyone: 'Visitatore',
+    worksTableColInitiated: 'Fardado',
+    worksTableColIceflu: 'ICEFLU',
     nights: 'Notti',
     lodging: 'Alloggio / vitto',
+    lodgingRate: '70 € / notte (alloggio e vitto)',
+    mealsRate: '30 € / notte (solo vitto)',
     spiritualWorks: 'Lavori spirituali',
     extras: 'Extra',
     total: 'Totale',
     submit: 'Invia iscrizione',
+    update: 'Aggiorna iscrizione',
+    deleteRegistration: 'Elimina iscrizione',
     saveDraft: 'Salva bozza',
     draftSaved: 'Bozza salvata in questo browser.',
     draftLoaded: 'Bozza caricata automaticamente.',
-    draftHint: 'I file allegati non possono essere salvati nella bozza; dovrai selezionarli di nuovo prima dell’invio.',
+    draftHint: "I file allegati non possono essere salvati nella bozza; dovrai selezionarli di nuovo prima dell’invio.",
+    privacyConsent: "Autorizzo al trattamento dei dati personali per le finalità relative alla realizzazione e partecipazione di questo evento (Encontro Europeu 2026) e di altri eventi organizzati da ICEFLU Santo Daime Europa e centri collegati.",
+    contactInfo: 'Domande? Scrivi a international.secretariat@stellazzurra.org',
     submitting: 'Invio in corso...',
     successTitle: 'Iscrizione ricevuta',
     successIntro: 'La tua iscrizione è stata registrata. L\'organizzazione attende ora il bonifico e la contabile.',
@@ -574,12 +679,17 @@ const copyByLocale: Record<Locale, Copy> = {
     errors: {
       firstName: 'Compila il nome.',
       lastName: 'Compila il cognome.',
+      email: 'Compila l\'email.',
+      phone: 'Compila il numero di telefono.',
       country: 'Compila il paese.',
       church: 'Compila la chiesa o centro di riferimento.',
       centerLeader: 'Compila il nome del dirigente del centro.',
       selectedWorks: 'Seleziona almeno un lavoro spirituale.',
       checkIn: 'Indica la data di check-in.',
-      checkOut: 'Indica una data di check-out valida.'
+      checkOut: 'Indica una data di check-out valida.',
+      identityDocument: 'Allega una copia del documento di identità.',
+      paymentProof: 'Allega la contabile del bonifico.',
+      consentDocument: 'Allega il consenso informato firmato.'
     },
     workLabels: {
       'fri-11-19': 'Venerdì 11 settembre, ore 19:00',
@@ -804,6 +914,7 @@ function InfoTooltip({
 function FileUploadField({
   accept,
   className,
+  existingStoredFile,
   file,
   closeLabel,
   compressedSizeLabel,
@@ -818,6 +929,7 @@ function FileUploadField({
   openInNewTabLabel,
   originalSizeLabel,
   onChange,
+  onRemoveExisting,
   previewLabel,
   previewTitle,
   processingLabel,
@@ -828,6 +940,7 @@ function FileUploadField({
 }: {
   accept: string;
   className?: string;
+  existingStoredFile?: { name: string; url: string } | null;
   file: File | null;
   closeLabel: string;
   compressedSizeLabel: string;
@@ -842,6 +955,7 @@ function FileUploadField({
   openInNewTabLabel: string;
   originalSizeLabel: string;
   onChange: (file: File | null) => void;
+  onRemoveExisting?: () => void;
   previewLabel: string;
   previewTitle: string;
   processingLabel: string;
@@ -1108,8 +1222,9 @@ function FileUploadField({
             className="hidden"
             onChange={event => {
               const files = event.target.files;
+              const filesCopy = files && files.length > 0 ? Array.from(files) : null;
               event.target.value = '';
-              void handleDroppedFiles(files);
+              void handleSelectedFile(filesCopy?.[0] ?? null);
             }}
           />
 
@@ -1142,6 +1257,31 @@ function FileUploadField({
                     setCompressionCandidate(null);
                     onChange(null);
                   }}
+                >
+                  {removeLabel}
+                </button>
+              </div>
+            </>
+          ) : existingStoredFile ? (
+            <>
+              <div className="min-w-0 text-center text-sm text-slate-700">
+                <div className="truncate text-center font-medium text-slate-900" title={existingStoredFile.name}>
+                  {existingStoredFile.name}
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <a
+                  href={existingStoredFile.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  {downloadLabel}
+                </a>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                  onClick={() => onRemoveExisting?.()}
                 >
                   {removeLabel}
                 </button>
@@ -1206,6 +1346,9 @@ type EuropeanGatheringPageProps = {
 
 export default function EuropeanGatheringPage({ showPublicHero = true }: EuropeanGatheringPageProps) {
   const { locale, setLocale } = useSiteLocale();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [values, setValues] = useState<EuropeanGatheringFormValues>(initialEuropeanGatheringFormValues);
   const [documents, setDocuments] = useState<DocumentState>({
     identityDocument: null,
@@ -1216,7 +1359,16 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
   const [draftMessage, setDraftMessage] = useState('');
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [draftDateSelections, setDraftDateSelections] = useState<DraftDateSelections>(initialDraftDateSelections);
+
+  const existingRegistrationQuery = useQuery({
+    queryKey: ['myEuropeanGatheringRegistration', user?.uid],
+    queryFn: () => fetchMyEuropeanGatheringRegistration(user!.uid),
+    enabled: !!user?.uid,
+    staleTime: 0
+  });
+  const existingRegistration = existingRegistrationQuery.data ?? null;
 
   const copy = copyByLocale[locale];
   const uploadInfoBody = copy.fileInfoBody
@@ -1233,7 +1385,46 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
   const availableRooms = roomAvailability.filter(room => room.available > 0);
 
   useEffect(() => {
+    if (existingRegistrationQuery.isFetching) return;
+    if (!existingRegistration) return;
+    const r = existingRegistration;
+    setValues({
+      firstName: r.firstName,
+      lastName: r.lastName,
+      country: r.country,
+      church: r.church,
+      centerLeader: r.centerLeader,
+      phone: r.phone ?? '',
+      phoneCountryCode: r.phoneCountryCode ?? '+39',
+      email: r.email ?? '',
+      isInitiated: r.isInitiated,
+      isIcefluMember: r.isIcefluMember,
+      isNovice: r.isNovice,
+      attendanceMode: r.attendanceMode,
+      checkIn: r.checkIn ?? '',
+      checkOut: r.checkOut ?? '',
+      selectedWorks: (r.selectedWorks ?? []) as SpiritualWorkId[],
+      needsExtraLinen: r.needsExtraLinen,
+      roomNumber: r.roomNumber ?? ''
+    });
+  }, [existingRegistration, existingRegistrationQuery.isFetching]);
+
+  useEffect(() => {
+    if (user?.email) {
+      setValues(prev => prev.email ? prev : { ...prev, email: user.email! });
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
+      return;
+    }
+
+    // Wait until the query has settled; if there's an existing registration, don't load draft
+    if (existingRegistrationQuery.isPending) {
+      return;
+    }
+    if (existingRegistration) {
       return;
     }
 
@@ -1257,7 +1448,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
     } catch {
       window.localStorage.removeItem(europeanGatheringDraftKey);
     }
-  }, [setLocale]);
+  }, [setLocale, existingRegistrationQuery.isPending, existingRegistration]);
 
   useEffect(() => {
     if (values.attendanceMode !== 'lodging' || !values.roomNumber) {
@@ -1273,7 +1464,11 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const validationKey = validateEuropeanGatheringForm(values);
+      const validationKey = validateEuropeanGatheringForm(values, documents, {
+        identityDocumentPath: existingRegistration?.identityDocumentPath,
+        paymentProofPath: existingRegistration?.paymentProofPath,
+        consentDocumentPath: existingRegistration?.consentDocumentPath
+      });
       if (validationKey) {
         throw new Error(copy.errors[validationKey] ?? 'Invalid form');
       }
@@ -1283,14 +1478,31 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         locale,
         contribution,
         documents: {
-          identityDocumentName: documents.identityDocument?.name,
-          paymentProofName: documents.paymentProof?.name,
-          consentDocumentName: documents.consentDocument?.name
+          identityDocumentName: documents.identityDocument?.name ?? existingRegistration?.identityDocumentName,
+          identityDocumentPath: existingRegistration?.identityDocumentPath,
+          paymentProofName: documents.paymentProof?.name ?? existingRegistration?.paymentProofName,
+          paymentProofPath: existingRegistration?.paymentProofPath,
+          consentDocumentName: documents.consentDocument?.name ?? existingRegistration?.consentDocumentName,
+          consentDocumentPath: existingRegistration?.consentDocumentPath
         }
       });
 
+      if (existingRegistration) {
+        await updateMyEuropeanGatheringRegistration({
+          id: existingRegistration.id,
+          input: payload,
+          documents: {
+            identityDocument: documents.identityDocument,
+            paymentProof: documents.paymentProof,
+            consentDocument: values.isNovice ? documents.consentDocument : null
+          }
+        });
+        return { id: existingRegistration.id };
+      }
+
       return createEuropeanGatheringRegistration({
         input: payload,
+        userId: user?.uid ?? undefined,
         documents: {
           identityDocument: documents.identityDocument,
           paymentProof: documents.paymentProof,
@@ -1298,13 +1510,26 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         }
       });
     },
-    onSuccess: result => {
-      setSuccessState({ contributionTotal: contribution.total, registrationId: result.id });
-      setSubmitError('');
-      setDraftMessage('');
+    onSuccess: () => {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(europeanGatheringDraftKey);
       }
+      queryClient.invalidateQueries({ queryKey: ['myEuropeanGatheringRegistration', user?.uid] });
+      navigate('/');
+    },
+    onError: error => {
+      setSubmitError(error.message);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => {
+      if (!existingRegistration) throw new Error('No registration to delete.');
+      return deleteEuropeanGatheringRegistration(existingRegistration);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myEuropeanGatheringRegistration', user?.uid] });
+      navigate('/');
     },
     onError: error => {
       setSubmitError(error.message);
@@ -1360,13 +1585,33 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
       {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
       {draftMessage ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{draftMessage}</p> : null}
       <p className="text-xs leading-5 text-slate-500">{copy.draftHint}</p>
+      <p className="text-xs leading-5 text-slate-600 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">{copy.privacyConsent}</p>
+      <p className="text-xs text-slate-500">
+        {copy.contactInfo.split('international.secretariat@stellazzurra.org')[0]}
+        <a href="mailto:international.secretariat@stellazzurra.org" className="font-medium text-[color:var(--brand-blue-deep)] underline underline-offset-2">international.secretariat@stellazzurra.org</a>
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <button type="button" className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={saveDraft}>
-          {copy.saveDraft}
-        </button>
-        <button type="submit" form="european-gathering-form" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending}>
-          {mutation.isPending ? copy.submitting : copy.submit}
+        {existingRegistration ? (
+          <button
+            type="button"
+            className="w-full rounded-2xl border border-red-300 px-5 py-4 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+            disabled={existingRegistration.status !== 'pending' || deleteMutation.isPending || mutation.isPending}
+            onClick={() => {
+              if (window.confirm(copy.deleteRegistration + '?')) {
+                deleteMutation.mutate();
+              }
+            }}
+          >
+            {deleteMutation.isPending ? '…' : copy.deleteRegistration}
+          </button>
+        ) : (
+          <button type="button" className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={saveDraft}>
+            {copy.saveDraft}
+          </button>
+        )}
+        <button type="submit" form="european-gathering-form" className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60" disabled={mutation.isPending || deleteMutation.isPending || (!!existingRegistration && existingRegistration.status !== 'pending')}>
+          {mutation.isPending ? copy.submitting : existingRegistration ? copy.update : copy.submit}
         </button>
       </div>
     </>
@@ -1462,6 +1707,12 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     <Field label={copy.lastName}>
                       <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.lastName} onChange={event => setField('lastName', event.target.value)} />
                     </Field>
+                    <Field label={copy.email}>
+                      <input type="email" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.email} onChange={event => setField('email', event.target.value)} />
+                    </Field>
+                    <Field label={copy.phone}>
+                      <input type="tel" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.phone} onChange={event => setField('phone', event.target.value)} />
+                    </Field>
                     <Field label={copy.country}>
                       <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.country} onChange={event => setField('country', event.target.value)} />
                     </Field>
@@ -1476,19 +1727,41 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
 
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{copy.statusTitle}</h3>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                      <input type="checkbox" checked={values.isInitiated} onChange={event => setField('isInitiated', event.target.checked)} />
-                      {copy.initiated}
-                    </label>
-                    <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                      <input type="checkbox" checked={values.isIcefluMember} onChange={event => setField('isIcefluMember', event.target.checked)} />
-                      {copy.icefluMember}
-                    </label>
-                    <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                      <input type="checkbox" checked={values.isNovice} onChange={event => setField('isNovice', event.target.checked)} />
-                      {copy.novice}
-                    </label>
+                  <div className="grid items-stretch gap-3 sm:grid-cols-3">
+                    {(
+                      [
+                        { label: copy.initiated, field: 'isInitiated' as const, disabled: false },
+                        { label: copy.icefluMember, field: 'isIcefluMember' as const, disabled: false },
+                        { label: copy.novice, field: 'isNovice' as const, disabled: values.isInitiated },
+                      ] as const
+                    ).map(({ label, field, disabled }) => {
+                      const checked = !disabled && values[field];
+                      return (
+                        <div key={field} className={`flex flex-col justify-between gap-3 rounded-2xl border px-4 py-3 text-sm ${disabled ? 'border-slate-100 bg-slate-50/50 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                          <span className="flex grow items-center">{label}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={checked}
+                              disabled={disabled}
+                              onClick={() => {
+                                if (disabled) return;
+                                const next = !values[field];
+                                setField(field, next);
+                                if (field === 'isInitiated' && next) setField('isNovice', false);
+                              }}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${checked ? 'bg-[color:var(--brand-blue-deep)]' : 'bg-slate-200'} ${disabled ? 'cursor-not-allowed opacity-40' : ''}`}
+                            >
+                              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                            <span className={`text-xs font-semibold ${checked ? 'text-[color:var(--brand-blue-deep)]' : 'text-slate-400'}`}>
+                              {checked ? copy.yes : copy.no}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1572,10 +1845,13 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                           </p>
                         ) : null}
                       </Field>
-                      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 sm:mt-7">
-                        <input type="checkbox" checked={values.needsExtraLinen} onChange={event => setField('needsExtraLinen', event.target.checked)} />
-                        {copy.extraLinen}
-                      </label>
+                      <div className="flex flex-col gap-2 sm:mt-7">
+                        <p className="text-xs leading-5 text-slate-500">{copy.bedNote}</p>
+                        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                          <input type="checkbox" checked={values.needsExtraLinen} onChange={event => setField('needsExtraLinen', event.target.checked)} />
+                          {copy.extraLinen}
+                        </label>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -1599,8 +1875,6 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
             <aside className="space-y-6">
               <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
                 <h2 className="text-xl font-semibold text-slate-900">{copy.resourcesTitle}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{copy.resourcesIntro}</p>
-
                 <div className="mt-5 grid gap-3">
                   <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={generalProgramPaths[locale]} target="_blank" rel="noreferrer">
                     {copy.generalProgram}
@@ -1608,6 +1882,9 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                   <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={directionsPaths[locale]} target="_blank" rel="noreferrer">
                     {copy.directions}
                   </a>
+                  <button type="button" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" onClick={() => setIsPaymentModalOpen(true)}>
+                    {copy.paymentInfoButton}
+                  </button>
                 </div>
               </section>
 
@@ -1616,7 +1893,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                   <h2 className="text-xl font-semibold text-slate-900">{copy.documentsTitle}</h2>
                   <InfoTooltip body={uploadInfoBody} title={copy.fileInfoTitle} triggerLabel={copy.fileInfoTrigger} />
                 </div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
                   <FileUploadField
                     accept={europeanGatheringUploadAccept}
                     className="flex h-full flex-col"
@@ -1630,7 +1907,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     invalidTypeError={copy.fileInvalidType}
                     keepOriginalLabel={copy.fileKeepOriginal}
                     label={copy.identityDocument}
-                    labelClassName="min-h-[2.5rem] leading-5"
+                    labelClassName="leading-5"
                     openInNewTabLabel={copy.fileOpenNewTab}
                     onChange={file => setDocuments(current => ({ ...current, identityDocument: file }))}
                     originalSizeLabel={copy.fileOriginalSize}
@@ -1655,7 +1932,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     invalidTypeError={copy.fileInvalidType}
                     keepOriginalLabel={copy.fileKeepOriginal}
                     label={copy.paymentProof}
-                    labelClassName="min-h-[2.5rem] leading-5"
+                    labelClassName="leading-5"
                     openInNewTabLabel={copy.fileOpenNewTab}
                     onChange={file => setDocuments(current => ({ ...current, paymentProof: file }))}
                     originalSizeLabel={copy.fileOriginalSize}
@@ -1681,7 +1958,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                         file={documents.consentDocument}
                         invalidTypeError={copy.fileInvalidType}
                         keepOriginalLabel={copy.fileKeepOriginal}
-                        label={copy.consentDocument}
+                        label={<span className="inline-flex flex-wrap items-baseline gap-x-2">{copy.consentDocument}<a className="text-xs font-normal text-amber-700 underline underline-offset-2 hover:text-amber-900" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">({copy.consentDownloadInline})</a></span>}
                         labelClassName="leading-5"
                         openInNewTabLabel={copy.fileOpenNewTab}
                         onChange={file => setDocuments(current => ({ ...current, consentDocument: file }))}
@@ -1694,18 +1971,46 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                         tooLargeError={uploadTooLargeError}
                         useCompressedLabel={copy.fileApproveCompressed}
                       />
-                      <a className="inline-flex rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-medium text-amber-900 transition hover:bg-amber-100" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">
-                        {copy.consentDownloadInline}
-                      </a>
-                      <p className="text-xs leading-5 text-slate-600">{copy.consentHint}</p>
+                      <p className="text-xs leading-5 text-amber-800">{copy.noviceApprovalNote}</p>
                     </div>
                   ) : null}
                 </div>
-                <p className="mt-4 text-xs leading-5 text-slate-500">{copy.documentsHint}</p>
               </section>
 
               <section className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
                 <h2 className="text-xl font-semibold text-slate-900">{copy.contributionTitle}</h2>
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium text-slate-500">{copy.worksTableTitle}</p>
+                  <table className="w-full text-xs text-slate-700">
+                    <thead>
+                      <tr className="text-right">
+                        <th className="pb-1 pr-2 text-left font-medium text-slate-500"></th>
+                        <th className="pb-1 pr-2 font-medium text-slate-500">{copy.worksTableColAnyone}</th>
+                        <th className="pb-1 pr-2 font-medium text-slate-500">{copy.worksTableColInitiated}</th>
+                        <th className="pb-1 font-medium text-slate-500">{copy.worksTableColIceflu}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {([1, 2, 3, 4] as const).map((n, i) => {
+                        const anyone =   [100, 180, 240, 300][i];
+                        const initiated = [80, 150, 210, 260][i];
+                        const iceflu =    [60, 110, 150, 190][i];
+                        return (
+                          <tr key={n} className="text-right odd:bg-slate-50">
+                            <td className="py-1 pl-2 pr-2 text-left font-medium text-slate-700">{n}×</td>
+                            <td className="py-1 pr-2">{anyone} €</td>
+                            <td className="py-1 pr-2">{initiated} €</td>
+                            <td className="py-1 pr-2">{iceflu} €</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="mt-3 space-y-0.5 text-xs text-slate-400">
+                    <p>{copy.lodgingRate}</p>
+                    <p>{copy.mealsRate}</p>
+                  </div>
+                </div>
                 <dl className="mt-5 grid gap-3 text-sm">
                   <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
                     <dt className="text-slate-600">{copy.nights}</dt>
@@ -1762,6 +2067,37 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isPaymentModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-label={copy.paymentInfoTitle}>
+          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-xl font-semibold text-slate-900">{copy.paymentInfoTitle}</h2>
+              <button type="button" className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600" onClick={() => setIsPaymentModalOpen(false)}>
+                {copy.close}
+              </button>
+            </div>
+            <dl className="mt-5 grid gap-3 text-sm">
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-medium text-slate-500">{copy.paymentBeneficiary}</dt>
+                <dd className="mt-1 font-semibold text-slate-900">STELLA AZZURRA ETS</dd>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-medium text-slate-500">{copy.paymentCausale}</dt>
+                <dd className="mt-1 font-semibold text-slate-900">Encontro Europeu 2026</dd>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-medium text-slate-500">IBAN</dt>
+                <dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">IT43W0306909606100000133653</dd>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-medium text-slate-500">SWIFT</dt>
+                <dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">BCITITMM</dd>
+              </div>
+            </dl>
           </div>
         </div>
       ) : null}

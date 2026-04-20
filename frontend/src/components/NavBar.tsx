@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { hasRequiredRole } from '../lib/systemRole';
@@ -84,7 +84,8 @@ const copyByLocale = {
 } as const;
 
 export function NavBar() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
   const { role } = useSystemRole();
   const { canToggleDevMode, devModeEnabled, setDevModeEnabled } = useDevMode();
   const { locale, setLocale } = useSiteLocale();
@@ -147,11 +148,14 @@ export function NavBar() {
           ) : null}
           <button
             type="button"
-            onClick={() => signOut()}
+            onClick={() => signOut().then(() => navigate('/login'))}
             className="rounded-full bg-[color:var(--brand-green)] px-3 py-2 text-sm font-semibold text-[color:var(--brand-white)] shadow-sm transition hover:bg-[color:var(--brand-green-deep)]"
           >
             {copy.signOut}
           </button>
+          {user ? (
+            <span className="hidden text-xs text-slate-500 md:block">{user.displayName ?? user.email}</span>
+          ) : null}
         </div>
       </div>
     </header>

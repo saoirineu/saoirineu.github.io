@@ -1,5 +1,5 @@
 import { Suspense, lazy, type ReactNode } from 'react';
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { AuthGate } from './components/AuthGate';
 import { NavBar } from './components/NavBar';
@@ -49,6 +49,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
 
 function EuropeanGatheringRoute() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <RouteFallback />;
@@ -62,7 +63,7 @@ function EuropeanGatheringRoute() {
     );
   }
 
-  return <EuropeanGatheringPage showPublicHero />;
+  return <Navigate to="/login" replace state={{ from: location }} />;
 }
 
 function DevOnlyRoute() {

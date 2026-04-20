@@ -28,10 +28,19 @@ service firebase.storage {
         && request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
     }
 
-    match /encontroEuropeuInscricoes/{registrationId}/{fileName} {
+    function ownsPendingEuropeanGatheringRegistration(registrationId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/europeanGatheringRegistrations/$(registrationId))
+        && firestore.get(/databases/(default)/documents/europeanGatheringRegistrations/$(registrationId)).data.userId == request.auth.uid
+        && firestore.get(/databases/(default)/documents/europeanGatheringRegistrations/$(registrationId)).data.status == 'pending';
+    }
+
+    match /europeanGatheringRegistrations/{registrationId}/{fileName} {
       allow read: if isAdmin();
-      allow create: if isAllowedDocument();
-      allow delete: if isAdmin();
+      allow create: if isSignedIn()
+        && isAllowedDocument()
+        && fileName.matches('(identityDocument|paymentProof|consentDocument)-.*');
+      allow delete: if isAdmin() || ownsPendingEuropeanGatheringRegistration(registrationId);
       allow update: if false;
     }
 

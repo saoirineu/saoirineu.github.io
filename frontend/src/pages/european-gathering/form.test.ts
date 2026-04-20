@@ -29,15 +29,16 @@ describe('european gathering helpers', () => {
         checkIn: '2026-09-11',
         checkOut: '2026-09-14',
         selectedWorks: ['fri-11-19', 'sat-12-19'],
+        isInitiated: true,
         isIcefluMember: true,
         needsExtraLinen: true
       })
     ).toEqual({
       nights: 3,
       lodging: 210,
-      spiritualWorks: 150,
+      spiritualWorks: 110,
       extras: 20,
-      total: 380
+      total: 340
     });
   });
 
@@ -85,20 +86,29 @@ describe('european gathering helpers', () => {
   });
 
   it('validates required fields and date logic', () => {
-    expect(validateEuropeanGatheringForm(initialEuropeanGatheringFormValues)).toBe('firstName');
+    const noDocs = { identityDocument: null, paymentProof: null, consentDocument: null };
+    const noPaths = {};
+    const existingPaths = {
+      identityDocumentPath: 'europeanGatheringRegistrations/abc/identity-id.pdf',
+      paymentProofPath: 'europeanGatheringRegistrations/abc/payment-proof.pdf'
+    };
+
+    expect(validateEuropeanGatheringForm(initialEuropeanGatheringFormValues, noDocs, noPaths)).toBe('firstName');
 
     expect(
       validateEuropeanGatheringForm({
         ...initialEuropeanGatheringFormValues,
         firstName: 'Maria',
         lastName: 'Silva',
+        email: 'maria@example.com',
+        phone: '123456789',
         country: 'Italia',
         church: 'Centro',
         centerLeader: 'Dirigente',
         selectedWorks: ['fri-11-19'],
         checkIn: '2026-09-13',
         checkOut: '2026-09-12'
-      })
+      }, noDocs, existingPaths)
     ).toBe('checkOut');
   });
 });

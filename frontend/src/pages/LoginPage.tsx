@@ -9,6 +9,7 @@ import { useSiteLocale } from '../providers/useSiteLocale';
 const copyByLocale = {
   pt: {
     title: 'São Irineu',
+    eventBanner: 'Encontro Europeu 2026',
     email: 'Email',
     password: 'Senha',
     signIn: 'Entrar',
@@ -25,6 +26,7 @@ const copyByLocale = {
   },
   en: {
     title: 'São Irineu',
+    eventBanner: 'European Gathering 2026',
     email: 'Email',
     password: 'Password',
     signIn: 'Sign in',
@@ -41,6 +43,7 @@ const copyByLocale = {
   },
   es: {
     title: 'São Irineu',
+    eventBanner: 'Encuentro Europeo 2026',
     email: 'Correo electrónico',
     password: 'Contraseña',
     signIn: 'Entrar',
@@ -57,6 +60,7 @@ const copyByLocale = {
   },
   it: {
     title: 'São Irineu',
+    eventBanner: 'Incontro Europeo 2026',
     email: 'Email',
     password: 'Password',
     signIn: 'Accedi',
@@ -126,6 +130,11 @@ export function LoginPage() {
       <div className="relative w-full max-w-md rounded-[28px] border border-[color:var(--brand-sand)] bg-[rgba(255,255,255,0.92)] p-8 shadow-[0_24px_80px_var(--brand-shadow)]">
         <div className="mb-6 text-center">
           <BrandMark className="mx-auto mb-4 h-16 w-16" decorative />
+          <div className="mb-4 rounded-2xl bg-[linear-gradient(135deg,rgba(232,194,76,0.28),rgba(63,132,194,0.18))] px-4 py-2.5 text-center">
+            <span className="text-sm font-semibold tracking-wide text-[color:var(--brand-blue-deep)]">
+              ✦ {copy.eventBanner} ✦
+            </span>
+          </div>
           <div className="mb-4 flex justify-center">
             <label className="flex items-center gap-2 text-xs font-medium text-[color:var(--brand-blue-deep)]">
               <span>{copy.language}</span>
