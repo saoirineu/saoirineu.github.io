@@ -133,7 +133,6 @@ type Copy = {
   saveDraft: string;
   draftSaved: string;
   draftLoaded: string;
-  draftHint: string;
   privacyConsent: string;
   contactInfo: string;
   submitting: string;
@@ -278,9 +277,8 @@ const copyByLocale: Record<Locale, Copy> = {
     update: 'Atualizar inscrição',
     deleteRegistration: 'Excluir inscrição',
     saveDraft: 'Salvar rascunho',
-    draftSaved: 'Rascunho salvo neste navegador.',
+    draftSaved: 'Rascunho salvo neste navegador. Arquivos não armazenados.',
     draftLoaded: 'Rascunho carregado automaticamente.',
-    draftHint: 'Os arquivos anexados não podem ser guardados no rascunho; será preciso selecioná-los novamente antes do envio.',
     privacyConsent: 'Autorizo o tratamento dos meus dados pessoais para as finalidades relativas à realização e participação neste evento (Encontro Europeu 2026) e em outros eventos organizados pelo ICEFLU Santo Daime Europa e centros associados.',
     contactInfo: 'Dúvidas? Escreva para international.secretariat@stellazzurra.org',
     submitting: 'Enviando...',
@@ -406,9 +404,8 @@ const copyByLocale: Record<Locale, Copy> = {
     update: 'Update registration',
     deleteRegistration: 'Delete registration',
     saveDraft: 'Save draft',
-    draftSaved: 'Draft saved in this browser.',
+    draftSaved: 'Draft saved in this browser. Attached files not stored.',
     draftLoaded: 'Draft loaded automatically.',
-    draftHint: 'Attached files cannot be stored in the draft; you will need to select them again before submitting.',
     privacyConsent: 'I consent to the processing of my personal data for the purposes related to the organisation and participation in this event (Encontro Europeu 2026) and other events organised by ICEFLU Santo Daime Europe and affiliated centres.',
     contactInfo: 'Questions? Write to international.secretariat@stellazzurra.org',
     submitting: 'Submitting...',
@@ -534,9 +531,8 @@ const copyByLocale: Record<Locale, Copy> = {
     update: 'Actualizar inscripción',
     deleteRegistration: 'Eliminar inscripción',
     saveDraft: 'Guardar borrador',
-    draftSaved: 'Borrador guardado en este navegador.',
+    draftSaved: 'Borrador guardado en este navegador. Archivos adjuntos no almacenados.',
     draftLoaded: 'Borrador cargado automáticamente.',
-    draftHint: 'Los archivos adjuntos no se pueden guardar en el borrador; tendrás que seleccionarlos de nuevo antes de enviar.',
     privacyConsent: 'Autorizo el tratamiento de mis datos personales para las finalidades relativas a la realización y participación en este evento (Encontro Europeu 2026) y en otros eventos organizados por ICEFLU Santo Daime Europa y centros asociados.',
     contactInfo: '¿Preguntas? Escríbenos a international.secretariat@stellazzurra.org',
     submitting: 'Enviando...',
@@ -662,9 +658,8 @@ const copyByLocale: Record<Locale, Copy> = {
     update: 'Aggiorna iscrizione',
     deleteRegistration: 'Elimina iscrizione',
     saveDraft: 'Salva bozza',
-    draftSaved: 'Bozza salvata in questo browser.',
-    draftLoaded: 'Bozza caricata automaticamente.',
-    draftHint: "I file allegati non possono essere salvati nella bozza; dovrai selezionarli di nuovo prima dell’invio.",
+    draftSaved: 'Bozza salvata in questo browser. File allegati non archiviati.',
+    draftLoaded: "Bozza caricata automaticamente.",
     privacyConsent: "Autorizzo al trattamento dei dati personali per le finalità relative alla realizzazione e partecipazione di questo evento (Encontro Europeu 2026) e di altri eventi organizzati da ICEFLU Santo Daime Europa e centri collegati.",
     contactInfo: 'Domande? Scrivi a international.secretariat@stellazzurra.org',
     submitting: 'Invio in corso...',
@@ -1131,18 +1126,9 @@ function FileUploadField({
           <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-950/50 px-4 py-6" role="dialog" aria-modal="true" aria-label={previewTitle}>
             <div className="flex min-h-full items-center justify-center">
               <div className="w-full max-w-4xl rounded-[28px] bg-white p-6 shadow-2xl">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h2 className="text-xl font-semibold text-slate-900">{previewTitle}</h2>
-                    <p className="mt-2 truncate text-sm text-slate-600" title={file.name}>{file.name}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
-                    onClick={() => setIsPreviewOpen(false)}
-                  >
-                    {closeLabel}
-                  </button>
+                <div className="min-w-0">
+                  <h2 className="text-xl font-semibold text-slate-900">{previewTitle}</h2>
+                  <p className="mt-2 truncate text-sm text-slate-600" title={file.name}>{file.name}</p>
                 </div>
 
                 <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
@@ -1277,7 +1263,7 @@ function FileUploadField({
                   rel="noreferrer"
                   className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
-                  {downloadLabel}
+                  {previewLabel}
                 </a>
                 <button
                   type="button"
@@ -1616,9 +1602,9 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
     <>
       {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
       {draftMessage ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{draftMessage}</p> : null}
-      <p className="text-xs leading-5 text-slate-500">{copy.draftHint}</p>
+
       <p className="text-xs leading-5 text-slate-600 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">{copy.privacyConsent}</p>
-      <p className="text-xs text-slate-500">
+      <p className="text-center text-xs text-slate-500">
         {copy.contactInfo.split('international.secretariat@stellazzurra.org')[0]}
         <a href="mailto:international.secretariat@stellazzurra.org" className="font-medium text-[color:var(--brand-blue-deep)] underline underline-offset-2">international.secretariat@stellazzurra.org</a>
       </p>
