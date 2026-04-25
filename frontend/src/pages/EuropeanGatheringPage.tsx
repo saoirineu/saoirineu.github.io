@@ -55,6 +55,7 @@ type Copy = {
   paymentBeneficiary: string;
   consentDownload: string;
   noviceApprovalNote: string;
+  noviceApprovalLinkText: string;
   formTitle: string;
   personalTitle: string;
   firstName: string;
@@ -114,7 +115,6 @@ type Copy = {
   filePreviewTitle: string;
   fileDownload: string;
   fileOpenNewTab: string;
-  consentDownloadInline: string;
   contributionTitle: string;
   worksTableTitle: string;
   worksTableColAnyone: string;
@@ -200,7 +200,8 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentCausale: 'Causale',
     paymentBeneficiary: 'Beneficiário',
     consentDownload: 'Consentimento informado',
-    noviceApprovalNote: 'Primeira participação: após o envio da documentação, haverá um colóquio. Se a participação não for aprovada, o valor será devolvido.',
+    noviceApprovalNote: '{link}, preencha-o (preferencialmente em letras de fôrma), assine-o e envie-o.\nEm seguida, você será contatado para uma entrevista de conhecimento.\nCaso a participação não seja aprovada, a contribuição será devolvida.',
+    noviceApprovalLinkText: 'Baixe o termo de consentimento informado',
     formTitle: 'Formulário de inscrição',
     personalTitle: 'Dados pessoais',
     firstName: 'Nome',
@@ -260,7 +261,6 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Visualizar arquivo',
     fileDownload: 'Baixar',
     fileOpenNewTab: 'Abrir em nova aba',
-    consentDownloadInline: 'Download',
     contributionTitle: 'Resumo da contribuição',
     worksTableTitle: 'Contribuição por trabalhos espirituais',
     worksTableColAnyone: 'Visitante',
@@ -327,7 +327,8 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentCausale: 'Payment reason',
     paymentBeneficiary: 'Beneficiary',
     consentDownload: 'Informed consent',
-    noviceApprovalNote: 'First participation: after uploading the documents, there will be a brief interview. If participation is not approved, the contribution will be refunded.',
+    noviceApprovalNote: '{link}, fill it out (preferably in block letters), sign it, and upload it.\nYou will then be contacted for an introductory interview.\nIf participation is not approved, the contribution will be refunded.',
+    noviceApprovalLinkText: 'Download the informed consent form',
     formTitle: 'Registration form',
     personalTitle: 'Personal details',
     firstName: 'First name',
@@ -387,7 +388,6 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Preview file',
     fileDownload: 'Download',
     fileOpenNewTab: 'Open in new tab',
-    consentDownloadInline: 'Download',
     contributionTitle: 'Contribution summary',
     worksTableTitle: 'Contribution by spiritual works',
     worksTableColAnyone: 'Visitor',
@@ -454,7 +454,8 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentCausale: 'Concepto',
     paymentBeneficiary: 'Beneficiario',
     consentDownload: 'Consentimiento informado',
-    noviceApprovalNote: 'Primera participación: tras cargar la documentación, se realizará una breve entrevista. Si la participación no es aprobada, la contribución será devuelta.',
+    noviceApprovalNote: '{link}, complétalo (preferiblemente en letras de imprenta), fírmalo y cárgalo.\nDespués serás contactado para una entrevista de conocimiento.\nSi la participación no fuera aprobada, la contribución será devuelta.',
+    noviceApprovalLinkText: 'Descarga el consentimiento informado',
     formTitle: 'Formulario de inscripción',
     personalTitle: 'Datos personales',
     firstName: 'Nombre',
@@ -514,7 +515,6 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Ver archivo',
     fileDownload: 'Descargar',
     fileOpenNewTab: 'Abrir en una pestaña nueva',
-    consentDownloadInline: 'Download',
     contributionTitle: 'Resumen de la contribución',
     worksTableTitle: 'Contribución por trabajos espirituales',
     worksTableColAnyone: 'Visitante',
@@ -581,7 +581,8 @@ const copyByLocale: Record<Locale, Copy> = {
     paymentCausale: 'Causale',
     paymentBeneficiary: 'Beneficiario',
     consentDownload: 'Consenso informato',
-    noviceApprovalNote: 'Prima partecipazione: dopo aver caricato la documentazione, si svolgerà un colloquio. Se la partecipazione non viene approvata, il contributo sarà restituito.',
+    noviceApprovalNote: '{link}, compilalo (preferibilmente in stampatello), firmalo e caricalo.\nDopodiché sarai contattato per un colloquio conoscitivo.\nSe la partecipazione non dovesse essere approvata, il contributo sarà restituito.',
+    noviceApprovalLinkText: 'Scarica il consenso informato',
     formTitle: 'Modulo di iscrizione',
     personalTitle: 'Dati personali',
     firstName: 'Nome',
@@ -641,7 +642,6 @@ const copyByLocale: Record<Locale, Copy> = {
     filePreviewTitle: 'Anteprima file',
     fileDownload: 'Scarica',
     fileOpenNewTab: 'Apri in una nuova scheda',
-    consentDownloadInline: 'Download',
     contributionTitle: 'Riepilogo del contributo',
     worksTableTitle: 'Contributo per lavori spirituali',
     worksTableColAnyone: 'Visitatore',
@@ -1971,7 +1971,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     useCompressedLabel={copy.fileApproveCompressed}
                   />
                   {values.isNovice ? (
-                    <div className="sm:col-span-2 space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                    <div className="sm:col-span-2 space-y-3">
                       <FileUploadField
                         accept={europeanGatheringUploadAccept}
                         className="flex flex-col"
@@ -1988,7 +1988,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                         onRemoveExisting={() => setRemovedExistingDocs(prev => new Set([...prev, 'consentDocument']))}
                         invalidTypeError={copy.fileInvalidType}
                         keepOriginalLabel={copy.fileKeepOriginal}
-                        label={<span className="inline-flex flex-wrap items-baseline gap-x-2">{copy.consentDocument}<a className="text-xs font-normal text-amber-700 underline underline-offset-2 hover:text-amber-900" href={consentDocumentPaths[locale]} target="_blank" rel="noreferrer">({copy.consentDownloadInline})</a></span>}
+                        label={copy.consentDocument}
                         labelClassName="leading-5"
                         openInNewTabLabel={copy.fileOpenNewTab}
                         onChange={file => setDocuments(current => ({ ...current, consentDocument: file }))}
@@ -2001,7 +2001,25 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                         tooLargeError={uploadTooLargeError}
                         useCompressedLabel={copy.fileApproveCompressed}
                       />
-                      <p className="text-xs leading-5 text-amber-800">{copy.noviceApprovalNote}</p>
+                      <p className="whitespace-pre-line text-xs leading-5 text-amber-800">
+                        {(() => {
+                          const parts = copy.noviceApprovalNote.split('{link}');
+                          return (
+                            <>
+                              {parts[0]}
+                              <a
+                                className="font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+                                href={consentDocumentPaths[locale]}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {copy.noviceApprovalLinkText}
+                              </a>
+                              {parts[1]}
+                            </>
+                          );
+                        })()}
+                      </p>
                     </div>
                   ) : null}
                 </div>
