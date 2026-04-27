@@ -57,6 +57,186 @@ service cloud.firestore {
         : 18;
     }
 
+    function encontroEuropeuRegistrationRequiredFields() {
+      return [
+        'locale',
+        'firstName',
+        'lastName',
+        'userId',
+        'country',
+        'church',
+        'centerLeader',
+        'isInitiated',
+        'isIcefluMember',
+        'isNovice',
+        'attendanceMode',
+        'selectedWorks',
+        'needsExtraLinen',
+        'contribution',
+        'status',
+        'submittedAt'
+      ];
+    }
+
+    function encontroEuropeuRegistrationCreateFields() {
+      return [
+        'locale',
+        'firstName',
+        'lastName',
+        'userId',
+        'country',
+        'church',
+        'centerLeader',
+        'centerLeaderEmail',
+        'isInitiated',
+        'isIcefluMember',
+        'isNovice',
+        'attendanceMode',
+        'checkIn',
+        'checkOut',
+        'selectedWorks',
+        'needsExtraLinen',
+        'roomNumber',
+        'identityDocumentName',
+        'identityDocumentPath',
+        'paymentProofName',
+        'paymentProofPath',
+        'consentDocumentName',
+        'consentDocumentPath',
+        'phone',
+        'phoneCountryCode',
+        'email',
+        'contribution',
+        'status',
+        'submittedAt'
+      ];
+    }
+
+    function encontroEuropeuRegistrationOwnerEditableFields() {
+      return [
+        'locale',
+        'firstName',
+        'lastName',
+        'country',
+        'church',
+        'centerLeader',
+        'centerLeaderEmail',
+        'isInitiated',
+        'isIcefluMember',
+        'isNovice',
+        'attendanceMode',
+        'checkIn',
+        'checkOut',
+        'selectedWorks',
+        'needsExtraLinen',
+        'roomNumber',
+        'identityDocumentName',
+        'identityDocumentPath',
+        'paymentProofName',
+        'paymentProofPath',
+        'consentDocumentName',
+        'consentDocumentPath',
+        'phone',
+        'phoneCountryCode',
+        'email',
+        'contribution'
+      ];
+    }
+
+    function hasValidOptionalEncontroEuropeuString(field, maxSize) {
+      return !request.resource.data.keys().hasAny([field])
+        || (request.resource.data[field] is string
+          && request.resource.data[field].size() > 0
+          && request.resource.data[field].size() <= maxSize);
+    }
+
+    function hasValidEncontroEuropeuContribution() {
+      return request.resource.data.contribution is map
+        && request.resource.data.contribution.keys().hasAll([
+          'nights',
+          'lodging',
+          'spiritualWorks',
+          'extras',
+          'total'
+        ])
+        && request.resource.data.contribution.keys().hasOnly([
+          'nights',
+          'lodging',
+          'spiritualWorks',
+          'extras',
+          'total'
+        ])
+        && request.resource.data.contribution.nights is number
+        && request.resource.data.contribution.nights >= 0
+        && request.resource.data.contribution.lodging is number
+        && request.resource.data.contribution.lodging >= 0
+        && request.resource.data.contribution.spiritualWorks is number
+        && request.resource.data.contribution.spiritualWorks >= 0
+        && request.resource.data.contribution.extras is number
+        && request.resource.data.contribution.extras >= 0
+        && request.resource.data.contribution.total is number
+        && request.resource.data.contribution.total >= 0;
+    }
+
+    function hasValidEncontroEuropeuRegistrationPayload() {
+      return request.resource.data.keys().hasAll(encontroEuropeuRegistrationRequiredFields())
+        && request.resource.data.locale in ['pt', 'en', 'es', 'it']
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.firstName.size() <= 120
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
+        && request.resource.data.lastName.size() <= 120
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.country is string
+        && request.resource.data.country.size() > 0
+        && request.resource.data.country.size() <= 120
+        && request.resource.data.church is string
+        && request.resource.data.church.size() > 0
+        && request.resource.data.church.size() <= 240
+        && request.resource.data.centerLeader is string
+        && request.resource.data.centerLeader.size() > 0
+        && request.resource.data.centerLeader.size() <= 240
+        && hasValidOptionalEncontroEuropeuString('centerLeaderEmail', 240)
+        && request.resource.data.isInitiated is bool
+        && request.resource.data.isIcefluMember is bool
+        && request.resource.data.isNovice is bool
+        && request.resource.data.attendanceMode in ['lodging', 'meals', 'spiritual']
+        && hasValidOptionalEncontroEuropeuString('checkIn', 10)
+        && hasValidOptionalEncontroEuropeuString('checkOut', 10)
+        && request.resource.data.selectedWorks is list
+        && request.resource.data.selectedWorks.size() <= 4
+        && request.resource.data.needsExtraLinen is bool
+        && (!request.resource.data.keys().hasAny(['roomNumber']) || isValidEncontroEuropeuRoom(request.resource.data.roomNumber))
+        && hasValidOptionalEncontroEuropeuString('identityDocumentName', 240)
+        && hasValidOptionalEncontroEuropeuString('identityDocumentPath', 1024)
+        && hasValidOptionalEncontroEuropeuString('paymentProofName', 240)
+        && hasValidOptionalEncontroEuropeuString('paymentProofPath', 1024)
+        && hasValidOptionalEncontroEuropeuString('consentDocumentName', 240)
+        && hasValidOptionalEncontroEuropeuString('consentDocumentPath', 1024)
+        && hasValidOptionalEncontroEuropeuString('phone', 40)
+        && hasValidOptionalEncontroEuropeuString('phoneCountryCode', 10)
+        && hasValidOptionalEncontroEuropeuString('email', 240)
+        && hasValidEncontroEuropeuContribution()
+        && hasValidEncontroEuropeuStatus();
+    }
+
+    function hasValidEncontroEuropeuRegistrationCreatePayload() {
+      return request.resource.data.keys().hasOnly(encontroEuropeuRegistrationCreateFields())
+        && hasValidEncontroEuropeuRegistrationPayload()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.submittedAt == request.time;
+    }
+
+    function hasValidEncontroEuropeuRegistrationOwnerUpdate() {
+      return resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.submittedAt == resource.data.submittedAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(encontroEuropeuRegistrationOwnerEditableFields())
+        && hasValidEncontroEuropeuRegistrationPayload();
+    }
+
     match /users/{uid} {
       allow read: if true;
       allow create: if hasValidUserSystemRole() && (
@@ -109,67 +289,11 @@ service cloud.firestore {
 
     match /europeanGatheringRegistrations/{id} {
       allow create: if isSignedIn()
-      && request.resource.data.keys().hasAll([
-        'locale',
-        'firstName',
-        'lastName',
-        'userId',
-        'country',
-        'church',
-        'centerLeader',
-        'isInitiated',
-        'isIcefluMember',
-        'isNovice',
-        'attendanceMode',
-        'selectedWorks',
-        'needsExtraLinen',
-        'contribution',
-        'status',
-        'submittedAt'
-      ])
-      && request.resource.data.locale in ['pt', 'en', 'es', 'it']
-      && request.resource.data.firstName is string
-      && request.resource.data.firstName.size() > 0
-      && request.resource.data.firstName.size() <= 120
-      && request.resource.data.lastName is string
-      && request.resource.data.lastName.size() > 0
-      && request.resource.data.lastName.size() <= 120
-      && request.resource.data.userId == request.auth.uid
-      && request.resource.data.country is string
-      && request.resource.data.country.size() > 0
-      && request.resource.data.country.size() <= 120
-      && request.resource.data.church is string
-      && request.resource.data.church.size() > 0
-      && request.resource.data.church.size() <= 240
-      && request.resource.data.centerLeader is string
-      && request.resource.data.centerLeader.size() > 0
-      && request.resource.data.centerLeader.size() <= 240
-      && request.resource.data.isInitiated is bool
-      && request.resource.data.isIcefluMember is bool
-      && request.resource.data.isNovice is bool
-      && request.resource.data.attendanceMode in ['lodging', 'meals', 'spiritual']
-      && request.resource.data.selectedWorks is list
-      && request.resource.data.selectedWorks.size() <= 4
-      && request.resource.data.needsExtraLinen is bool
-      && (!request.resource.data.keys().hasAny(['roomNumber']) || isValidEncontroEuropeuRoom(request.resource.data.roomNumber))
-      && (!request.resource.data.keys().hasAny(['phone']) || request.resource.data.phone is string)
-      && (!request.resource.data.keys().hasAny(['email']) || request.resource.data.email is string)
-      && request.resource.data.contribution is map
-      && request.resource.data.contribution.nights is number
-      && request.resource.data.contribution.lodging is number
-      && request.resource.data.contribution.spiritualWorks is number
-      && request.resource.data.contribution.extras is number
-      && request.resource.data.contribution.total is number
-      && (!request.resource.data.keys().hasAny(['identityDocumentPath']) || request.resource.data.identityDocumentPath is string)
-      && (!request.resource.data.keys().hasAny(['paymentProofPath']) || request.resource.data.paymentProofPath is string)
-      && (!request.resource.data.keys().hasAny(['consentDocumentPath']) || request.resource.data.consentDocumentPath is string)
-      && request.resource.data.status == 'pending'
-      && request.resource.data.submittedAt == request.time;
+        && hasValidEncontroEuropeuRegistrationCreatePayload();
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
       allow update: if (isAdmin() && hasValidEncontroEuropeuStatus())
-        || (isSignedIn() && resource.data.userId == request.auth.uid
-          && !request.resource.data.diff(resource.data).changedKeys().hasAny(['status', 'userId']));
+        || (isSignedIn() && hasValidEncontroEuropeuRegistrationOwnerUpdate());
     }
 
     match /europeanGatheringRooms/{room} {

@@ -1431,7 +1431,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
       const resolved = results.filter((r): r is readonly [string, string] => r !== null);
       setExistingDocUrls(Object.fromEntries(resolved));
     });
-  }, [existingRegistration?.id, existingRegistrationQuery.isFetching]);
+  }, [existingRegistration, existingRegistrationQuery.isFetching]);
 
   useEffect(() => {
     if (user?.email) {
