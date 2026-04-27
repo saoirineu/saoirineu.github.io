@@ -13,6 +13,7 @@ const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
 const EuropeanGatheringPage = lazy(() => import('./pages/EuropeanGatheringPage'));
+const LeaderReviewPage = lazy(() => import('./pages/LeaderReviewPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -82,6 +83,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/european-gathering" element={<EuropeanGatheringRoute />} />
+        <Route path="/european-gathering/leader-review/:id" element={<LeaderReviewPage />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />

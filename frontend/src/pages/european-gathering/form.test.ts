@@ -105,6 +105,7 @@ describe('european gathering helpers', () => {
         country: 'Italia',
         church: 'Centro',
         centerLeader: 'Dirigente',
+        centerLeaderEmail: 'dirigente@example.com',
         selectedWorks: ['fri-11-19'],
         checkIn: '2026-09-13',
         checkOut: '2026-09-12'

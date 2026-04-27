@@ -1,8 +1,9 @@
 import { FirebaseError } from 'firebase/app';
 import { Timestamp, Transaction, collection, doc, getDocs, limit, query, runTransaction, serverTimestamp, where, writeBatch } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-import { db, storage } from './firebase';
+import { db, functions, storage } from './firebase';
 import {
   asOptionalBoolean,
   asOptionalNumber,
@@ -15,6 +16,13 @@ import {
 import { validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
 
 export type EuropeanGatheringRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
+
+export type LeaderApprovalDecision = 'approved' | 'rejected';
+
+export type LeaderComment = {
+  text: string;
+  at: Date | null;
+};
 
 export type EuropeanGatheringRoomOption = {
   name: string;
@@ -42,6 +50,7 @@ export type EuropeanGatheringRegistrationInput = {
   country: string;
   church: string;
   centerLeader: string;
+  centerLeaderEmail?: string;
   isInitiated: boolean;
   isIcefluMember: boolean;
   isNovice: boolean;
@@ -79,6 +88,7 @@ export type EuropeanGatheringRegistrationRecord = {
   country: string;
   church: string;
   centerLeader: string;
+  centerLeaderEmail?: string;
   isInitiated: boolean;
   isIcefluMember: boolean;
   isNovice: boolean;
@@ -107,6 +117,9 @@ export type EuropeanGatheringRegistrationRecord = {
   status: EuropeanGatheringRegistrationStatus;
   submittedAt?: Date | null;
   userId?: string;
+  leaderApproval?: LeaderApprovalDecision;
+  leaderApprovalRespondedAt?: Date | null;
+  leaderComments?: LeaderComment[];
 };
 
 const registrationsRef = collection(db, 'europeanGatheringRegistrations');
@@ -254,10 +267,28 @@ export async function uploadEuropeanGatheringDocuments(args: { documents: Europe
   }
 }
 
+function mapLeaderComments(value: unknown): LeaderComment[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: LeaderComment[] = [];
+  for (const entry of value) {
+    const record = asRecord(entry);
+    const text = asOptionalString(record.text);
+    if (!text) continue;
+    const at = asOptionalTimestamp(record.at);
+    out.push({ text, at: at instanceof Timestamp ? at.toDate() : null });
+  }
+  return out;
+}
+
+function normalizeLeaderApproval(value: unknown): LeaderApprovalDecision | undefined {
+  return value === 'approved' || value === 'rejected' ? value : undefined;
+}
+
 function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrationRecord {
   const data = asRecord(value);
   const contribution = asRecord(data.contribution);
   const submittedAt = asOptionalTimestamp(data.submittedAt);
+  const leaderApprovalRespondedAt = asOptionalTimestamp(data.leaderApprovalRespondedAt);
 
   return {
     id,
@@ -267,6 +298,7 @@ function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrat
     country: asOptionalString(data.country) ?? '',
     church: asOptionalString(data.church) ?? '',
     centerLeader: asOptionalString(data.centerLeader) ?? '',
+    centerLeaderEmail: asOptionalString(data.centerLeaderEmail),
     isInitiated: asOptionalBoolean(data.isInitiated) ?? false,
     isIcefluMember: asOptionalBoolean(data.isIcefluMember) ?? false,
     isNovice: asOptionalBoolean(data.isNovice) ?? false,
@@ -294,7 +326,10 @@ function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrat
     email: asOptionalString(data.email),
     status: normalizeStatus(data.status),
     submittedAt: submittedAt instanceof Timestamp ? submittedAt.toDate() : null,
-    userId: asOptionalString(data.userId)
+    userId: asOptionalString(data.userId),
+    leaderApproval: normalizeLeaderApproval(data.leaderApproval),
+    leaderApprovalRespondedAt: leaderApprovalRespondedAt instanceof Timestamp ? leaderApprovalRespondedAt.toDate() : null,
+    leaderComments: mapLeaderComments(data.leaderComments)
   };
 }
 
@@ -479,4 +514,55 @@ export async function deleteEuropeanGatheringRegistration(registration: Pick<
 
     transaction.delete(doc(registrationsRef, registration.id));
   });
+}
+
+export type EuropeanGatheringLeaderView = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  country: string;
+  church: string;
+  centerLeader: string;
+  isInitiated: boolean;
+  isIcefluMember: boolean;
+  isNovice: boolean;
+  attendanceMode: 'lodging' | 'meals' | 'spiritual' | null;
+  checkIn: string | null;
+  checkOut: string | null;
+  selectedWorks: string[];
+  contribution: {
+    nights: number;
+    lodging: number;
+    spiritualWorks: number;
+    extras: number;
+    total: number;
+  };
+  leaderApproval: LeaderApprovalDecision | null;
+  leaderApprovalRespondedAt: number | null;
+  leaderComments: Array<{ text: string; at: number | null }>;
+};
+
+const leaderViewCallable = httpsCallable<{ id: string; token: string }, EuropeanGatheringLeaderView>(
+  functions,
+  'europeanGatheringLeaderView'
+);
+
+const leaderRespondCallable = httpsCallable<
+  { id: string; token: string; comment?: string; decision?: LeaderApprovalDecision },
+  EuropeanGatheringLeaderView
+>(functions, 'europeanGatheringLeaderRespond');
+
+export async function fetchEuropeanGatheringLeaderView(args: { id: string; token: string }) {
+  const result = await leaderViewCallable(args);
+  return result.data;
+}
+
+export async function submitEuropeanGatheringLeaderResponse(args: {
+  id: string;
+  token: string;
+  comment?: string;
+  decision?: LeaderApprovalDecision;
+}) {
+  const result = await leaderRespondCallable(args);
+  return result.data;
 }

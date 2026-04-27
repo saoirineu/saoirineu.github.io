@@ -8,8 +8,27 @@ import {
   resolveEuropeanGatheringDocumentUrl,
   updateEuropeanGatheringRegistrationStatus,
   type EuropeanGatheringRegistrationRecord,
-  type EuropeanGatheringRegistrationStatus
+  type EuropeanGatheringRegistrationStatus,
+  type LeaderApprovalDecision,
+  type LeaderComment
 } from '../lib/europeanGathering';
+
+function leaderApprovalLabel(decision?: LeaderApprovalDecision) {
+  if (decision === 'approved') return 'Líder: aprovado';
+  if (decision === 'rejected') return 'Líder: rejeitado';
+  return 'Líder: pendente';
+}
+
+function leaderApprovalBadgeClasses(decision?: LeaderApprovalDecision) {
+  if (decision === 'approved') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+  if (decision === 'rejected') return 'bg-rose-50 text-rose-800 border-rose-200';
+  return 'bg-slate-50 text-slate-700 border-slate-200';
+}
+
+function formatLeaderCommentTimestamp(value?: Date | null) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(value);
+}
 
 const statusOptions: Array<{ value: EuropeanGatheringRegistrationStatus; label: string }> = [
   { value: 'approved', label: 'Aprovado' },
@@ -157,6 +176,7 @@ export default function EuropeanGatheringAdminPage() {
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | EuropeanGatheringRegistrationRecord['attendanceMode']>('all');
   const [sortKey, setSortKey] = useState<SortKey>('date-desc');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [commentsModalRegistration, setCommentsModalRegistration] = useState<EuropeanGatheringRegistrationRecord | null>(null);
 
   const query = useQuery({
     queryKey: ['european-gathering-registrations'],
@@ -298,6 +318,7 @@ export default function EuropeanGatheringAdminPage() {
                 }
               }}
               onStatusChange={status => statusMutation.mutate({ id: registration.id, status })}
+              onShowComments={() => setCommentsModalRegistration(registration)}
             />
           ))}
         </div>
@@ -316,6 +337,7 @@ export default function EuropeanGatheringAdminPage() {
                 <th className="px-4 py-3 font-medium">Total</th>
                 <th className="px-4 py-3 font-medium">Arquivos</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Líder</th>
                 <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
@@ -347,6 +369,20 @@ export default function EuropeanGatheringAdminPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
+                    <div className="flex flex-col items-start gap-1">
+                      <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${leaderApprovalBadgeClasses(registration.leaderApproval)}`}>
+                        {leaderApprovalLabel(registration.leaderApproval)}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-blue-700 underline decoration-blue-300 underline-offset-2"
+                        onClick={() => setCommentsModalRegistration(registration)}
+                      >
+                        Comentários ({registration.leaderComments?.length ?? 0})
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
                     <button
                       type="button"
                       className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
@@ -372,6 +408,67 @@ export default function EuropeanGatheringAdminPage() {
           Nenhuma inscrição encontrada com os filtros atuais.
         </div>
       ) : null}
+
+      {commentsModalRegistration ? (
+        <LeaderCommentsModal
+          registration={commentsModalRegistration}
+          onClose={() => setCommentsModalRegistration(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function LeaderCommentsModal({
+  registration,
+  onClose
+}: {
+  registration: EuropeanGatheringRegistrationRecord;
+  onClose: () => void;
+}) {
+  const comments: LeaderComment[] = registration.leaderComments ?? [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl" onClick={event => event.stopPropagation()}>
+        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Comentários do líder</h3>
+            <p className="text-xs text-slate-500">{registration.firstName} {registration.lastName} · {registration.church}</p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
+            onClick={onClose}
+          >
+            Fechar
+          </button>
+        </div>
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto px-5 py-4">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${leaderApprovalBadgeClasses(registration.leaderApproval)}`}>
+              {leaderApprovalLabel(registration.leaderApproval)}
+            </span>
+            {registration.leaderApprovalRespondedAt ? (
+              <span className="text-xs text-slate-500">
+                {formatLeaderCommentTimestamp(registration.leaderApprovalRespondedAt)}
+              </span>
+            ) : null}
+          </div>
+          {comments.length === 0 ? (
+            <p className="text-sm text-slate-500">Nenhum comentário registrado pelo líder.</p>
+          ) : (
+            <ul className="space-y-2">
+              {comments.map((entry, index) => (
+                <li key={`${entry.at?.getTime() ?? index}-${index}`} className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                  <div className="text-xs text-slate-500">{formatLeaderCommentTimestamp(entry.at)}</div>
+                  <div className="whitespace-pre-line">{entry.text}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -380,14 +477,17 @@ function RegistrationCard({
   registration,
   busy,
   onDelete,
-  onStatusChange
+  onStatusChange,
+  onShowComments
 }: {
   registration: EuropeanGatheringRegistrationRecord;
   busy: boolean;
   onDelete: () => void;
   onStatusChange: (status: EuropeanGatheringRegistrationStatus) => void;
+  onShowComments: () => void;
 }) {
   const statusAccentClasses = getStatusAccentClasses(registration.status);
+  const commentsCount = registration.leaderComments?.length ?? 0;
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -406,6 +506,16 @@ function RegistrationCard({
             <div className={`inline-flex rounded-xl border px-3 py-2 ${statusAccentClasses}`}>
               <StatusSelect value={registration.status} disabled={busy} onChange={onStatusChange} accent />
             </div>
+            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${leaderApprovalBadgeClasses(registration.leaderApproval)}`}>
+              {leaderApprovalLabel(registration.leaderApproval)}
+            </span>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              onClick={onShowComments}
+            >
+              Comentários ({commentsCount})
+            </button>
             <button
               type="button"
               className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"

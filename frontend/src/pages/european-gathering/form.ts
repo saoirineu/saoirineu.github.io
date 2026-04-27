@@ -10,6 +10,7 @@ export type EuropeanGatheringFormValues = {
   country: string;
   church: string;
   centerLeader: string;
+  centerLeaderEmail: string;
   phone: string;
   phoneCountryCode: string;
   email: string;
@@ -50,6 +51,7 @@ export const initialEuropeanGatheringFormValues: EuropeanGatheringFormValues = {
   country: '',
   church: '',
   centerLeader: '',
+  centerLeaderEmail: '',
   phone: '',
   phoneCountryCode: '+39',
   email: '',
@@ -157,6 +159,7 @@ export function buildEuropeanGatheringPayload(args: {
     country: values.country.trim(),
     church: values.church.trim(),
     centerLeader: values.centerLeader.trim(),
+    centerLeaderEmail: values.centerLeaderEmail.trim() || undefined,
     isInitiated: values.isInitiated,
     isIcefluMember: values.isIcefluMember,
     isNovice: values.isNovice,
@@ -192,6 +195,7 @@ export function validateEuropeanGatheringForm(
   if (!values.country.trim()) return 'country';
   if (!values.church.trim()) return 'church';
   if (!values.centerLeader.trim()) return 'centerLeader';
+  if (!values.centerLeaderEmail.trim()) return 'centerLeaderEmail';
   if (values.selectedWorks.length === 0) return 'selectedWorks';
 
   if (values.attendanceMode !== 'spiritual') {

@@ -65,6 +65,7 @@ type Copy = {
   country: string;
   church: string;
   centerLeader: string;
+  centerLeaderEmail: string;
   statusTitle: string;
   initiated: string;
   icefluMember: string;
@@ -211,6 +212,7 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'País',
     church: 'Igreja ou centro de referência',
     centerLeader: 'Nome do dirigente do centro',
+    centerLeaderEmail: 'E-mail do dirigente do centro',
     statusTitle: 'Vínculo com a doutrina',
     initiated: 'Fardado',
     icefluMember: 'Membro ICEFLU em dia com as mensalidades',
@@ -299,6 +301,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Preencha o país.',
       church: 'Preencha a igreja ou centro de referência.',
       centerLeader: 'Preencha o nome do dirigente do centro.',
+      centerLeaderEmail: 'Informe o e-mail do dirigente do centro.',
       selectedWorks: 'Selecione pelo menos um trabalho espiritual.',
       checkIn: 'Informe a data de check-in.',
       checkOut: 'Informe uma data de check-out válida.',
@@ -338,6 +341,7 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'Country',
     church: 'Reference church or center',
     centerLeader: 'Leader name of the reference center',
+    centerLeaderEmail: 'Email of the center leader',
     statusTitle: 'Doctrinal status',
     initiated: 'Fardado',
     icefluMember: 'ICEFLU member up to date with monthly dues',
@@ -426,6 +430,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Please fill in the country.',
       church: 'Please fill in the church or center.',
       centerLeader: 'Please fill in the center leader name.',
+      centerLeaderEmail: 'Please provide the center leader email.',
       selectedWorks: 'Select at least one spiritual work.',
       checkIn: 'Please provide the check-in date.',
       checkOut: 'Please provide a valid check-out date.',
@@ -465,6 +470,7 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'País',
     church: 'Iglesia o centro de referencia',
     centerLeader: 'Nombre del dirigente del centro',
+    centerLeaderEmail: 'Correo electrónico del dirigente del centro',
     statusTitle: 'Vínculo con la doctrina',
     initiated: 'Fardado',
     icefluMember: 'Miembro ICEFLU al día con las mensualidades',
@@ -553,6 +559,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Complete el país.',
       church: 'Complete la iglesia o centro de referencia.',
       centerLeader: 'Complete el nombre del dirigente del centro.',
+      centerLeaderEmail: 'Indique el correo electrónico del dirigente del centro.',
       selectedWorks: 'Seleccione al menos un trabajo espiritual.',
       checkIn: 'Indique la fecha de check-in.',
       checkOut: 'Indique una fecha de check-out válida.',
@@ -592,6 +599,7 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'Paese',
     church: 'Chiesa o centro di riferimento',
     centerLeader: 'Nome del dirigente del centro',
+    centerLeaderEmail: 'Email del dirigente del centro',
     statusTitle: 'Rapporto con la dottrina',
     initiated: 'Fardado',
     icefluMember: 'Membro ICEFLU in pari con le mensilità',
@@ -680,6 +688,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Compila il paese.',
       church: 'Compila la chiesa o centro di riferimento.',
       centerLeader: 'Compila il nome del dirigente del centro.',
+      centerLeaderEmail: 'Indica l\'email del dirigente del centro.',
       selectedWorks: 'Seleziona almeno un lavoro spirituale.',
       checkIn: 'Indica la data di check-in.',
       checkOut: 'Indica una data di check-out valida.',
@@ -1383,6 +1392,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
       country: r.country,
       church: r.church,
       centerLeader: r.centerLeader,
+      centerLeaderEmail: r.centerLeaderEmail ?? '',
       phone: r.phone ?? '',
       phoneCountryCode: r.phoneCountryCode ?? '+39',
       email: r.email ?? '',
@@ -1738,9 +1748,14 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                       <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.church} onChange={event => setField('church', event.target.value)} />
                     </Field>
                   </div>
-                  <Field label={copy.centerLeader}>
-                    <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.centerLeader} onChange={event => setField('centerLeader', event.target.value)} />
-                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label={copy.centerLeader}>
+                      <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.centerLeader} onChange={event => setField('centerLeader', event.target.value)} />
+                    </Field>
+                    <Field label={copy.centerLeaderEmail}>
+                      <input type="email" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.centerLeaderEmail} onChange={event => setField('centerLeaderEmail', event.target.value)} />
+                    </Field>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
