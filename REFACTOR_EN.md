@@ -44,16 +44,16 @@ These are Firestore collection/field names embedded in queries. Renaming them in
 
 | Current name | New name | Status |
 |---|---|---|
-| `usuarios` (collection) | `users` | ⏳ pending migration |
+| `usuarios` (collection) | `users` | ✅ migrated |
 | `trabalhos` (collection) | `trabalhos` (keep) | ✅ no migration needed |
-| `igrejas` (collection) | `churches` | ⏳ pending migration |
-| `bebidaLotes` (collection) | `beverageBatches` | ⏳ pending migration |
-| `encontroEuropeuInscricoes` (collection) | `europeanGatheringRegistrations` | ⏳ pending migration |
-| `encontroEuropeuQuartos` (collection) | `europeanGatheringRooms` | ⏳ pending migration |
+| `igrejas` (collection) | `churches` | ✅ migrated |
+| `bebidaLotes` (collection) | `beverageBatches` | ✅ migrated |
+| `encontroEuropeuInscricoes` (collection) | `europeanGatheringRegistrations` | ✅ migrated |
+| `encontroEuropeuQuartos` (collection) | `europeanGatheringRooms` | ✅ migrated |
 | Field names within documents | many (see Glossary) | ⏳ pending migration |
 
 > **Strategy**: rename code identifiers first (safe), then plan and run Firestore migrations separately.
-> Until migration runs, keep Firestore string literals (e.g. `collection(db, 'usuarios')`) in Portuguese — only rename TypeScript symbols.
+> Collections are now in English in Firestore, code, and rules. Remaining cleanup: drop the empty legacy `usuarios`/`igrejas`/`bebidaLotes` collections in the Firebase console, then deploy `firestore.rules`.
 
 ---
 

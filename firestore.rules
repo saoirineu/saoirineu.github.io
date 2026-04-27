@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function hasStoredRole(role) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.systemRole == role;
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRole == role;
     }
 
     function isSignedIn() {
@@ -57,7 +57,7 @@ service cloud.firestore {
         : 18;
     }
 
-    match /usuarios/{uid} {
+    match /users/{uid} {
       allow read: if true;
       allow create: if hasValidUserSystemRole() && (
         (isSignedIn() && request.auth.uid == uid && !request.resource.data.keys().hasAny(['systemRole']))
@@ -75,7 +75,7 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    match /igrejas/{id} {
+    match /churches/{id} {
       allow read: if true;
       allow write: if isSignedIn();
     }
@@ -90,7 +90,7 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    match /bebidaLotes/{id} {
+    match /beverageBatches/{id} {
       allow read: if true;
       allow write: if isSignedIn();
     }

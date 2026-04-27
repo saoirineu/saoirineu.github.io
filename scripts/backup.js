@@ -23,12 +23,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BACKUP_ROOT = join(__dirname, '..', 'backup');
 
 const COLLECTIONS = [
-  'usuarios',
-  'igrejas',
-  'bebidaLotes',
+  'users',
+  'churches',
+  'beverageBatches',
   'trabalhos',
-  'encontroEuropeuInscricoes',
-  'encontroEuropeuQuartos'
+  'europeanGatheringRegistrations',
+  'europeanGatheringRooms'
 ];
 
 const PROJECT_ID = 'sao-irineu';
