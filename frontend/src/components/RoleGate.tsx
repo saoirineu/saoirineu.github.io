@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { hasRequiredRole, type SystemRole } from '../lib/systemRole';
 import { useSystemRole } from '../providers/useSystemRole';
 
-export function RoleGate({ requiredRole }: { requiredRole: Extract<SystemRole, 'admin' | 'superadmin'> }) {
+export function RoleGate({ requiredRole }: { requiredRole: Extract<SystemRole, 'admin' | 'superadmin' | 'custodian'> }) {
   const { loading, role } = useSystemRole();
 
   if (loading) {

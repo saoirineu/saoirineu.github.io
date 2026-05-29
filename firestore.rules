@@ -34,9 +34,13 @@ service cloud.firestore {
       );
     }
 
+    function isCustodianOrHigher() {
+      return isAdmin() || hasStoredRole('custodian');
+    }
+
     function hasValidUserSystemRole() {
       return !request.resource.data.keys().hasAny(['systemRole'])
-        || request.resource.data.systemRole in ['user', 'admin', 'superadmin'];
+        || request.resource.data.systemRole in ['user', 'admin', 'superadmin', 'custodian'];
     }
 
     function hasValidEncontroEuropeuStatus() {
@@ -308,6 +312,26 @@ service cloud.firestore {
         && request.resource.data.available == request.resource.data.capacity - request.resource.data.reserved
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
+    }
+
+    match /sacramentStocks/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isCustodianOrHigher();
+      allow delete: if isAdmin();
+    }
+
+    match /sacramentItems/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isCustodianOrHigher();
+      allow delete: if isAdmin();
+    }
+
+    match /sacramentTransactions/{id} {
+      allow read: if isSignedIn();
+      allow create: if isCustodianOrHigher();
+      allow update: if isAdmin()
+        || (isCustodianOrHigher() && resource.data.createdBy == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // Default deny anything not matched above.

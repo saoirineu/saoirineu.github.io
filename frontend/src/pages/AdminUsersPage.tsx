@@ -5,7 +5,7 @@ import { normalizeSystemRole, type SystemRole } from '../lib/systemRole';
 import { fetchUsers, updateUserSystemRole } from '../lib/users';
 import { useSiteLocale } from '../providers/useSiteLocale';
 
-const roleOptions: SystemRole[] = ['user', 'admin', 'superadmin'];
+const roleOptions: SystemRole[] = ['user', 'custodian', 'admin', 'superadmin'];
 
 const copyByLocale = {
   pt: {

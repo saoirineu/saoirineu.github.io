@@ -8,7 +8,7 @@ import { useAuth } from './providers/useAuth';
 import { useDevMode } from './providers/useDevMode';
 
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
-const BeveragePage = lazy(() => import('./pages/BeveragePage'));
+const SacramentPage = lazy(() => import('./pages/SacramentPage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
@@ -92,8 +92,10 @@ function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/hymnals" element={<HymnsPage />} />
-              <Route path="/beverage" element={<BeveragePage />} />
               <Route path="/works" element={<WorksPage />} />
+            </Route>
+            <Route element={<RoleGate requiredRole="custodian" />}>
+              <Route path="/sacrament" element={<SacramentPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
               <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />
