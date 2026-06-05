@@ -281,9 +281,9 @@ export default function MembersPage() {
                         {sourceLabels[source.file]}
                       </span>
                     ))}
-                    {member.certificates.length ? (
+                    {member.firstWorkDate ? (
                       <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        {member.certificates.length} cert.
+                        1º Trab. {member.firstWorkDate}
                       </span>
                     ) : null}
                   </div>
@@ -454,28 +454,15 @@ function MemberDetailModal({
               ))}
             </dl>
           </section>
-
-          {member.certificates.length ? (
-            <section className="space-y-2">
-              <h4 className="text-sm font-semibold text-slate-900">Certificados ({member.certificates.length})</h4>
-              <ul className="space-y-1 text-sm text-slate-700">
-                {member.certificates.map((cert, index) => (
-                  <li key={cert.code ?? index} className="rounded-lg bg-slate-50 px-3 py-2">
-                    {cert.type ?? 'Certificado'} · {cert.date ?? 'sem data'}
-                    {cert.code ? <span className="text-xs text-slate-500"> · #{cert.code}</span> : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {member.sources.map((source, index) => (
-              <span key={`${source.file}-${index}`} className={`inline-flex rounded-full border px-2 py-0.5 font-medium ${sourceBadgeClasses(source.file)}`}>
+              <span key={`${source.file}-${source.code ?? source.line ?? index}`} className={`inline-flex rounded-full border px-2 py-0.5 font-medium ${sourceBadgeClasses(source.file)}`}>
                 {sourceLabels[source.file]}
                 {source.code ? ` #${source.code}` : ''}
+                {source.line ? ` · L${source.line}` : ''}
               </span>
             ))}
           </div>

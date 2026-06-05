@@ -34,9 +34,9 @@ import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, '..', '..', 'data', 'members');
+export const DATA_DIR = join(__dirname, '..', '..', 'data', 'members');
 
-const FILES = {
+export const FILES = {
   complete: 'ELENCO COMPLETO SOCI CLOUD.xlsx',
   importer: 'ImporterAnagrafichePF compilato.xlsx',
   certificates: 'ELENCO CERTIFICATI SOCI ISCRITTI NEL CLOUD.xlsx'
@@ -120,7 +120,7 @@ export function keyFor(record) {
 // Sheet reading
 // ---------------------------------------------------------------------------
 
-function readRows(file) {
+export function readRows(file) {
   const workbook = XLSX.readFile(join(DATA_DIR, file), { cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true, blankrows: false });
@@ -153,7 +153,7 @@ export function parseComplete(rows) {
     const row = rows[r];
     if (!row || row.every(cell => cell === '' || cell === null)) continue;
     out.push({
-      source: { file: 'complete', code: get(row, 'Codice') ?? String(r) },
+      source: { file: 'complete', code: get(row, 'Codice'), line: r + 1 },
       memberCode: get(row, 'Codice'),
       surname: get(row, 'Cognome'),
       firstName: get(row, 'Nome'),
@@ -202,7 +202,7 @@ export function parseImporter(rows) {
     if (!row || row.every(cell => cell === '' || cell === null)) continue;
     const stato = get(row, 'PER_stato');
     out.push({
-      source: { file: 'importer', code: get(row, 'PER_codper') ?? String(r) },
+      source: { file: 'importer', code: get(row, 'PER_codper'), line: r + 1 },
       surname: get(row, 'PER_cognome'),
       firstName: get(row, 'PER_nome'),
       sex: get(row, 'PER_sesso'),
@@ -245,6 +245,7 @@ export function parseCertificates(rows) {
     if (!row || row.every(cell => cell === '' || cell === null)) continue;
     const contacts = get(row, 'Contatti');
     out.push({
+      line: r + 1,
       code: get(row, 'Codice'),
       subject: get(row, 'Soggetto'),
       type: get(row, 'Tipo Cert./Diploma'),
@@ -305,7 +306,6 @@ export function mergeGroup(id, records) {
 
   merged.fullName = [merged.surname, merged.firstName].filter(Boolean).join(' ') || undefined;
   merged.sources = sources;
-  merged.certificates = [];
   merged.conflicts = conflicts;
   merged.reviewReasons = [];
   merged.possibleDuplicateIds = [];
@@ -369,9 +369,10 @@ export function buildMembers({ complete, importer, certificates }) {
     if (member.possibleDuplicateIds.length) member.reviewReasons.push('possible-duplicate');
   }
 
-  // Attach certificates: email match first, then normalized name. When several
-  // members share a contact, prefer the canonical one (CF-keyed over email- or
-  // name-keyed) so the certificate lands on the strongest record.
+  // Match certificates to set firstWorkDate (the only useful datum — every
+  // certificate is a "Primo Lavoro" carrying just a date). Email match first,
+  // then normalized name. When several members share a contact, prefer the
+  // canonical one (CF-keyed over email- or name-keyed).
   const idRank = member =>
     member.id.startsWith('email-') ? 1 : member.id.startsWith('name-') ? 2 : member.id.startsWith('cert-') ? 3 : 0;
   const setStronger = (map, key, member) => {
@@ -387,6 +388,8 @@ export function buildMembers({ complete, importer, certificates }) {
     setStronger(nameIndex, `${normName(member.surname)} ${normName(member.firstName)}`.trim(), member);
   }
   const certStats = { matchedByEmail: 0, matchedByName: 0, unmatched: 0 };
+  // memberId -> certificates matched to it (to report people with more than one).
+  const certsByMember = new Map();
   for (const cert of certificates) {
     let member = cert.email ? emailIndex.get(cert.email) : undefined;
     if (member) {
@@ -395,9 +398,9 @@ export function buildMembers({ complete, importer, certificates }) {
       member = nameIndex.get(cert.subjectKey);
       if (member) certStats.matchedByName += 1;
     }
-    const certData = { type: cert.type, date: cert.date, code: cert.code, note: cert.note };
     if (member) {
-      member.certificates.push(certData);
+      if (!certsByMember.has(member.id)) certsByMember.set(member.id, []);
+      certsByMember.get(member.id).push({ date: cert.date, code: cert.code });
       if (cert.date && (!member.firstWorkDate || cert.date < member.firstWorkDate)) {
         member.firstWorkDate = cert.date;
       }
@@ -410,9 +413,8 @@ export function buildMembers({ complete, importer, certificates }) {
         firstName: rest.join(' ') || undefined,
         fullName: cert.subject,
         email: cert.email,
-        certificates: [certData],
         firstWorkDate: cert.date,
-        sources: [{ file: 'certificates', code: cert.code }],
+        sources: [{ file: 'certificates', code: cert.code, line: cert.line }],
         conflicts: {},
         reviewReasons: ['certificate-only'],
         possibleDuplicateIds: []
@@ -421,32 +423,45 @@ export function buildMembers({ complete, importer, certificates }) {
     }
   }
 
+  // People who matched more than one certificate (kept firstWorkDate = earliest).
+  const duplicateCertificates = [];
+  for (const [id, certs] of certsByMember) {
+    if (certs.length < 2) continue;
+    const member = byId.get(id);
+    duplicateCertificates.push({
+      id,
+      name: member ? member.fullName ?? id : id,
+      firstWorkDate: member?.firstWorkDate,
+      certificates: certs.sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
+    });
+  }
+
   for (const member of members) {
     member.needsReview = member.reviewReasons.length > 0;
   }
 
   members.sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? '', 'it'));
-  return { members, certStats };
+  return { members, certStats, duplicateCertificates };
 }
 
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 
-function buildReport(members, certStats, counts) {
+export function buildReport(members, certStats, counts, duplicateCertificates = []) {
   const byKeyType = { cf: 0, email: 0, name: 0, cert: 0 };
   const bySource = { complete: 0, importer: 0, certificates: 0 };
   const reasonHist = {};
   const conflictFields = {};
   let needsReview = 0;
-  let attachedCertificates = 0;
+  let withFirstWorkDate = 0;
   for (const member of members) {
     if (member.id.startsWith('email-')) byKeyType.email += 1;
     else if (member.id.startsWith('name-')) byKeyType.name += 1;
     else if (member.id.startsWith('cert-')) byKeyType.cert += 1;
     else byKeyType.cf += 1;
     for (const source of member.sources ?? []) bySource[source.file] += 1;
-    attachedCertificates += member.certificates?.length ?? 0;
+    if (member.firstWorkDate) withFirstWorkDate += 1;
     for (const reason of member.reviewReasons ?? []) reasonHist[reason] = (reasonHist[reason] ?? 0) + 1;
     for (const field of Object.keys(member.conflicts ?? {})) conflictFields[field] = (conflictFields[field] ?? 0) + 1;
     if (member.needsReview) needsReview += 1;
@@ -468,7 +483,7 @@ function buildReport(members, certStats, counts) {
   lines.push('## Source contribution (after merge)', '');
   lines.push(`- Records carrying a COMPLETO row: ${bySource.complete}`);
   lines.push(`- Records carrying an Importer row: ${bySource.importer}`);
-  lines.push(`- Certificates attached to members: ${attachedCertificates}`, '');
+  lines.push(`- Members with a firstWorkDate (from a certificate): ${withFirstWorkDate}`, '');
   lines.push('## Needs review', '');
   lines.push(`- **Flagged: ${needsReview}** of ${members.length}`);
   for (const [reason, count] of Object.entries(reasonHist).sort((a, b) => b[1] - a[1])) {
@@ -479,9 +494,23 @@ function buildReport(members, certStats, counts) {
   if (conflictRows.length === 0) lines.push('- none');
   for (const [field, count] of conflictRows) lines.push(`- ${field}: ${count}`);
   lines.push('', '## Certificates', '');
+  lines.push('Only the earliest certificate date is kept, as `firstWorkDate` (every certificate is a "Primo Lavoro" carrying just a date).');
+  lines.push('');
   lines.push(`- Matched by email: ${certStats.matchedByEmail}`);
   lines.push(`- Matched by name: ${certStats.matchedByName}`);
   lines.push(`- Unmatched (became certificate-only members): ${certStats.unmatched}`, '');
+
+  lines.push(`### Members with more than one certificate (${duplicateCertificates.length})`, '');
+  if (duplicateCertificates.length === 0) {
+    lines.push('- none');
+  } else {
+    lines.push('`firstWorkDate` keeps the earliest; the later one(s) are likely source duplicates of the same "Primo Lavoro".', '');
+    for (const entry of duplicateCertificates) {
+      const certs = entry.certificates.map(c => `${c.date ?? 'sem data'} (#${c.code ?? '?'})`).join(', ');
+      lines.push(`- **${entry.name}** (${entry.id}) — firstWorkDate \`${entry.firstWorkDate ?? '?'}\` · certificates: ${certs}`);
+    }
+  }
+  lines.push('');
 
   // A few concrete conflict examples to eyeball.
   const examples = members.filter(m => Object.keys(m.conflicts ?? {}).length).slice(0, 12);
@@ -511,22 +540,28 @@ function main() {
   const importer = parseImporter(importerRows);
   const certificates = parseCertificates(certificateRows);
 
-  const { members, certStats } = buildMembers({ complete, importer, certificates });
+  const { members, certStats, duplicateCertificates } = buildMembers({ complete, importer, certificates });
 
+  const reportOnly = process.argv.includes('--report-only');
   const jsonPath = join(DATA_DIR, 'members.normalized.json');
   const reportPath = join(DATA_DIR, 'members.report.md');
-  writeFileSync(jsonPath, `${JSON.stringify(members, null, 2)}\n`);
+  if (!reportOnly) writeFileSync(jsonPath, `${JSON.stringify(members, null, 2)}\n`);
   writeFileSync(
     reportPath,
-    buildReport(members, certStats, {
-      complete: complete.length,
-      importer: importer.length,
-      certificates: certificates.length
-    })
+    buildReport(
+      members,
+      certStats,
+      { complete: complete.length, importer: importer.length, certificates: certificates.length },
+      duplicateCertificates
+    )
   );
 
   console.log(`Parsed: ${complete.length} complete, ${importer.length} importer, ${certificates.length} certificates`);
-  console.log(`Wrote ${members.length} members → ${jsonPath}`);
+  if (reportOnly) {
+    console.log(`Report-only: left ${jsonPath} untouched`);
+  } else {
+    console.log(`Wrote ${members.length} members → ${jsonPath}`);
+  }
   console.log(`Wrote report → ${reportPath}`);
 }
 

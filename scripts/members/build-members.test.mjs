@@ -51,27 +51,46 @@ test('mergeGroup keeps COMPLETO value and records the conflicting alternative', 
   assert.ok(merged.reviewReasons.includes('field-conflict'));
 });
 
-test('buildMembers dedups by CF, links possible duplicates, attaches certificates', () => {
+test('buildMembers dedups by CF, links possible duplicates, sets firstWorkDate', () => {
   const complete = [
-    { source: { file: 'complete', code: '1' }, fiscalCode: 'CF1', surname: 'Rossi', firstName: 'Mario', email: 'mario@x.it', birthDate: '1980-01-01' }
+    { source: { file: 'complete', code: '1', line: 2 }, fiscalCode: 'CF1', surname: 'Rossi', firstName: 'Mario', email: 'mario@x.it', birthDate: '1980-01-01' }
   ];
   const importer = [
     // same CF as complete → merges into one
-    { source: { file: 'importer', code: '7' }, fiscalCode: 'CF1', surname: 'Rossi', firstName: 'Mario', city: 'Roma' },
+    { source: { file: 'importer', code: '7', line: 11 }, fiscalCode: 'CF1', surname: 'Rossi', firstName: 'Mario', city: 'Roma' },
     // no CF, shares the email → separate id, flagged as possible duplicate
-    { source: { file: 'importer', code: '8' }, surname: 'Rossi', firstName: 'Mario', email: 'mario@x.it' }
+    { source: { file: 'importer', code: '8', line: 12 }, surname: 'Rossi', firstName: 'Mario', email: 'mario@x.it' }
   ];
   const certificates = [
-    { code: 'C1', subject: 'ROSSI MARIO', type: 'Primo Lavoro', date: '2005-06-01', email: 'mario@x.it', subjectKey: normName('ROSSI MARIO') }
+    { line: 2, code: 'C1', subject: 'ROSSI MARIO', type: 'Primo Lavoro', date: '2005-06-01', email: 'mario@x.it', subjectKey: normName('ROSSI MARIO') }
   ];
 
   const { members } = buildMembers({ complete, importer, certificates });
   const cf = members.find(m => m.id === 'CF1');
   assert.ok(cf);
   assert.equal(cf.city, 'Roma'); // filled from importer
-  assert.equal(cf.certificates.length, 1); // matched by email
-  assert.equal(cf.firstWorkDate, '2005-06-01');
+  assert.equal(cf.certificates, undefined); // certificates array is no longer stored
+  assert.equal(cf.firstWorkDate, '2005-06-01'); // matched by email
+  assert.deepEqual(cf.sources, [
+    { file: 'complete', code: '1', line: 2 },
+    { file: 'importer', code: '7', line: 11 }
+  ]);
   assert.ok(cf.possibleDuplicateIds.length === 1); // email-keyed twin
   const twin = members.find(m => m.id.startsWith('email-'));
   assert.ok(twin.possibleDuplicateIds.includes('CF1'));
+});
+
+test('buildMembers reports a member matched to multiple certificates', () => {
+  const complete = [
+    { source: { file: 'complete', code: '1', line: 2 }, fiscalCode: 'CF1', surname: 'Benzi', firstName: 'Enrico', email: 'b@x.it' }
+  ];
+  const certificates = [
+    { line: 2, code: 'A', subject: 'BENZI ENRICO', date: '1995-06-12', email: 'b@x.it', subjectKey: normName('BENZI ENRICO') },
+    { line: 3, code: 'B', subject: 'BENZI ENRICO', date: '1995-02-01', email: 'b@x.it', subjectKey: normName('BENZI ENRICO') }
+  ];
+  const { members, duplicateCertificates } = buildMembers({ complete, importer: [], certificates });
+  const cf = members.find(m => m.id === 'CF1');
+  assert.equal(cf.firstWorkDate, '1995-02-01'); // earliest kept
+  assert.equal(duplicateCertificates.length, 1);
+  assert.equal(duplicateCertificates[0].certificates.length, 2);
 });

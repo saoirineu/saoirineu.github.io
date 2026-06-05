@@ -3,6 +3,7 @@ import { collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc, writeB
 import { db } from './firebase';
 import {
   asOptionalBoolean,
+  asOptionalNumber,
   asOptionalString,
   asOptionalTimestamp,
   asRecord,
@@ -15,14 +16,10 @@ export type MemberSourceFile = 'complete' | 'importer' | 'certificates';
 
 export type MemberSource = {
   file: MemberSourceFile;
+  /** The source record's own identifier (cloud Codice / importer Codice Socio / certificate Codice). */
   code?: string;
-};
-
-export type MemberCertificate = {
-  type?: string;
-  date?: string;
-  code?: string;
-  note?: string;
+  /** 1-based row in the source spreadsheet. */
+  line?: number;
 };
 
 export type MemberConflicts = Record<string, string[]>;
@@ -42,7 +39,6 @@ export type MemberTextField = (typeof MEMBER_TEXT_FIELDS)[number];
 
 export type MemberRecord = {
   id: string;
-  certificates: MemberCertificate[];
   sources: MemberSource[];
   conflicts: MemberConflicts;
   reviewReasons: string[];
@@ -61,7 +57,6 @@ export type MemberPatch = Partial<
   reviewReasons?: string[];
   needsReview?: boolean;
   sources?: MemberSource[];
-  certificates?: MemberCertificate[];
 };
 
 const membersRef = collection(db, 'members');
@@ -70,17 +65,7 @@ function mapSource(value: unknown): MemberSource | undefined {
   if (!isRecord(value)) return undefined;
   const file = asOptionalString(value.file);
   if (file !== 'complete' && file !== 'importer' && file !== 'certificates') return undefined;
-  return { file, code: asOptionalString(value.code) };
-}
-
-function mapCertificate(value: unknown): MemberCertificate | undefined {
-  if (!isRecord(value)) return undefined;
-  return {
-    type: asOptionalString(value.type),
-    date: asOptionalString(value.date),
-    code: asOptionalString(value.code),
-    note: asOptionalString(value.note)
-  };
+  return { file, code: asOptionalString(value.code), line: asOptionalNumber(value.line) };
 }
 
 function mapConflicts(value: unknown): MemberConflicts {
@@ -97,9 +82,6 @@ export function mapMember(id: string, value: unknown): MemberRecord {
   const data = asRecord(value);
   const member: MemberRecord = {
     id,
-    certificates: Array.isArray(data.certificates)
-      ? data.certificates.map(mapCertificate).filter((c): c is MemberCertificate => Boolean(c))
-      : [],
     sources: Array.isArray(data.sources)
       ? data.sources.map(mapSource).filter((s): s is MemberSource => Boolean(s))
       : [],

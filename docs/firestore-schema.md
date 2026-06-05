@@ -87,8 +87,8 @@ senao `email-<hash>` ou `name-<hash>`.
 - residencia: address, postalCode, city, province, region, country
 - associacao: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, profession, nationality, citizenship
 - datas: registrationRequestDate, registrationDate, renewalDate, cancellationDate
-- certificados: certificates[] ({ type, date, code, note }), firstWorkDate
-- proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
+- certificados: firstWorkDate (data do certificado "Primo Lavoro" mais antigo; o array de certificados nao e guardado pois so traz a data)
+- proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code (id do registro na fonte), line (linha 1-based na planilha) }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
 - Precedencia de merge: COMPLETO vence conflitos; o valor alternativo fica em `conflicts[campo]`. Registros com mesmo email ou nome+nascimento mas ids diferentes sao ligados via `possibleDuplicateIds` para resolucao manual na UI admin.
 
 ### encontroEuropeuInscricoes

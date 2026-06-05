@@ -11,8 +11,7 @@ import {
 function makeMember(overrides: Partial<MemberRecord> = {}): MemberRecord {
   return {
     id: 'CF1',
-    certificates: [],
-    sources: [{ file: 'complete', code: '1' }],
+    sources: [{ file: 'complete', code: '1', line: 2 }],
     conflicts: {},
     reviewReasons: [],
     possibleDuplicateIds: [],
@@ -69,7 +68,6 @@ describe('members form helpers', () => {
       id: 'CF1',
       surname: 'Rossi',
       city: 'Milano',
-      certificates: [{ code: 'C1', type: 'Primo Lavoro' }],
       possibleDuplicateIds: ['email-abc']
     });
     const source = makeMember({
@@ -77,8 +75,7 @@ describe('members form helpers', () => {
       surname: 'Rossi',
       city: 'Roma', // conflicts with target
       profession: 'Artista', // gap-fill
-      sources: [{ file: 'importer', code: '8' }],
-      certificates: [{ code: 'C2', type: 'Primo Lavoro' }],
+      sources: [{ file: 'importer', code: '8', line: 12 }],
       firstWorkDate: '2005-01-01',
       possibleDuplicateIds: ['CF1']
     });
@@ -87,10 +84,9 @@ describe('members form helpers', () => {
     expect(patch.profession).toBe('Artista'); // filled gap
     expect(patch.conflicts).toEqual({ city: ['Milano', 'Roma'] }); // divergence recorded
     expect(patch.sources).toEqual([
-      { file: 'complete', code: '1' },
-      { file: 'importer', code: '8' }
+      { file: 'complete', code: '1', line: 2 },
+      { file: 'importer', code: '8', line: 12 }
     ]);
-    expect(patch.certificates?.map(c => c.code)).toEqual(['C1', 'C2']);
     expect(patch.firstWorkDate).toBe('2005-01-01');
     expect(patch.possibleDuplicateIds).toEqual([]); // the two merged ids drop out
     expect(patch.needsReview).toBe(true); // because of the city conflict

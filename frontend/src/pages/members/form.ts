@@ -1,7 +1,6 @@
 import {
   MEMBER_TEXT_FIELDS,
   type MemberConflicts,
-  type MemberCertificate,
   type MemberPatch,
   type MemberRecord,
   type MemberSource,
@@ -101,22 +100,10 @@ function unionSources(target: MemberSource[], source: MemberSource[]): MemberSou
   const seen = new Set<string>();
   const out: MemberSource[] = [];
   for (const entry of [...target, ...source]) {
-    const key = `${entry.file}:${entry.code ?? ''}`;
+    const key = `${entry.file}:${entry.code ?? entry.line ?? ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(entry);
-  }
-  return out;
-}
-
-function unionCertificates(target: MemberCertificate[], source: MemberCertificate[]): MemberCertificate[] {
-  const seen = new Set<string>();
-  const out: MemberCertificate[] = [];
-  for (const cert of [...target, ...source]) {
-    const key = cert.code ?? `${cert.type ?? ''}|${cert.date ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(cert);
   }
   return out;
 }
@@ -162,7 +149,6 @@ export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): 
   patch.conflicts = conflicts;
   patch.possibleDuplicateIds = possibleDuplicateIds;
   patch.sources = unionSources(target.sources, source.sources);
-  patch.certificates = unionCertificates(target.certificates, source.certificates);
   patch.reviewReasons = review.reviewReasons;
   patch.needsReview = review.needsReview;
 
