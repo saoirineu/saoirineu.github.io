@@ -31,6 +31,9 @@ docs/credentials/
 # Firestore backups
 backup/
 
+# Member source spreadsheets + generated dataset (personal data — keep out of git)
+data/members/
+
 # Scripts deps
 scripts/node_modules/
 

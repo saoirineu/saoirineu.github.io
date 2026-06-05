@@ -291,6 +291,13 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // Association members ("soci") unified from the registry/import spreadsheets.
+    // Holds personal data (tax codes, addresses), so it is admin-only.
+    match /members/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /europeanGatheringRegistrations/{id} {
       allow create: if isSignedIn()
         && hasValidEncontroEuropeuRegistrationCreatePayload();

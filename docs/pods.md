@@ -16,7 +16,7 @@ Este documento descreve como organizar o trabalho dos agentes de IA em pods inde
 - Mantém ontologias OWL, vocabulários SKOS e datasets RDF.
 - Garante compatibilidade dos dados RDF com o Firebase, fornecendo scripts de sincronização.
 - Define convenções (IRI, namespaces, alinhamentos) e prova consistência com testes.
-- Trabalha principalmente em `ontologia/`, `vocabularios/` e `dados/`.
+- Trabalha principalmente em `ontologia/`, `vocabularios/` e `data/`.
 
 ### 2. Pod Frontend
 - Constrói o frontend 100% client-side (HTML/CSS/JS) para usuários finais.

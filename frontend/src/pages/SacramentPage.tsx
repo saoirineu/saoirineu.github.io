@@ -594,8 +594,6 @@ function ItemCard({ item, churches, copy, uid, isAdmin }: ItemCardProps) {
     },
   });
 
-  const unit = item.form === 'gel' ? copy.kg : copy.liters;
-
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">

@@ -77,6 +77,20 @@
 - id (URI ou slug)
 - label, definition, scopeNote, broader, narrower, related
 
+### members (socios da associacao)
+Colecao unificada a partir das tres planilhas em `data/members/` (registro do cloud,
+import compilado e certificados "Primo Lavoro"). Gerada por `scripts/members/build-members.mjs`
+e carregada por `scripts/members/seed-members.mjs`. Doc id = Codice Fiscale quando existe;
+senao `email-<hash>` ou `name-<hash>`.
+- identidade: surname, firstName, fullName, fiscalCode, sex, birthDate (ISO), birthPlace, birthProvince, birthCountry
+- contato: email, email2, phone, mobile
+- residencia: address, postalCode, city, province, region, country
+- associacao: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, profession, nationality, citizenship
+- datas: registrationRequestDate, registrationDate, renewalDate, cancellationDate
+- certificados: certificates[] ({ type, date, code, note }), firstWorkDate
+- proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
+- Precedencia de merge: COMPLETO vence conflitos; o valor alternativo fica em `conflicts[campo]`. Registros com mesmo email ou nome+nascimento mas ids diferentes sao ligados via `possibleDuplicateIds` para resolucao manual na UI admin.
+
 ### encontroEuropeuInscricoes
 - locale: `pt` | `en` | `es` | `it`
 - firstName, lastName, country
@@ -111,6 +125,7 @@
 - trabalhos: data+igrejasResponsaveis; data+createdBy; hinarios+data
 - encontroEuropeuInscricoes: status+submittedAt; attendanceMode+submittedAt
 - encontroEuropeuQuartos: sem indice composto; leitura publica por doc/listagem simples
+- members: needsReview+fullName; memberStatus+fullName (listagem e filtros admin)
 
 ## Regras (esboco)
 - Leitura: `allow read: if true;` (ou restrita a auth conforme politicas de privacidade).
@@ -118,6 +133,7 @@
 - trabalhos: permitir criar/editar se `request.auth.uid == resource.data.createdBy` ou tiver claim/role apropriada.
 - bebidaLotes: escrita apenas para responsaveis ou admins (claim).
 - usuarios: cada uid edita apenas seu perfil; leitura publica opcional.
+- members: leitura e escrita apenas para admins (dados pessoais sensiveis).
 - `usuarios.systemRole` deve ser alterado apenas por superadmin; `renato.fabbri@gmail.com` atua como bootstrap superadmin.
 - Storage (se usar): uploads apenas autenticados; path por uid ou por colecao; validar tipo/tamanho.
 

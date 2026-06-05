@@ -27,6 +27,10 @@ const custodianLinks: Array<{ to: string; key: NavCopyKey }> = [
   { to: '/sacrament', key: 'sacrament' }
 ];
 
+const adminLinks: Array<{ to: string; key: NavCopyKey }> = [
+  { to: '/admin/members', key: 'members' }
+];
+
 const copyByLocale = {
   pt: {
     home: 'Início',
@@ -34,6 +38,7 @@ const copyByLocale = {
     churches: 'Igrejas',
     meeting: 'Encontro Europeu',
     people: 'Pessoas',
+    members: 'Sócios',
     hymns: 'Hinários/Hinos',
     sacrament: 'Sacramento',
     works: 'Trabalhos',
@@ -48,6 +53,7 @@ const copyByLocale = {
     churches: 'Churches',
     meeting: 'European Meeting',
     people: 'People',
+    members: 'Members',
     hymns: 'Hymns',
     sacrament: 'Sacrament',
     works: 'Works',
@@ -62,6 +68,7 @@ const copyByLocale = {
     churches: 'Iglesias',
     meeting: 'Encuentro Europeo',
     people: 'Personas',
+    members: 'Socios',
     hymns: 'Himnarios/Himnos',
     sacrament: 'Sacramento',
     works: 'Trabajos',
@@ -76,6 +83,7 @@ const copyByLocale = {
     churches: 'Chiese',
     meeting: 'Incontro Europeo',
     people: 'Persone',
+    members: 'Soci',
     hymns: 'Inni/Innari',
     sacrament: 'Sacramento',
     works: 'Lavori',
@@ -98,6 +106,7 @@ export function NavBar() {
     ...stableLinks.map(link => ({ to: link.to, label: copy[link.key] })),
     ...(devModeEnabled ? devLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
     ...(hasRequiredRole(role, 'custodian') ? custodianLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
+    ...(hasRequiredRole(role, 'admin') ? adminLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
     ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/users', label: copy.users }] : [])
   ];
 
