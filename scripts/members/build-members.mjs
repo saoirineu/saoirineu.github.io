@@ -116,6 +116,16 @@ export function keyFor(record) {
   return `name-${shortHash(nameKey)}`;
 }
 
+// Strong identity key (surname + first name + birth date), used to fold a record
+// that lacks a Codice Fiscale into the CF twin of the same person. Null when the
+// name or birth date is missing (too weak to match on).
+export function nameDobKey(record) {
+  const surname = normName(record.surname);
+  const firstName = normName(record.firstName);
+  if (!record.birthDate || (!surname && !firstName)) return null;
+  return `${surname}|${firstName}|${record.birthDate}`;
+}
+
 // ---------------------------------------------------------------------------
 // Sheet reading
 // ---------------------------------------------------------------------------
@@ -274,33 +284,92 @@ const MERGE_FIELDS = [
   'registrationRequestDate', 'registrationDate', 'renewalDate', 'cancellationDate'
 ];
 
-// Conflict comparison is normalized so trivial case/spacing differences don't
-// register as conflicts.
-function sameValue(field, a, b) {
-  if (field === 'fiscalCode') return normCF(a) === normCF(b);
-  if (field === 'email' || field === 'email2') return normEmail(a) === normEmail(b);
-  return normName(a) === normName(b);
+// Normalized comparison key so trivial case/spacing differences don't register
+// as distinct values.
+function normKey(field, value) {
+  if (field === 'fiscalCode') return normCF(value);
+  if (field === 'email' || field === 'email2') return normEmail(value);
+  return normName(value);
 }
 
-// Merge an ordered list of raw records (COMPLETO entries placed first) that
-// share a key into one member document.
+// Registration date used to decide which conflicting value is the most recent.
+// COMPLETO uses "Data Iscrizione", the importer "PER_datiscriz" — both parsed
+// into `registrationDate`. When that is missing, fall back to the registration
+// request date ("Data Richi. Iscri." / "PER_datarichiscr"). Empty sorts oldest.
+function recencyOf(record) {
+  return record.registrationDate || record.registrationRequestDate || '';
+}
+
+function isBareNumber(value) {
+  return /^\d+$/.test(String(value).trim());
+}
+
+// Merge a group of raw records (one COMPLETO + zero or more importer rows) that
+// share an identifier key into one member document. Conflicting fields are
+// resolved automatically to the value carried by the most recently registered
+// record; only ties (same date, or no dates) remain as manual conflicts.
 export function mergeGroup(id, records) {
   const merged = { id };
   const sources = [];
   const conflicts = {};
+  let autoResolved = 0;
+  let tieResolved = 0;
 
+  // Per field: normalized value -> { value, date, fromComplete } keeping the
+  // most recent date and whether COMPLETO (the cloud registry) carried it.
+  const candidates = {};
   for (const record of records) {
     if (record.source) sources.push(record.source);
+    const date = recencyOf(record);
+    const fromComplete = record.source?.file === 'complete';
     for (const field of MERGE_FIELDS) {
       const value = record[field];
       if (value === undefined || value === '') continue;
-      if (merged[field] === undefined) {
-        merged[field] = value;
-      } else if (!sameValue(field, merged[field], value)) {
-        const list = conflicts[field] ?? [merged[field]];
-        if (!list.some(existing => sameValue(field, existing, value))) list.push(value);
-        conflicts[field] = list;
+      const key = normKey(field, value);
+      if (!candidates[field]) candidates[field] = new Map();
+      const existing = candidates[field].get(key);
+      if (!existing) {
+        candidates[field].set(key, { value, date, fromComplete });
+      } else {
+        if (date > existing.date) {
+          existing.date = date;
+          existing.value = value; // freshest representation of the same value
+        }
+        existing.fromComplete = existing.fromComplete || fromComplete;
       }
+    }
+  }
+
+  for (const field of MERGE_FIELDS) {
+    const map = candidates[field];
+    if (!map) continue;
+    const items = [...map.values()];
+    if (items.length === 1) {
+      merged[field] = items[0].value;
+      continue;
+    }
+    items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    const newestDate = items[0].date;
+    const newest = items.filter(item => item.date === newestDate);
+    if (newestDate !== '' && newest.length === 1) {
+      merged[field] = newest[0].value; // strictly most recent wins
+      autoResolved += 1;
+      continue;
+    }
+    // Tie (same newest date, or no dates): prefer COMPLETO; drop bare-numeric
+    // junk (e.g. country "118") when a text value is also present.
+    let pool = newest;
+    if (pool.some(item => !isBareNumber(item.value))) {
+      pool = pool.filter(item => !isBareNumber(item.value));
+    }
+    const cloudPool = pool.filter(item => item.fromComplete);
+    if (cloudPool.length) pool = cloudPool;
+    if (pool.length === 1) {
+      merged[field] = pool[0].value; // tiebreaker decided
+      tieResolved += 1;
+    } else {
+      merged[field] = items[0].value; // genuinely ambiguous → manual review
+      conflicts[field] = items.map(item => item.value);
     }
   }
 
@@ -309,6 +378,8 @@ export function mergeGroup(id, records) {
   merged.conflicts = conflicts;
   merged.reviewReasons = [];
   merged.possibleDuplicateIds = [];
+  merged.autoResolved = autoResolved;
+  merged.tieResolved = tieResolved;
   if (Object.keys(conflicts).length) merged.reviewReasons.push('field-conflict');
   if (records.length > 1 && records.every(r => r.source?.file === 'importer')) {
     merged.reviewReasons.push('duplicate-in-importer');
@@ -321,15 +392,39 @@ export function mergeGroup(id, records) {
 // ---------------------------------------------------------------------------
 
 export function buildMembers({ complete, importer, certificates }) {
-  // Group raw rows by identifier key, COMPLETO first so it wins precedence.
+  const allRecords = [...complete, ...importer];
+
+  // Map each name+birthdate to its Codice Fiscale, so a record lacking a CF can
+  // be folded into the CF twin of the same person. Skip ambiguous keys where two
+  // different CFs share a name+birthdate (distinct people / data errors).
+  const cfByNameDob = new Map();
+  for (const record of allRecords) {
+    if (!record.fiscalCode) continue;
+    const key = nameDobKey(record);
+    if (!key) continue;
+    if (!cfByNameDob.has(key)) cfByNameDob.set(key, record.fiscalCode);
+    else if (cfByNameDob.get(key) !== record.fiscalCode) cfByNameDob.set(key, null); // ambiguous
+  }
+
+  // Effective grouping key: CF when present; otherwise a matching CF found via
+  // name+birthdate; otherwise the email/name fallback from keyFor.
+  const effectiveKey = record => {
+    if (record.fiscalCode) return record.fiscalCode;
+    const key = nameDobKey(record);
+    if (key) {
+      const cf = cfByNameDob.get(key);
+      if (cf) return cf;
+    }
+    return keyFor(record);
+  };
+
+  // Group rows by effective key. COMPLETO first so it wins precedence ties.
   const groups = new Map();
-  const addRecord = record => {
-    const key = keyFor(record);
+  for (const record of allRecords) {
+    const key = effectiveKey(record);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(record);
-  };
-  complete.forEach(addRecord);
-  importer.forEach(addRecord);
+  }
 
   const members = [];
   const byId = new Map();
@@ -371,31 +466,34 @@ export function buildMembers({ complete, importer, certificates }) {
 
   // Match certificates to set firstWorkDate (the only useful datum — every
   // certificate is a "Primo Lavoro" carrying just a date). Email match first,
-  // then normalized name. When several members share a contact, prefer the
-  // canonical one (CF-keyed over email- or name-keyed).
-  const idRank = member =>
-    member.id.startsWith('email-') ? 1 : member.id.startsWith('name-') ? 2 : member.id.startsWith('cert-') ? 3 : 0;
-  const setStronger = (map, key, member) => {
+  // then normalized name. The index is built from the RAW source rows (every
+  // email/name variant a person ever had), so cert matching does not depend on
+  // which value won conflict resolution. When several members share a contact,
+  // prefer the canonical one (CF-keyed over email- or name-keyed).
+  const idRank = id =>
+    id.startsWith('email-') ? 1 : id.startsWith('name-') ? 2 : id.startsWith('cert-') ? 3 : 0;
+  const setStronger = (map, key, id) => {
     if (!key) return;
     const existing = map.get(key);
-    if (!existing || idRank(member) < idRank(existing)) map.set(key, member);
+    if (existing === undefined || idRank(id) < idRank(existing)) map.set(key, id);
   };
   const emailIndex = new Map();
   const nameIndex = new Map();
-  for (const member of members) {
-    setStronger(emailIndex, normEmail(member.email), member);
-    setStronger(emailIndex, normEmail(member.email2), member);
-    setStronger(nameIndex, `${normName(member.surname)} ${normName(member.firstName)}`.trim(), member);
+  for (const record of allRecords) {
+    const id = effectiveKey(record);
+    setStronger(emailIndex, normEmail(record.email), id);
+    setStronger(emailIndex, normEmail(record.email2), id);
+    setStronger(nameIndex, `${normName(record.surname)} ${normName(record.firstName)}`.trim(), id);
   }
   const certStats = { matchedByEmail: 0, matchedByName: 0, unmatched: 0 };
   // memberId -> certificates matched to it (to report people with more than one).
   const certsByMember = new Map();
   for (const cert of certificates) {
-    let member = cert.email ? emailIndex.get(cert.email) : undefined;
+    let member = cert.email ? byId.get(emailIndex.get(cert.email)) : undefined;
     if (member) {
       certStats.matchedByEmail += 1;
     } else if (cert.subjectKey) {
-      member = nameIndex.get(cert.subjectKey);
+      member = byId.get(nameIndex.get(cert.subjectKey));
       if (member) certStats.matchedByName += 1;
     }
     if (member) {
@@ -436,19 +534,25 @@ export function buildMembers({ complete, importer, certificates }) {
     });
   }
 
+  let autoResolved = 0;
+  let tieResolved = 0;
   for (const member of members) {
     member.needsReview = member.reviewReasons.length > 0;
+    autoResolved += member.autoResolved ?? 0;
+    tieResolved += member.tieResolved ?? 0;
+    delete member.autoResolved; // transient stats, not persisted
+    delete member.tieResolved;
   }
 
   members.sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? '', 'it'));
-  return { members, certStats, duplicateCertificates };
+  return { members, certStats, duplicateCertificates, autoResolved, tieResolved };
 }
 
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 
-export function buildReport(members, certStats, counts, duplicateCertificates = []) {
+export function buildReport(members, certStats, counts, duplicateCertificates = [], autoResolved = 0, tieResolved = 0) {
   const byKeyType = { cf: 0, email: 0, name: 0, cert: 0 };
   const bySource = { complete: 0, importer: 0, certificates: 0 };
   const reasonHist = {};
@@ -484,12 +588,16 @@ export function buildReport(members, certStats, counts, duplicateCertificates = 
   lines.push(`- Records carrying a COMPLETO row: ${bySource.complete}`);
   lines.push(`- Records carrying an Importer row: ${bySource.importer}`);
   lines.push(`- Members with a firstWorkDate (from a certificate): ${withFirstWorkDate}`, '');
+  lines.push('## Conflict resolution', '');
+  lines.push(`- Auto-resolved by recency (most recent registration wins): ${autoResolved}`);
+  lines.push(`- Resolved on ties (prefer cloud, drop bare-numeric junk): ${tieResolved}`);
+  lines.push('');
   lines.push('## Needs review', '');
   lines.push(`- **Flagged: ${needsReview}** of ${members.length}`);
   for (const [reason, count] of Object.entries(reasonHist).sort((a, b) => b[1] - a[1])) {
     lines.push(`  - ${reason}: ${count}`);
   }
-  lines.push('', '## Field conflicts (COMPLETO kept, alternative stored)', '');
+  lines.push('', '## Remaining field conflicts (date tie / no date — left for manual review)', '');
   const conflictRows = Object.entries(conflictFields).sort((a, b) => b[1] - a[1]);
   if (conflictRows.length === 0) lines.push('- none');
   for (const [field, count] of conflictRows) lines.push(`- ${field}: ${count}`);
@@ -540,21 +648,27 @@ function main() {
   const importer = parseImporter(importerRows);
   const certificates = parseCertificates(certificateRows);
 
-  const { members, certStats, duplicateCertificates } = buildMembers({ complete, importer, certificates });
+  const { members, certStats, duplicateCertificates, autoResolved, tieResolved } = buildMembers({ complete, importer, certificates });
 
   const reportOnly = process.argv.includes('--report-only');
+  const dryRun = process.argv.includes('--dry-run');
   const jsonPath = join(DATA_DIR, 'members.normalized.json');
   const reportPath = join(DATA_DIR, 'members.report.md');
-  if (!reportOnly) writeFileSync(jsonPath, `${JSON.stringify(members, null, 2)}\n`);
-  writeFileSync(
-    reportPath,
-    buildReport(
-      members,
-      certStats,
-      { complete: complete.length, importer: importer.length, certificates: certificates.length },
-      duplicateCertificates
-    )
+  const report = buildReport(
+    members,
+    certStats,
+    { complete: complete.length, importer: importer.length, certificates: certificates.length },
+    duplicateCertificates,
+    autoResolved,
+    tieResolved
   );
+  if (dryRun) {
+    console.log(`Members: ${members.length} · auto-resolved: ${autoResolved} · tie-resolved: ${tieResolved} · flagged needsReview: ${members.filter(m => m.needsReview).length}`);
+    console.log('Dry run — no files written.');
+    return;
+  }
+  if (!reportOnly) writeFileSync(jsonPath, `${JSON.stringify(members, null, 2)}\n`);
+  writeFileSync(reportPath, report);
 
   console.log(`Parsed: ${complete.length} complete, ${importer.length} importer, ${certificates.length} certificates`);
   if (reportOnly) {

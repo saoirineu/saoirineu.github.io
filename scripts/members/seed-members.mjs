@@ -35,6 +35,7 @@ const BATCH_SIZE = 400;
 
 const args = process.argv.slice(2);
 const DRY_RUN = !args.includes('--live');
+const PRUNE = args.includes('--prune');
 const limitArg = args.find(a => a.startsWith('--limit='));
 const LIMIT = limitArg ? Number(limitArg.split('=')[1]) : Infinity;
 
@@ -57,6 +58,7 @@ async function main() {
   if (DRY_RUN) {
     const flagged = members.filter(m => m.needsReview).length;
     console.log(`Would write ${members.length} docs to "${COLLECTION}" (${flagged} flagged needsReview).`);
+    if (PRUNE) console.log('Would prune any existing doc whose id is not in the JSON.');
     console.log('Sample documents:');
     for (const member of members.slice(0, 3)) {
       console.log(`  ${COLLECTION}/${member.id} — ${member.fullName ?? '(no name)'} — sources: ${member.sources.map(s => s.file).join('+')}`);
@@ -96,6 +98,21 @@ async function main() {
   }
 
   console.log(`\nDone. ${written} written (${created} new, ${written - created} updated).`);
+
+  // Prune docs that are no longer produced by the build (e.g. CF-less twins that
+  // were folded into their CF record). Only when seeding the full dataset.
+  if (PRUNE && Number.isFinite(LIMIT) === false) {
+    const keep = new Set(all.map(m => m.id));
+    const existing = await db.collection(COLLECTION).select().get();
+    const stale = existing.docs.filter(doc => !keep.has(doc.id));
+    console.log(`\nPrune: ${stale.length} stale docs to delete.`);
+    for (let start = 0; start < stale.length; start += BATCH_SIZE) {
+      const batch = db.batch();
+      for (const doc of stale.slice(start, start + BATCH_SIZE)) batch.delete(doc.ref);
+      await batch.commit();
+    }
+    if (stale.length) console.log(`Prune: deleted ${stale.length} docs.`);
+  }
 }
 
 main().catch(err => {

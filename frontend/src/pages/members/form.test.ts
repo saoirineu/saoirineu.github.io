@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { MemberRecord } from '../../lib/members';
 import {
   applyConflictResolution,
+  duplicateReason,
   formatFullName,
   mergeMemberRecords,
   summarizeReview
@@ -61,6 +62,21 @@ describe('members form helpers', () => {
     expect(patch.conflicts).toEqual({ address: ['X', 'Y'] });
     expect(patch.needsReview).toBe(true);
     expect(patch.reviewReasons).toEqual(['field-conflict']);
+  });
+
+  it('explains why two members are possible duplicates', () => {
+    const agui = makeMember({ id: 'CF1', surname: 'AGUI', firstName: 'DOMENICO', email: 'arcalchemica@gmail.com', birthDate: '1983-12-03' });
+    const bertocchi = makeMember({ id: 'CF2', surname: 'BERTOCCHI', firstName: 'SILVIA', email: 'arcalchemica@gmail.com', birthDate: '1981-03-19' });
+    // different people sharing one email → linked by email
+    expect(duplicateReason(agui, bertocchi)).toEqual({ kind: 'email', value: 'arcalchemica@gmail.com' });
+
+    // same person under two fiscal codes (no shared email) → linked by name + birth date
+    const a = makeMember({ id: 'CF3', surname: 'Rossi', firstName: 'Mário', birthDate: '1980-01-01', email: 'a@x.it' });
+    const b = makeMember({ id: 'CF4', surname: 'ROSSI', firstName: 'MARIO', birthDate: '1980-01-01', email: 'b@x.it' });
+    expect(duplicateReason(a, b)).toEqual({ kind: 'name-birthdate' });
+
+    const c = makeMember({ id: 'CF5', surname: 'Verdi', firstName: 'Anna', birthDate: '1990-05-05' });
+    expect(duplicateReason(a, c)).toEqual({ kind: 'other' });
   });
 
   it('merges a source into a target: gap-fill, conflicts, unions, cleared link', () => {

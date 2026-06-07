@@ -11,29 +11,15 @@ import {
   type MemberRecord,
   type MemberSourceFile
 } from '../lib/members';
-import { applyConflictResolution, fieldLabel, formatFullName, mergeMemberRecords } from './members/form';
+import { applyConflictResolution, duplicateReason, formatFullName, mergeMemberRecords } from './members/form';
+import { type MembersCopy, membersCopyByLocale, memberFieldLabel, sourceBadgeLabels } from './members/copy';
 import { useAuth } from '../providers/useAuth';
+import { useSiteLocale } from '../providers/useSiteLocale';
+import type { SiteLocale } from '../lib/siteLocale';
 
 type ReviewFilter = 'all' | 'flagged' | 'clean';
 type SourceFilter = 'all' | MemberSourceFile;
 type SortKey = 'name-asc' | 'name-desc' | 'review-first';
-
-const sourceLabels: Record<MemberSourceFile, string> = {
-  complete: 'Cloud',
-  importer: 'Import',
-  certificates: 'Cert'
-};
-
-const reasonLabels: Record<string, string> = {
-  'field-conflict': 'Conflito de campos',
-  'possible-duplicate': 'Possível duplicado',
-  'duplicate-in-importer': 'Duplicado no import',
-  'certificate-only': 'Só certificado'
-};
-
-function reasonLabel(reason: string): string {
-  return reasonLabels[reason] ?? reason;
-}
 
 function sourceBadgeClasses(file: MemberSourceFile): string {
   switch (file) {
@@ -69,6 +55,8 @@ function sortMembers(members: MemberRecord[], sortKey: SortKey): MemberRecord[] 
 export default function MembersPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { locale } = useSiteLocale();
+  const copy = membersCopyByLocale[locale];
   const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -81,7 +69,7 @@ export default function MembersPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['members'] });
   const onError = (error: unknown) =>
-    setErrorMessage(error instanceof Error ? error.message : 'Falha na operação.');
+    setErrorMessage(error instanceof Error ? error.message : copy.opError);
 
   const conflictMutation = useMutation({
     mutationFn: (args: { id: string; field: string; value: string; record: MemberRecord }) =>
@@ -167,31 +155,28 @@ export default function MembersPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Sócios</h1>
-        <p className="text-sm text-slate-600">
-          {total} sócios unificados das planilhas · {flaggedCount} marcados para revisão. Visualização restrita a
-          administradores.
-        </p>
+        <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
+        <p className="text-sm text-slate-600">{copy.subtitle(total, flaggedCount)}</p>
       </div>
 
       <section className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))]">
         <label className="space-y-1 text-sm text-slate-700">
-          <span className="font-medium text-slate-900">Buscar</span>
+          <span className="font-medium text-slate-900">{copy.search}</span>
           <input
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="Nome, Codice Fiscale, e-mail, cidade"
+            placeholder={copy.searchPlaceholder}
             value={searchTerm}
             onChange={event => setSearchTerm(event.target.value)}
           />
         </label>
         <label className="space-y-1 text-sm text-slate-700">
-          <span className="font-medium text-slate-900">Situação</span>
+          <span className="font-medium text-slate-900">{copy.status}</span>
           <select
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
             value={statusFilter}
             onChange={event => setStatusFilter(event.target.value)}
           >
-            <option value="all">Todas</option>
+            <option value="all">{copy.statusAll}</option>
             {statusOptions.map(option => (
               <option key={option} value={option}>
                 {option}
@@ -200,40 +185,40 @@ export default function MembersPage() {
           </select>
         </label>
         <label className="space-y-1 text-sm text-slate-700">
-          <span className="font-medium text-slate-900">Revisão</span>
+          <span className="font-medium text-slate-900">{copy.review}</span>
           <select
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
             value={reviewFilter}
             onChange={event => setReviewFilter(event.target.value as ReviewFilter)}
           >
-            <option value="all">Todos</option>
-            <option value="flagged">A revisar</option>
-            <option value="clean">Revisados</option>
+            <option value="all">{copy.reviewAll}</option>
+            <option value="flagged">{copy.reviewFlagged}</option>
+            <option value="clean">{copy.reviewClean}</option>
           </select>
         </label>
         <label className="space-y-1 text-sm text-slate-700">
-          <span className="font-medium text-slate-900">Fonte</span>
+          <span className="font-medium text-slate-900">{copy.source}</span>
           <select
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
             value={sourceFilter}
             onChange={event => setSourceFilter(event.target.value as SourceFilter)}
           >
-            <option value="all">Todas</option>
-            <option value="complete">Cloud (completo)</option>
-            <option value="importer">Import</option>
-            <option value="certificates">Certificados</option>
+            <option value="all">{copy.sourceAll}</option>
+            <option value="complete">{copy.sourceComplete}</option>
+            <option value="importer">{copy.sourceImporter}</option>
+            <option value="certificates">{copy.sourceCertificates}</option>
           </select>
         </label>
         <label className="space-y-1 text-sm text-slate-700">
-          <span className="font-medium text-slate-900">Ordenar</span>
+          <span className="font-medium text-slate-900">{copy.sort}</span>
           <select
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
             value={sortKey}
             onChange={event => setSortKey(event.target.value as SortKey)}
           >
-            <option value="review-first">A revisar primeiro</option>
-            <option value="name-asc">Nome (A–Z)</option>
-            <option value="name-desc">Nome (Z–A)</option>
+            <option value="review-first">{copy.sortReviewFirst}</option>
+            <option value="name-asc">{copy.sortNameAsc}</option>
+            <option value="name-desc">{copy.sortNameDesc}</option>
           </select>
         </label>
       </section>
@@ -241,23 +226,23 @@ export default function MembersPage() {
       {errorMessage ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>
       ) : null}
-      {query.isLoading ? <div className="text-sm text-slate-600">Carregando sócios...</div> : null}
+      {query.isLoading ? <div className="text-sm text-slate-600">{copy.loading}</div> : null}
       {query.isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Falha ao carregar sócios.</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{copy.loadError}</div>
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">Codice Fiscale</th>
-              <th className="px-4 py-3 font-medium">E-mail</th>
-              <th className="px-4 py-3 font-medium">Cidade</th>
-              <th className="px-4 py-3 font-medium">Situação</th>
-              <th className="px-4 py-3 font-medium">Fontes</th>
-              <th className="px-4 py-3 font-medium">Revisão</th>
-              <th className="px-4 py-3 font-medium">Ações</th>
+              <th className="px-4 py-3 font-medium">{copy.colName}</th>
+              <th className="px-4 py-3 font-medium">{copy.colFiscalCode}</th>
+              <th className="px-4 py-3 font-medium">{copy.colEmail}</th>
+              <th className="px-4 py-3 font-medium">{copy.colCity}</th>
+              <th className="px-4 py-3 font-medium">{copy.colStatus}</th>
+              <th className="px-4 py-3 font-medium">{copy.colSources}</th>
+              <th className="px-4 py-3 font-medium">{copy.colReview}</th>
+              <th className="px-4 py-3 font-medium">{copy.colActions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -278,12 +263,12 @@ export default function MembersPage() {
                         key={`${source.file}-${source.code ?? index}`}
                         className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${sourceBadgeClasses(source.file)}`}
                       >
-                        {sourceLabels[source.file]}
+                        {sourceBadgeLabels[source.file]}
                       </span>
                     ))}
                     {member.firstWorkDate ? (
                       <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        1º Trab. {member.firstWorkDate}
+                        {copy.firstWork} {member.firstWorkDate}
                       </span>
                     ) : null}
                   </div>
@@ -296,13 +281,13 @@ export default function MembersPage() {
                           key={reason}
                           className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700"
                         >
-                          {reasonLabel(reason)}
+                          {copy.reason[reason] ?? reason}
                         </span>
                       ))}
                     </div>
                   ) : (
                     <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">
-                      OK
+                      {copy.ok}
                     </span>
                   )}
                 </td>
@@ -312,7 +297,7 @@ export default function MembersPage() {
                     className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     onClick={() => setSelectedId(member.id)}
                   >
-                    Detalhes
+                    {copy.details}
                   </button>
                 </td>
               </tr>
@@ -323,7 +308,7 @@ export default function MembersPage() {
 
       {!query.isLoading && members.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-          Nenhum sócio encontrado com os filtros atuais.
+          {copy.empty}
         </div>
       ) : null}
 
@@ -332,18 +317,20 @@ export default function MembersPage() {
           member={selected}
           allMembers={query.data ?? []}
           busy={busy}
+          copy={copy}
+          locale={locale}
           onClose={() => setSelectedId(null)}
           onResolveConflict={(field, value) =>
             conflictMutation.mutate({ id: selected.id, field, value, record: selected })
           }
           onMarkReviewed={() => reviewMutation.mutate(selected.id)}
           onMerge={source => {
-            if (window.confirm(`Mesclar "${formatFullName(source)}" em "${formatFullName(selected)}"? O registro mesclado será apagado.`)) {
+            if (window.confirm(copy.confirmMerge(formatFullName(source), formatFullName(selected)))) {
               mergeMutation.mutate({ target: selected, source });
             }
           }}
           onDelete={() => {
-            if (window.confirm(`Apagar o sócio "${formatFullName(selected)}"?`)) {
+            if (window.confirm(copy.confirmDelete(formatFullName(selected)))) {
               deleteMutation.mutate(selected.id);
             }
           }}
@@ -357,6 +344,8 @@ function MemberDetailModal({
   member,
   allMembers,
   busy,
+  copy,
+  locale,
   onClose,
   onResolveConflict,
   onMarkReviewed,
@@ -366,6 +355,8 @@ function MemberDetailModal({
   member: MemberRecord;
   allMembers: MemberRecord[];
   busy: boolean;
+  copy: MembersCopy;
+  locale: SiteLocale;
   onClose: () => void;
   onResolveConflict: (field: string, value: string) => void;
   onMarkReviewed: () => void;
@@ -390,17 +381,17 @@ function MemberDetailModal({
             </p>
           </div>
           <button type="button" className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose}>
-            Fechar
+            {copy.close}
           </button>
         </div>
 
         <div className="max-h-[70vh] space-y-5 overflow-y-auto px-5 py-4">
           {conflictFields.length ? (
             <section className="space-y-2">
-              <h4 className="text-sm font-semibold text-rose-700">Conflitos a resolver</h4>
+              <h4 className="text-sm font-semibold text-rose-700">{copy.conflicts}</h4>
               {conflictFields.map(field => (
                 <div key={field} className="rounded-lg border border-rose-200 bg-rose-50 p-3">
-                  <div className="text-xs font-medium text-rose-700">{fieldLabel(field)}</div>
+                  <div className="text-xs font-medium text-rose-700">{memberFieldLabel(locale, field)}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {member.conflicts[field].map(value => (
                       <button
@@ -421,34 +412,46 @@ function MemberDetailModal({
 
           {duplicates.length ? (
             <section className="space-y-2">
-              <h4 className="text-sm font-semibold text-amber-700">Possíveis duplicados</h4>
-              {duplicates.map(candidate => (
-                <div key={candidate.id} className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <div className="text-sm text-slate-700">
-                    <div className="font-medium text-slate-900">{formatFullName(candidate) || candidate.id}</div>
-                    <div className="text-xs text-slate-500">
-                      {candidate.fiscalCode ?? candidate.email ?? candidate.id} · fontes {candidate.sources.map(s => sourceLabels[s.file]).join('+')}
+              <h4 className="text-sm font-semibold text-amber-700">{copy.duplicates}</h4>
+              {duplicates.map(candidate => {
+                const reason = duplicateReason(member, candidate);
+                const reasonText =
+                  reason.kind === 'email'
+                    ? copy.dupEmail(reason.value)
+                    : reason.kind === 'name-birthdate'
+                      ? copy.dupNameBirth
+                      : copy.dupOther;
+                return (
+                  <div key={candidate.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <div className="text-sm text-slate-700">
+                      <div className="font-medium text-slate-900">{formatFullName(candidate) || candidate.id}</div>
+                      <div className="text-xs text-slate-500">
+                        {candidate.fiscalCode ?? candidate.email ?? candidate.id} · {copy.sourcesWord} {candidate.sources.map(s => sourceBadgeLabels[s.file]).join('+')}
+                      </div>
+                      <div className="mt-1 inline-flex rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        {reasonText}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                      onClick={() => onMerge(candidate)}
+                    >
+                      {copy.mergeHere}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-                    onClick={() => onMerge(candidate)}
-                  >
-                    Mesclar aqui
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </section>
           ) : null}
 
           <section className="space-y-2">
-            <h4 className="text-sm font-semibold text-slate-900">Dados</h4>
+            <h4 className="text-sm font-semibold text-slate-900">{copy.data}</h4>
             <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
               {fields.map(field => (
                 <div key={field} className="text-sm">
-                  <dt className="text-xs text-slate-500">{fieldLabel(field)}</dt>
+                  <dt className="text-xs text-slate-500">{memberFieldLabel(locale, field)}</dt>
                   <dd className="text-slate-800">{member[field]}</dd>
                 </div>
               ))}
@@ -460,7 +463,7 @@ function MemberDetailModal({
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {member.sources.map((source, index) => (
               <span key={`${source.file}-${source.code ?? source.line ?? index}`} className={`inline-flex rounded-full border px-2 py-0.5 font-medium ${sourceBadgeClasses(source.file)}`}>
-                {sourceLabels[source.file]}
+                {sourceBadgeLabels[source.file]}
                 {source.code ? ` #${source.code}` : ''}
                 {source.line ? ` · L${source.line}` : ''}
               </span>
@@ -474,7 +477,7 @@ function MemberDetailModal({
                 className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
                 onClick={onMarkReviewed}
               >
-                Marcar como revisado
+                {copy.markReviewed}
               </button>
             ) : null}
             <button
@@ -483,7 +486,7 @@ function MemberDetailModal({
               className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60"
               onClick={onDelete}
             >
-              Apagar
+              {copy.remove}
             </button>
           </div>
         </div>

@@ -73,7 +73,9 @@ const report = buildReport(
   built.members,
   built.certStats,
   { complete: complete.length, importer: importer.length, certificates: certificates.length },
-  built.duplicateCertificates
+  built.duplicateCertificates,
+  built.autoResolved,
+  built.tieResolved
 );
 
 console.log(`Members in JSON: ${members.length}`);

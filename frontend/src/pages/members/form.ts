@@ -10,52 +10,37 @@ import {
 // Informational review tags that are kept across edits (provenance, not actionable conflicts).
 const STICKY_REVIEW_REASONS = ['duplicate-in-importer', 'certificate-only'];
 
-/** Portuguese labels for the spreadsheet-derived fields shown in the admin UI. */
-export const MEMBER_FIELD_LABELS: Record<MemberTextField, string> = {
-  surname: 'Sobrenome',
-  firstName: 'Nome',
-  fullName: 'Nome completo',
-  fiscalCode: 'Codice Fiscale',
-  sex: 'Sexo',
-  birthDate: 'Nascimento',
-  birthPlace: 'Local de nascimento',
-  birthProvince: 'Província de nascimento',
-  birthCountry: 'País de nascimento',
-  email: 'E-mail',
-  email2: 'E-mail 2',
-  phone: 'Telefone',
-  mobile: 'Celular',
-  address: 'Endereço',
-  postalCode: 'CEP/CAP',
-  city: 'Cidade',
-  province: 'Província',
-  region: 'Região',
-  country: 'País',
-  memberCode: 'Código de sócio',
-  memberStatus: 'Situação',
-  group: 'Grupo',
-  category: 'Categoria',
-  cardNumber: 'Carteirinha',
-  cardExpiry: 'Validade da carteirinha',
-  referenceSeat: 'Sede de referência',
-  originSociety: 'Sociedade de origem',
-  profession: 'Profissão',
-  nationality: 'Nacionalidade',
-  citizenship: 'Cidadania',
-  registrationRequestDate: 'Data do pedido',
-  registrationDate: 'Data de inscrição',
-  renewalDate: 'Data de renovação',
-  cancellationDate: 'Data de cancelamento',
-  firstWorkDate: 'Primeiro Trabalho'
-};
-
-export function fieldLabel(field: string): string {
-  return MEMBER_FIELD_LABELS[field as MemberTextField] ?? field;
-}
-
 export function formatFullName(record: Pick<MemberRecord, 'fullName' | 'surname' | 'firstName'>): string {
   if (record.fullName) return record.fullName;
   return [record.surname, record.firstName].filter(Boolean).join(' ').trim();
+}
+
+export type DuplicateReason = { kind: 'email'; value: string } | { kind: 'name-birthdate' } | { kind: 'other' };
+
+function normEmailValue(value?: string): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+function normNameValue(value?: string): string {
+  return (value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+}
+
+/**
+ * Explains why two members were linked as possible duplicates, mirroring the
+ * build's linking rules (shared primary email, or same name + birth date).
+ */
+export function duplicateReason(member: MemberRecord, candidate: MemberRecord): DuplicateReason {
+  const memberEmail = normEmailValue(member.email);
+  if (memberEmail && memberEmail === normEmailValue(candidate.email)) {
+    return { kind: 'email', value: member.email ?? '' };
+  }
+  const sameName =
+    normNameValue(member.surname) === normNameValue(candidate.surname)
+    && normNameValue(member.firstName) === normNameValue(candidate.firstName);
+  if (sameName && member.birthDate && member.birthDate === candidate.birthDate) {
+    return { kind: 'name-birthdate' };
+  }
+  return { kind: 'other' };
 }
 
 function normValue(value?: string): string {
