@@ -14,6 +14,7 @@ function makeMember(overrides: Partial<MemberRecord> = {}): MemberRecord {
     id: 'CF1',
     sources: [{ file: 'complete', code: '1', line: 2 }],
     conflicts: {},
+    superseeded: {},
     reviewReasons: [],
     possibleDuplicateIds: [],
     needsReview: false,
@@ -40,6 +41,9 @@ describe('members form helpers', () => {
     expect(
       summarizeReview({ conflicts: {}, possibleDuplicateIds: [], reviewReasons: ['duplicate-in-importer'] })
     ).toEqual({ needsReview: false, reviewReasons: ['duplicate-in-importer'] });
+    expect(
+      summarizeReview({ conflicts: {}, possibleDuplicateIds: ['CF2'], reviewReasons: ['family-email'] })
+    ).toEqual({ needsReview: true, reviewReasons: ['family-email'] });
     // certificate-only still needs linking
     expect(summarizeReview({ conflicts: {}, possibleDuplicateIds: [], reviewReasons: ['certificate-only'] })).toEqual({
       needsReview: true,
@@ -52,6 +56,7 @@ describe('members form helpers', () => {
     const patch = applyConflictResolution(member, 'city', 'Roma');
     expect(patch.city).toBe('Roma');
     expect(patch.conflicts).toEqual({});
+    expect(patch.superseeded).toEqual({ city: ['Milano'] });
     expect(patch.needsReview).toBe(false);
     expect(patch.reviewReasons).toEqual([]);
   });
@@ -67,15 +72,19 @@ describe('members form helpers', () => {
   it('explains why two members are possible duplicates', () => {
     const agui = makeMember({ id: 'CF1', surname: 'AGUI', firstName: 'DOMENICO', email: 'arcalchemica@gmail.com', birthDate: '1983-12-03' });
     const bertocchi = makeMember({ id: 'CF2', surname: 'BERTOCCHI', firstName: 'SILVIA', email: 'arcalchemica@gmail.com', birthDate: '1981-03-19' });
-    // different people sharing one email → linked by email
-    expect(duplicateReason(agui, bertocchi)).toEqual({ kind: 'email', value: 'arcalchemica@gmail.com' });
+    // different people sharing one email → linked as family-email
+    expect(duplicateReason(agui, bertocchi)).toEqual({ kind: 'family-email', value: 'arcalchemica@gmail.com' });
 
     // same person under two fiscal codes (no shared email) → linked by name + birth date
     const a = makeMember({ id: 'CF3', surname: 'Rossi', firstName: 'Mário', birthDate: '1980-01-01', email: 'a@x.it' });
     const b = makeMember({ id: 'CF4', surname: 'ROSSI', firstName: 'MARIO', birthDate: '1980-01-01', email: 'b@x.it' });
     expect(duplicateReason(a, b)).toEqual({ kind: 'name-birthdate' });
 
-    const c = makeMember({ id: 'CF5', surname: 'Verdi', firstName: 'Anna', birthDate: '1990-05-05' });
+    const canciani = makeMember({ id: 'CF5', surname: 'Canciani', firstName: 'Alex Maria', email: 'alexcanciani1@gmail.com', birthDate: '1974-01-04' });
+    const cancianiImport = makeMember({ id: 'CF6', surname: 'Canciani', firstName: 'Alex', email: 'alexcanciani1@gmail.com', birthDate: '1974-01-04' });
+    expect(duplicateReason(canciani, cancianiImport)).toEqual({ kind: 'email', value: 'alexcanciani1@gmail.com' });
+
+    const c = makeMember({ id: 'CF7', surname: 'Verdi', firstName: 'Anna', birthDate: '1990-05-05' });
     expect(duplicateReason(a, c)).toEqual({ kind: 'other' });
   });
 
@@ -84,7 +93,8 @@ describe('members form helpers', () => {
       id: 'CF1',
       surname: 'Rossi',
       city: 'Milano',
-      possibleDuplicateIds: ['email-abc']
+      possibleDuplicateIds: ['email-abc'],
+      superseeded: { email: ['old@x.it'] }
     });
     const source = makeMember({
       id: 'email-abc',
@@ -93,12 +103,14 @@ describe('members form helpers', () => {
       profession: 'Artista', // gap-fill
       sources: [{ file: 'importer', code: '8', line: 12 }],
       firstWorkDate: '2005-01-01',
-      possibleDuplicateIds: ['CF1']
+      possibleDuplicateIds: ['CF1'],
+      superseeded: { city: ['Torino'] }
     });
 
     const patch = mergeMemberRecords(target, source);
     expect(patch.profession).toBe('Artista'); // filled gap
     expect(patch.conflicts).toEqual({ city: ['Milano', 'Roma'] }); // divergence recorded
+    expect(patch.superseeded).toEqual({ email: ['old@x.it'], city: ['Torino'] });
     expect(patch.sources).toEqual([
       { file: 'complete', code: '1', line: 2 },
       { file: 'importer', code: '8', line: 12 }

@@ -23,6 +23,7 @@ export type MemberSource = {
 };
 
 export type MemberConflicts = Record<string, string[]>;
+export type MemberSuperseeded = Record<string, string[]>;
 
 /** Plain text fields shared across the registry sources (used for mapping & merge gap-fill). */
 export const MEMBER_TEXT_FIELDS = [
@@ -41,6 +42,7 @@ export type MemberRecord = {
   id: string;
   sources: MemberSource[];
   conflicts: MemberConflicts;
+  superseeded: MemberSuperseeded;
   reviewReasons: string[];
   possibleDuplicateIds: string[];
   needsReview: boolean;
@@ -53,6 +55,7 @@ export type MemberPatch = Partial<
   Record<MemberTextField, string | undefined>
 > & {
   conflicts?: MemberConflicts;
+  superseeded?: MemberSuperseeded;
   possibleDuplicateIds?: string[];
   reviewReasons?: string[];
   needsReview?: boolean;
@@ -86,6 +89,7 @@ export function mapMember(id: string, value: unknown): MemberRecord {
       ? data.sources.map(mapSource).filter((s): s is MemberSource => Boolean(s))
       : [],
     conflicts: mapConflicts(data.conflicts),
+    superseeded: mapConflicts(data.superseeded),
     reviewReasons: asStringArray(data.reviewReasons) ?? [],
     possibleDuplicateIds: asStringArray(data.possibleDuplicateIds) ?? [],
     needsReview: asOptionalBoolean(data.needsReview) ?? false,

@@ -88,8 +88,8 @@ senao `email-<hash>` ou `name-<hash>`.
 - associacao: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, profession, nationality, citizenship
 - datas: registrationRequestDate, registrationDate, renewalDate, cancellationDate
 - certificados: firstWorkDate (data do certificado "Primo Lavoro" mais antigo; o array de certificados nao e guardado pois so traz a data)
-- proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code (id do registro na fonte), line (linha 1-based na planilha) }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
-- Precedencia de merge: COMPLETO vence conflitos; o valor alternativo fica em `conflicts[campo]`. Registros com mesmo email ou nome+nascimento mas ids diferentes sao ligados via `possibleDuplicateIds` para resolucao manual na UI admin.
+- proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code (id do registro na fonte), line (linha 1-based na planilha) }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), superseeded ({ campo: string[] } com valores antigos rejeitados automaticamente ou na revisao manual), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
+- Precedencia de merge: o dado mais recente vence conflitos quando os registros parecem ser a mesma pessoa (nome+nascimento exatos, ou pequenas variacoes de nome com email/data alinhados); os valores descartados ficam em `superseeded[campo]`. Empates reais continuam em `conflicts[campo]`. Registros que ainda compartilham email mas tem nomes claramente diferentes ficam separados e ligados via `possibleDuplicateIds`, com `reviewReasons` incluindo `family-email` para revisao manual na UI admin.
 
 ### encontroEuropeuInscricoes
 - locale: `pt` | `en` | `es` | `it`

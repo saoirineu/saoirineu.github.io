@@ -40,6 +40,7 @@ export type MembersCopy = {
   conflicts: string;
   duplicates: string;
   dupEmail: (value: string) => string;
+  dupFamilyEmail: (value: string) => string;
   dupNameBirth: string;
   dupOther: string;
   data: string;
@@ -100,6 +101,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     conflicts: 'Conflitos a resolver',
     duplicates: 'Possíveis duplicados',
     dupEmail: value => `Mesmo e-mail: ${value}`,
+    dupFamilyEmail: value => `E-mail de família: ${value}`,
     dupNameBirth: 'Mesmo nome e data de nascimento',
     dupOther: 'Contato em comum',
     data: 'Dados',
@@ -112,6 +114,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     reason: {
       'field-conflict': 'Conflito de campos',
       'possible-duplicate': 'Possível duplicado',
+      'family-email': 'E-mail de família',
       'duplicate-in-importer': 'Duplicado no import',
       'certificate-only': 'Só certificado'
     }
@@ -156,6 +159,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     conflicts: 'Conflicts to resolve',
     duplicates: 'Possible duplicates',
     dupEmail: value => `Same email: ${value}`,
+    dupFamilyEmail: value => `Family email: ${value}`,
     dupNameBirth: 'Same name and birth date',
     dupOther: 'Shared contact',
     data: 'Data',
@@ -168,6 +172,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     reason: {
       'field-conflict': 'Field conflict',
       'possible-duplicate': 'Possible duplicate',
+      'family-email': 'Family email',
       'duplicate-in-importer': 'Duplicate in import',
       'certificate-only': 'Certificate only'
     }
@@ -212,6 +217,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     conflicts: 'Conflictos a resolver',
     duplicates: 'Posibles duplicados',
     dupEmail: value => `Mismo correo: ${value}`,
+    dupFamilyEmail: value => `Correo familiar: ${value}`,
     dupNameBirth: 'Mismo nombre y fecha de nacimiento',
     dupOther: 'Contacto en común',
     data: 'Datos',
@@ -224,6 +230,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     reason: {
       'field-conflict': 'Conflicto de campos',
       'possible-duplicate': 'Posible duplicado',
+      'family-email': 'Correo familiar',
       'duplicate-in-importer': 'Duplicado en import',
       'certificate-only': 'Solo certificado'
     }
@@ -268,6 +275,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     conflicts: 'Conflitti da risolvere',
     duplicates: 'Possibili duplicati',
     dupEmail: value => `Stessa e-mail: ${value}`,
+    dupFamilyEmail: value => `E-mail di famiglia: ${value}`,
     dupNameBirth: 'Stesso nome e data di nascita',
     dupOther: 'Contatto in comune',
     data: 'Dati',
@@ -280,6 +288,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     reason: {
       'field-conflict': 'Conflitto di campi',
       'possible-duplicate': 'Possibile duplicato',
+      'family-email': 'E-mail di famiglia',
       'duplicate-in-importer': "Duplicato nell'import",
       'certificate-only': 'Solo certificato'
     }

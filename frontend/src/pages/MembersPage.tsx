@@ -418,6 +418,8 @@ function MemberDetailModal({
                 const reasonText =
                   reason.kind === 'email'
                     ? copy.dupEmail(reason.value)
+                    : reason.kind === 'family-email'
+                      ? copy.dupFamilyEmail(reason.value)
                     : reason.kind === 'name-birthdate'
                       ? copy.dupNameBirth
                       : copy.dupOther;

@@ -4,18 +4,24 @@ import {
   type MemberPatch,
   type MemberRecord,
   type MemberSource,
+  type MemberSuperseeded,
   type MemberTextField
 } from '../../lib/members';
 
-// Informational review tags that are kept across edits (provenance, not actionable conflicts).
-const STICKY_REVIEW_REASONS = ['duplicate-in-importer', 'certificate-only'];
+const INFORMATIONAL_REVIEW_REASONS = ['duplicate-in-importer'];
+const DUPLICATE_REVIEW_REASONS = ['family-email', 'possible-duplicate'];
+const ACTIONABLE_PERSISTED_REVIEW_REASONS = ['certificate-only'];
 
 export function formatFullName(record: Pick<MemberRecord, 'fullName' | 'surname' | 'firstName'>): string {
   if (record.fullName) return record.fullName;
   return [record.surname, record.firstName].filter(Boolean).join(' ').trim();
 }
 
-export type DuplicateReason = { kind: 'email'; value: string } | { kind: 'name-birthdate' } | { kind: 'other' };
+export type DuplicateReason =
+  | { kind: 'email'; value: string }
+  | { kind: 'family-email'; value: string }
+  | { kind: 'name-birthdate' }
+  | { kind: 'other' };
 
 function normEmailValue(value?: string): string {
   return (value ?? '').trim().toLowerCase();
@@ -25,6 +31,71 @@ function normNameValue(value?: string): string {
   return (value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 }
 
+function nameTokens(value?: string): string[] {
+  const normalized = normNameValue(value);
+  return normalized ? normalized.split(' ').filter(Boolean) : [];
+}
+
+function typoLimit(a: string, b: string): number {
+  const maxLength = Math.max(a.length, b.length);
+  return maxLength >= 8 ? 2 : 1;
+}
+
+function editDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const prev = Array.from({ length: b.length + 1 }, (_, index) => index);
+  const next = new Array<number>(b.length + 1);
+
+  for (let i = 0; i < a.length; i += 1) {
+    next[0] = i + 1;
+    for (let j = 0; j < b.length; j += 1) {
+      const cost = a[i] === b[j] ? 0 : 1;
+      next[j + 1] = Math.min(
+        next[j] + 1,
+        prev[j + 1] + 1,
+        prev[j] + cost
+      );
+    }
+    for (let j = 0; j < prev.length; j += 1) prev[j] = next[j];
+  }
+
+  return prev[b.length];
+}
+
+function tokensMatchWithTypos(aTokens: string[], bTokens: string[]): boolean {
+  return aTokens.length === bTokens.length
+    && aTokens.every((token, index) => editDistance(token, bTokens[index]) <= typoLimit(token, bTokens[index]));
+}
+
+function tokensShareLeadingSequence(aTokens: string[], bTokens: string[]): boolean {
+  if (aTokens.length === bTokens.length) return false;
+  const shorter = aTokens.length < bTokens.length ? aTokens : bTokens;
+  const longer = aTokens.length < bTokens.length ? bTokens : aTokens;
+  return shorter.length > 0
+    && shorter.every((token, index) => editDistance(token, longer[index]) <= typoLimit(token, longer[index]));
+}
+
+function similarNameField(a?: string, b?: string, allowLeadingExtraTokens = false): boolean {
+  const normalizedA = normNameValue(a);
+  const normalizedB = normNameValue(b);
+  if (!normalizedA || !normalizedB) return false;
+  if (normalizedA === normalizedB) return true;
+  if (editDistance(normalizedA, normalizedB) <= typoLimit(normalizedA, normalizedB)) return true;
+
+  const aTokens = nameTokens(a);
+  const bTokens = nameTokens(b);
+  if (tokensMatchWithTypos(aTokens, bTokens)) return true;
+  return allowLeadingExtraTokens && tokensShareLeadingSequence(aTokens, bTokens);
+}
+
+function namesLikelySamePerson(member: Pick<MemberRecord, 'surname' | 'firstName'>, candidate: Pick<MemberRecord, 'surname' | 'firstName'>): boolean {
+  return similarNameField(member.surname, candidate.surname)
+    && similarNameField(member.firstName, candidate.firstName, true);
+}
+
 /**
  * Explains why two members were linked as possible duplicates, mirroring the
  * build's linking rules (shared primary email, or same name + birth date).
@@ -32,6 +103,9 @@ function normNameValue(value?: string): string {
 export function duplicateReason(member: MemberRecord, candidate: MemberRecord): DuplicateReason {
   const memberEmail = normEmailValue(member.email);
   if (memberEmail && memberEmail === normEmailValue(candidate.email)) {
+    if (!namesLikelySamePerson(member, candidate)) {
+      return { kind: 'family-email', value: member.email ?? '' };
+    }
     return { kind: 'email', value: member.email ?? '' };
   }
   const sameName =
@@ -47,19 +121,36 @@ function normValue(value?: string): string {
   return (value ?? '').trim().toLowerCase();
 }
 
+function rememberSuperseeded(store: MemberSuperseeded, field: string, values: string[], winner?: string): void {
+  const existing = store[field] ?? [];
+  for (const value of values) {
+    if (winner && normValue(value) === normValue(winner)) continue;
+    if (existing.some(current => normValue(current) === normValue(value))) continue;
+    existing.push(value);
+  }
+  if (existing.length) store[field] = existing;
+}
+
 /** Recompute review state from current conflicts / possible duplicates / sticky tags. */
 export function summarizeReview(
   record: Pick<MemberRecord, 'conflicts' | 'possibleDuplicateIds' | 'reviewReasons'>
 ): { needsReview: boolean; reviewReasons: string[] } {
   const reasons: string[] = [];
   if (Object.keys(record.conflicts ?? {}).length) reasons.push('field-conflict');
-  if ((record.possibleDuplicateIds ?? []).length) reasons.push('possible-duplicate');
-  for (const sticky of STICKY_REVIEW_REASONS) {
+  if ((record.possibleDuplicateIds ?? []).length) {
+    const duplicateReasons = DUPLICATE_REVIEW_REASONS.filter(reason => record.reviewReasons?.includes(reason));
+    reasons.push(...(duplicateReasons.length ? duplicateReasons : ['possible-duplicate']));
+  }
+  for (const sticky of INFORMATIONAL_REVIEW_REASONS) {
     if (record.reviewReasons?.includes(sticky)) reasons.push(sticky);
+  }
+  for (const persistent of ACTIONABLE_PERSISTED_REVIEW_REASONS) {
+    if (record.reviewReasons?.includes(persistent)) reasons.push(persistent);
   }
   const needsReview =
     reasons.includes('field-conflict')
     || reasons.includes('possible-duplicate')
+    || reasons.includes('family-email')
     || reasons.includes('certificate-only');
   return { needsReview, reviewReasons: reasons };
 }
@@ -67,6 +158,8 @@ export function summarizeReview(
 /** Pick a winning value for a conflicting field and drop the conflict. */
 export function applyConflictResolution(record: MemberRecord, field: string, value: string): MemberPatch {
   const conflicts: MemberConflicts = { ...record.conflicts };
+  const superseeded: MemberSuperseeded = { ...record.superseeded };
+  rememberSuperseeded(superseeded, field, record.conflicts[field] ?? [], value);
   delete conflicts[field];
   const review = summarizeReview({
     conflicts,
@@ -76,6 +169,7 @@ export function applyConflictResolution(record: MemberRecord, field: string, val
   return {
     [field]: value,
     conflicts,
+    superseeded,
     reviewReasons: review.reviewReasons,
     needsReview: review.needsReview
   };
@@ -101,6 +195,11 @@ function unionSources(target: MemberSource[], source: MemberSource[]): MemberSou
 export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): MemberPatch {
   const patch: MemberPatch = {};
   const conflicts: MemberConflicts = { ...target.conflicts };
+  const superseeded: MemberSuperseeded = { ...target.superseeded };
+
+  for (const [field, values] of Object.entries(source.superseeded ?? {})) {
+    rememberSuperseeded(superseeded, field, values);
+  }
 
   for (const field of MEMBER_TEXT_FIELDS) {
     const targetValue = target[field];
@@ -132,6 +231,7 @@ export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): 
   const review = summarizeReview({ conflicts, possibleDuplicateIds, reviewReasons });
 
   patch.conflicts = conflicts;
+  patch.superseeded = superseeded;
   patch.possibleDuplicateIds = possibleDuplicateIds;
   patch.sources = unionSources(target.sources, source.sources);
   patch.reviewReasons = review.reviewReasons;

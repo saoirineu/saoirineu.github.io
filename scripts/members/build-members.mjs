@@ -8,13 +8,17 @@
  *   - ELENCO CERTIFICATI SOCI ISCRITTI NEL CLOUD.xlsx (Primo Lavoro certificates)
  *
  * Identifier strategy (confirmed with the user):
- *   Codice Fiscale (CF) → email → normalized `surname|firstName|birthDate`.
- * Records that resolve to the same key are merged. COMPLETO wins on field
- * conflicts; the alternative is recorded in `conflicts` and the record is
- * flagged `needsReview`. Records that share an email or name+birthdate but
- * resolved to different ids are cross-linked via `possibleDuplicateIds` so they
- * can be merged from the admin UI. Certificates are attached to their member by
- * email then by name; unmatched ones become certificate-only members.
+ *   Codice Fiscale (CF) → strong non-CF key from name/birthdate or email+name.
+ * Records that resolve to the same key are merged. When distinct values exist,
+ * the most recent entry wins automatically and older values are kept in
+ * `superseeded`; only unresolved ties remain in `conflicts` and keep the record
+ * flagged `needsReview`. A second pass then folds together cross-key records
+ * that look like the same person: exact same name+birthdate, or small name
+ * variants / middle-name additions when email or birthdate still line up.
+ * Remaining same-email but clearly different-name pairs are kept separate and
+ * flagged as `family-email` for manual review. Certificates are attached to
+ * their member by email then by name; unmatched ones become certificate-only
+ * members.
  *
  * Outputs (committed, reviewable artifacts):
  *   - data/members/members.normalized.json
@@ -111,9 +115,13 @@ export function shortHash(value) {
 // Identifier strategy: CF → email → name|dob.
 export function keyFor(record) {
   if (record.fiscalCode) return record.fiscalCode;
-  if (record.email) return `email-${shortHash(record.email)}`;
-  const nameKey = `${normName(record.surname)}|${normName(record.firstName)}|${record.birthDate ?? ''}`;
-  return `name-${shortHash(nameKey)}`;
+  const exactNameDob = nameDobKey(record);
+  if (exactNameDob) return `name-${shortHash(exactNameDob)}`;
+  const email = normEmail(record.email);
+  const named = `${normName(record.surname)}|${normName(record.firstName)}`;
+  if (email && named !== '|') return `email-${shortHash(`${email}|${named}`)}`;
+  if (email) return `email-${shortHash(email)}`;
+  return `name-${shortHash(`${named}|${record.birthDate ?? ''}`)}`;
 }
 
 // Strong identity key (surname + first name + birth date), used to fold a record
@@ -124,6 +132,128 @@ export function nameDobKey(record) {
   const firstName = normName(record.firstName);
   if (!record.birthDate || (!surname && !firstName)) return null;
   return `${surname}|${firstName}|${record.birthDate}`;
+}
+
+export function sameNameEmailKey(record) {
+  const email = normEmail(record.email);
+  const surname = normName(record.surname);
+  const firstName = normName(record.firstName);
+  if (!email || (!surname && !firstName)) return null;
+  return `${surname}|${firstName}|${email}`;
+}
+
+function nameTokens(value) {
+  const normalized = normName(value);
+  return normalized ? normalized.split(' ').filter(Boolean) : [];
+}
+
+function typoLimit(a, b) {
+  const maxLen = Math.max(a.length, b.length);
+  return maxLen >= 8 ? 2 : 1;
+}
+
+function editDistance(a, b) {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const prev = Array.from({ length: b.length + 1 }, (_, index) => index);
+  const next = new Array(b.length + 1);
+
+  for (let i = 0; i < a.length; i += 1) {
+    next[0] = i + 1;
+    for (let j = 0; j < b.length; j += 1) {
+      const cost = a[i] === b[j] ? 0 : 1;
+      next[j + 1] = Math.min(
+        next[j] + 1,
+        prev[j + 1] + 1,
+        prev[j] + cost
+      );
+    }
+    for (let j = 0; j < prev.length; j += 1) prev[j] = next[j];
+  }
+
+  return prev[b.length];
+}
+
+function tokensMatchWithTypos(aTokens, bTokens) {
+  return aTokens.length === bTokens.length
+    && aTokens.every((token, index) => editDistance(token, bTokens[index]) <= typoLimit(token, bTokens[index]));
+}
+
+function tokensShareLeadingSequence(aTokens, bTokens) {
+  if (aTokens.length === bTokens.length) return false;
+  const shorter = aTokens.length < bTokens.length ? aTokens : bTokens;
+  const longer = aTokens.length < bTokens.length ? bTokens : aTokens;
+  return shorter.length > 0
+    && shorter.every((token, index) => editDistance(token, longer[index]) <= typoLimit(token, longer[index]));
+}
+
+function similarNameField(a, b, { allowLeadingExtraTokens = false } = {}) {
+  const normalizedA = normName(a);
+  const normalizedB = normName(b);
+  if (!normalizedA || !normalizedB) return false;
+  if (normalizedA === normalizedB) return true;
+  if (editDistance(normalizedA, normalizedB) <= typoLimit(normalizedA, normalizedB)) return true;
+
+  const aTokens = nameTokens(a);
+  const bTokens = nameTokens(b);
+  if (tokensMatchWithTypos(aTokens, bTokens)) return true;
+  return allowLeadingExtraTokens && tokensShareLeadingSequence(aTokens, bTokens);
+}
+
+function sameNormalizedName(record, candidate) {
+  return normName(record.surname) === normName(candidate.surname)
+    && normName(record.firstName) === normName(candidate.firstName);
+}
+
+function namesLikelySamePerson(record, candidate) {
+  return similarNameField(record.surname, candidate.surname)
+    && similarNameField(record.firstName, candidate.firstName, { allowLeadingExtraTokens: true });
+}
+
+function birthDateCompatible(record, candidate) {
+  return !record.birthDate || !candidate.birthDate || record.birthDate === candidate.birthDate;
+}
+
+function canAutoMergeByEmail(record, candidate) {
+  const recordEmail = normEmail(record.email);
+  if (!recordEmail || recordEmail !== normEmail(candidate.email)) return false;
+  if (sameNormalizedName(record, candidate)) return true;
+  return birthDateCompatible(record, candidate) && namesLikelySamePerson(record, candidate);
+}
+
+function canAutoMergeByBirthDate(record, candidate) {
+  return Boolean(record.birthDate)
+    && record.birthDate === candidate.birthDate
+    && namesLikelySamePerson(record, candidate);
+}
+
+const CLOUD_TYPO_TRUST_FIELDS = new Set(['surname', 'firstName', 'fiscalCode']);
+
+function isTrustedCloudTypoVariant(field, trustedValue, candidateValue) {
+  if (!trustedValue || !candidateValue) return false;
+  if (field === 'surname') return similarNameField(trustedValue, candidateValue);
+  if (field === 'firstName') return similarNameField(trustedValue, candidateValue);
+  if (field === 'fiscalCode') {
+    const trusted = normCF(trustedValue);
+    const candidate = normCF(candidateValue);
+    return Boolean(trusted)
+      && Boolean(candidate)
+      && trusted.length === candidate.length
+      && editDistance(trusted, candidate) <= 2;
+  }
+  return false;
+}
+
+function preferredCompleteTypoItem(field, items) {
+  if (!CLOUD_TYPO_TRUST_FIELDS.has(field)) return null;
+  const completeItems = items.filter(item => item.fromComplete);
+  if (completeItems.length !== 1) return null;
+  const trusted = completeItems[0];
+  const otherItems = items.filter(item => item !== trusted);
+  if (!otherItems.length) return null;
+  return otherItems.every(item => isTrustedCloudTypoVariant(field, trusted.value, item.value)) ? trusted : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -292,6 +422,16 @@ function normKey(field, value) {
   return normName(value);
 }
 
+function rememberSuperseeded(superseeded, field, winner, values) {
+  const existing = superseeded[field] ?? [];
+  for (const value of values) {
+    if (normKey(field, value) === normKey(field, winner)) continue;
+    if (existing.some(current => normKey(field, current) === normKey(field, value))) continue;
+    existing.push(value);
+  }
+  if (existing.length) superseeded[field] = existing;
+}
+
 // Registration date used to decide which conflicting value is the most recent.
 // COMPLETO uses "Data Iscrizione", the importer "PER_datiscriz" — both parsed
 // into `registrationDate`. When that is missing, fall back to the registration
@@ -304,14 +444,93 @@ function isBareNumber(value) {
   return /^\d+$/.test(String(value).trim());
 }
 
+function memberKeyRank(key) {
+  if (key.startsWith('email-')) return 1;
+  if (key.startsWith('name-')) return 2;
+  if (key.startsWith('cert-')) return 3;
+  return 0;
+}
+
+function chooseCanonicalKey(entries) {
+  const byKey = new Map();
+  for (const entry of entries) {
+    const existing = byKey.get(entry.key);
+    if (!existing || entry.date > existing.date) byKey.set(entry.key, { date: entry.date });
+  }
+  return [...byKey.entries()]
+    .sort((a, b) => {
+      const rankDiff = memberKeyRank(a[0]) - memberKeyRank(b[0]);
+      if (rankDiff !== 0) return rankDiff;
+      const dateDiff = a[1].date < b[1].date ? 1 : a[1].date > b[1].date ? -1 : 0;
+      if (dateDiff !== 0) return dateDiff;
+      return a[0].localeCompare(b[0]);
+    })[0][0];
+}
+
+function makeUnionFind(keys) {
+  const parent = new Map(keys.map(key => [key, key]));
+
+  const find = key => {
+    let current = key;
+    while (parent.get(current) !== current) current = parent.get(current);
+    let cursor = key;
+    while (parent.get(cursor) !== current) {
+      const next = parent.get(cursor);
+      parent.set(cursor, current);
+      cursor = next;
+    }
+    return current;
+  };
+
+  const union = (a, b) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent.set(rootB, rootA);
+  };
+
+  return { find, union };
+}
+
+function connectBucketRecords(records, shouldMerge, union, keyOf) {
+  for (let i = 0; i < records.length; i += 1) {
+    for (let j = i + 1; j < records.length; j += 1) {
+      if (!shouldMerge(records[i], records[j])) continue;
+      const leftKey = keyOf(records[i]);
+      const rightKey = keyOf(records[j]);
+      if (leftKey !== rightKey) union(leftKey, rightKey);
+    }
+  }
+}
+
+function resolveAliasedKey(aliasByKey, key) {
+  let resolved = key;
+  const seen = new Set([resolved]);
+  while (aliasByKey.has(resolved)) {
+    const next = aliasByKey.get(resolved);
+    if (seen.has(next)) break;
+    seen.add(next);
+    resolved = next;
+  }
+  return resolved;
+}
+
+function needsAction(reviewReasons) {
+  return reviewReasons.includes('field-conflict')
+    || reviewReasons.includes('family-email')
+    || reviewReasons.includes('possible-duplicate')
+    || reviewReasons.includes('certificate-only');
+}
+
 // Merge a group of raw records (one COMPLETO + zero or more importer rows) that
 // share an identifier key into one member document. Conflicting fields are
 // resolved automatically to the value carried by the most recently registered
-// record; only ties (same date, or no dates) remain as manual conflicts.
+// record; auto-resolved losers are stored in `superseeded`, and only ties
+// (same date, or no dates) remain as manual conflicts.
 export function mergeGroup(id, records) {
   const merged = { id };
   const sources = [];
   const conflicts = {};
+  const superseeded = {};
   let autoResolved = 0;
   let tieResolved = 0;
 
@@ -349,10 +568,18 @@ export function mergeGroup(id, records) {
       continue;
     }
     items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    const trustedComplete = preferredCompleteTypoItem(field, items);
+    if (trustedComplete) {
+      merged[field] = trustedComplete.value;
+      rememberSuperseeded(superseeded, field, trustedComplete.value, items.map(item => item.value));
+      tieResolved += 1;
+      continue;
+    }
     const newestDate = items[0].date;
     const newest = items.filter(item => item.date === newestDate);
     if (newestDate !== '' && newest.length === 1) {
       merged[field] = newest[0].value; // strictly most recent wins
+      rememberSuperseeded(superseeded, field, newest[0].value, items.map(item => item.value));
       autoResolved += 1;
       continue;
     }
@@ -364,8 +591,15 @@ export function mergeGroup(id, records) {
     }
     const cloudPool = pool.filter(item => item.fromComplete);
     if (cloudPool.length) pool = cloudPool;
+    if (field === 'fiscalCode' && items.some(item => normCF(item.value) === id)) {
+      merged[field] = id;
+      rememberSuperseeded(superseeded, field, id, items.map(item => item.value));
+      tieResolved += 1;
+      continue;
+    }
     if (pool.length === 1) {
       merged[field] = pool[0].value; // tiebreaker decided
+      rememberSuperseeded(superseeded, field, pool[0].value, items.map(item => item.value));
       tieResolved += 1;
     } else {
       merged[field] = items[0].value; // genuinely ambiguous → manual review
@@ -373,15 +607,19 @@ export function mergeGroup(id, records) {
     }
   }
 
+  if (merged.fiscalCode && records.some(record => record.source?.file === 'complete' && normCF(record.fiscalCode) === normCF(merged.fiscalCode))) {
+    merged.id = merged.fiscalCode;
+  }
   merged.fullName = [merged.surname, merged.firstName].filter(Boolean).join(' ') || undefined;
   merged.sources = sources;
   merged.conflicts = conflicts;
+  merged.superseeded = superseeded;
   merged.reviewReasons = [];
   merged.possibleDuplicateIds = [];
   merged.autoResolved = autoResolved;
   merged.tieResolved = tieResolved;
   if (Object.keys(conflicts).length) merged.reviewReasons.push('field-conflict');
-  if (records.length > 1 && records.every(r => r.source?.file === 'importer')) {
+  if (Object.keys(conflicts).length && records.length > 1 && records.every(r => r.source?.file === 'importer')) {
     merged.reviewReasons.push('duplicate-in-importer');
   }
   return merged;
@@ -394,74 +632,136 @@ export function mergeGroup(id, records) {
 export function buildMembers({ complete, importer, certificates }) {
   const allRecords = [...complete, ...importer];
 
-  // Map each name+birthdate to its Codice Fiscale, so a record lacking a CF can
-  // be folded into the CF twin of the same person. Skip ambiguous keys where two
-  // different CFs share a name+birthdate (distinct people / data errors).
-  const cfByNameDob = new Map();
+  const effectiveKey = record => record.fiscalCode || keyFor(record);
+
+  const rawKeyByRecord = new Map();
+  const recordsByEffectiveKey = new Map();
+  const nameDobGroups = new Map();
+  const birthDateGroups = new Map();
+  const emailGroups = new Map();
   for (const record of allRecords) {
-    if (!record.fiscalCode) continue;
-    const key = nameDobKey(record);
-    if (!key) continue;
-    if (!cfByNameDob.has(key)) cfByNameDob.set(key, record.fiscalCode);
-    else if (cfByNameDob.get(key) !== record.fiscalCode) cfByNameDob.set(key, null); // ambiguous
+    const key = effectiveKey(record);
+    rawKeyByRecord.set(record, key);
+    if (!recordsByEffectiveKey.has(key)) recordsByEffectiveKey.set(key, []);
+    recordsByEffectiveKey.get(key).push(record);
+
+    const exactNameDob = nameDobKey(record);
+    if (exactNameDob) {
+      if (!nameDobGroups.has(exactNameDob)) nameDobGroups.set(exactNameDob, []);
+      nameDobGroups.get(exactNameDob).push(record);
+    }
+
+    if (record.birthDate) {
+      if (!birthDateGroups.has(record.birthDate)) birthDateGroups.set(record.birthDate, []);
+      birthDateGroups.get(record.birthDate).push(record);
+    }
+
+    const email = normEmail(record.email);
+    if (email) {
+      if (!emailGroups.has(email)) emailGroups.set(email, []);
+      emailGroups.get(email).push(record);
+    }
   }
 
-  // Effective grouping key: CF when present; otherwise a matching CF found via
-  // name+birthdate; otherwise the email/name fallback from keyFor.
-  const effectiveKey = record => {
-    if (record.fiscalCode) return record.fiscalCode;
-    const key = nameDobKey(record);
-    if (key) {
-      const cf = cfByNameDob.get(key);
-      if (cf) return cf;
+  const unionFind = makeUnionFind(recordsByEffectiveKey.keys());
+  const keyOf = record => rawKeyByRecord.get(record);
+  for (const records of nameDobGroups.values()) {
+    connectBucketRecords(records, () => true, unionFind.union, keyOf);
+  }
+  for (const records of birthDateGroups.values()) {
+    connectBucketRecords(records, canAutoMergeByBirthDate, unionFind.union, keyOf);
+  }
+  for (const records of emailGroups.values()) {
+    connectBucketRecords(records, canAutoMergeByEmail, unionFind.union, keyOf);
+  }
+
+  const componentEntries = new Map();
+  for (const record of allRecords) {
+    const key = rawKeyByRecord.get(record);
+    const root = unionFind.find(key);
+    if (!componentEntries.has(root)) componentEntries.set(root, []);
+    componentEntries.get(root).push({ key, date: recencyOf(record) });
+  }
+
+  const aliasByKey = new Map();
+  for (const entries of componentEntries.values()) {
+    const uniqueKeys = [...new Set(entries.map(entry => entry.key))];
+    if (uniqueKeys.length < 2) continue;
+    const canonical = chooseCanonicalKey(entries);
+    for (const key of uniqueKeys) {
+      if (key !== canonical) aliasByKey.set(key, canonical);
     }
-    return keyFor(record);
-  };
+  }
+
+  const groupedKeyFor = record => resolveAliasedKey(aliasByKey, rawKeyByRecord.get(record));
 
   // Group rows by effective key. COMPLETO first so it wins precedence ties.
   const groups = new Map();
   for (const record of allRecords) {
-    const key = effectiveKey(record);
+    const key = groupedKeyFor(record);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(record);
   }
 
   const members = [];
   const byId = new Map();
+  const memberIdByGroupKey = new Map();
   for (const [key, records] of groups) {
     const member = mergeGroup(key, records);
     members.push(member);
     byId.set(member.id, member);
+    memberIdByGroupKey.set(key, member.id);
   }
 
-  // Cross-key possible duplicates: same email or same name+dob, different id.
-  const linkBy = keyFn => {
+  const duplicateReasonsById = new Map(members.map(member => [member.id, new Set()]));
+  const linkPair = (leftId, rightId, reason) => {
+    if (leftId === rightId) return;
+    const left = byId.get(leftId);
+    const right = byId.get(rightId);
+    if (!left || !right) return;
+    if (!left.possibleDuplicateIds.includes(rightId)) left.possibleDuplicateIds.push(rightId);
+    if (!right.possibleDuplicateIds.includes(leftId)) right.possibleDuplicateIds.push(leftId);
+    duplicateReasonsById.get(leftId).add(reason);
+    duplicateReasonsById.get(rightId).add(reason);
+  };
+
+  const linkMembersBy = (keyFn, reasonFn) => {
     const buckets = new Map();
     for (const member of members) {
-      const k = keyFn(member);
-      if (!k) continue;
-      if (!buckets.has(k)) buckets.set(k, []);
-      buckets.get(k).push(member.id);
+      const key = keyFn(member);
+      if (!key) continue;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(member.id);
     }
     for (const ids of buckets.values()) {
       if (ids.length < 2) continue;
-      for (const id of ids) {
-        const member = byId.get(id);
-        for (const other of ids) {
-          if (other !== id && !member.possibleDuplicateIds.includes(other)) {
-            member.possibleDuplicateIds.push(other);
-          }
+      for (let i = 0; i < ids.length; i += 1) {
+        for (let j = i + 1; j < ids.length; j += 1) {
+          const left = byId.get(ids[i]);
+          const right = byId.get(ids[j]);
+          if (!left || !right) continue;
+          linkPair(left.id, right.id, reasonFn(left, right));
         }
       }
     }
   };
-  linkBy(m => (m.email ? `email:${normEmail(m.email)}` : null));
-  linkBy(m => {
-    const name = `${normName(m.surname)}|${normName(m.firstName)}`;
-    return m.birthDate && name.trim() !== '|' ? `name:${name}|${m.birthDate}` : null;
-  });
+
+  linkMembersBy(
+    member => (member.email ? `email:${normEmail(member.email)}` : null),
+    (left, right) => (namesLikelySamePerson(left, right) ? 'possible-duplicate' : 'family-email')
+  );
+  linkMembersBy(
+    member => {
+      const name = `${normName(member.surname)}|${normName(member.firstName)}`;
+      return member.birthDate && name.trim() !== '|' ? `name:${name}|${member.birthDate}` : null;
+    },
+    () => 'possible-duplicate'
+  );
   for (const member of members) {
-    if (member.possibleDuplicateIds.length) member.reviewReasons.push('possible-duplicate');
+    const reasons = duplicateReasonsById.get(member.id);
+    if (!reasons) continue;
+    if (reasons.has('family-email')) member.reviewReasons.push('family-email');
+    if (reasons.has('possible-duplicate')) member.reviewReasons.push('possible-duplicate');
   }
 
   // Match certificates to set firstWorkDate (the only useful datum — every
@@ -470,17 +770,15 @@ export function buildMembers({ complete, importer, certificates }) {
   // email/name variant a person ever had), so cert matching does not depend on
   // which value won conflict resolution. When several members share a contact,
   // prefer the canonical one (CF-keyed over email- or name-keyed).
-  const idRank = id =>
-    id.startsWith('email-') ? 1 : id.startsWith('name-') ? 2 : id.startsWith('cert-') ? 3 : 0;
   const setStronger = (map, key, id) => {
     if (!key) return;
     const existing = map.get(key);
-    if (existing === undefined || idRank(id) < idRank(existing)) map.set(key, id);
+    if (existing === undefined || memberKeyRank(id) < memberKeyRank(existing)) map.set(key, id);
   };
   const emailIndex = new Map();
   const nameIndex = new Map();
   for (const record of allRecords) {
-    const id = effectiveKey(record);
+    const id = memberIdByGroupKey.get(groupedKeyFor(record));
     setStronger(emailIndex, normEmail(record.email), id);
     setStronger(emailIndex, normEmail(record.email2), id);
     setStronger(nameIndex, `${normName(record.surname)} ${normName(record.firstName)}`.trim(), id);
@@ -514,6 +812,7 @@ export function buildMembers({ complete, importer, certificates }) {
         firstWorkDate: cert.date,
         sources: [{ file: 'certificates', code: cert.code, line: cert.line }],
         conflicts: {},
+        superseeded: {},
         reviewReasons: ['certificate-only'],
         possibleDuplicateIds: []
       };
@@ -537,7 +836,7 @@ export function buildMembers({ complete, importer, certificates }) {
   let autoResolved = 0;
   let tieResolved = 0;
   for (const member of members) {
-    member.needsReview = member.reviewReasons.length > 0;
+    member.needsReview = needsAction(member.reviewReasons);
     autoResolved += member.autoResolved ?? 0;
     tieResolved += member.tieResolved ?? 0;
     delete member.autoResolved; // transient stats, not persisted
