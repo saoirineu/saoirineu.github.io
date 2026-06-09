@@ -207,6 +207,63 @@ test('buildMembers auto-merges same-email near-name variants as typos or middle-
   assert.deepEqual(alex.superseeded.city, ['Cerviniano del Friuli']);
 });
 
+test('buildMembers auto-merges exact-birthdate email matches with extra surname tokens by recency', () => {
+  const complete = [
+    {
+      source: { file: 'complete', code: '30', line: 512 },
+      memberCode: '30',
+      surname: 'NEGREIROS NEGRINI',
+      firstName: 'REGINA MARCIA',
+      fiscalCode: 'NGRRNM77L69Z602B',
+      birthDate: '1977-07-29',
+      birthPlace: 'Santos',
+      email: 'regina.negrini@gmail.com',
+      phone: '3896810483',
+      address: 'Via Antonio Francesco Ghiselli, 5 (Negri',
+      postalCode: '40134',
+      city: 'Bologna',
+      memberStatus: 'Attivo',
+      group: 'SOCI ITALIANI',
+      profession: 'Sceneggiatrice',
+      citizenship: 'Italiana',
+      registrationRequestDate: '2024-12-16',
+      registrationDate: '2024-12-16',
+      renewalDate: '2024-12-16'
+    }
+  ];
+  const importer = [
+    {
+      source: { file: 'importer', code: '1534', line: 1538 },
+      surname: 'NEGRINI',
+      firstName: 'REGINA',
+      sex: 'F',
+      fiscalCode: 'NGRRGN77L69G407K',
+      birthDate: '1977-07-29',
+      birthPlace: 'SAN PAOLO (BR)',
+      email: 'regina.negrini@gmail.com',
+      mobile: '3896810483',
+      address: 'VIS ROMA 70/AP5',
+      postalCode: '40030',
+      province: 'BO',
+      country: 'Italia',
+      memberStatus: 'Attivo',
+      group: 'SOCI ITALIANI',
+      profession: 'sceneggiatrice',
+      registrationDate: '2020-09-15'
+    }
+  ];
+
+  const { members } = buildMembers({ complete, importer, certificates: [] });
+  assert.equal(members.length, 1);
+  assert.equal(members[0].id, 'NGRRNM77L69Z602B');
+  assert.equal(members[0].fullName, 'NEGREIROS NEGRINI REGINA MARCIA');
+  assert.equal(members[0].address, 'Via Antonio Francesco Ghiselli, 5 (Negri');
+  assert.equal(members[0].postalCode, '40134');
+  assert.deepEqual(members[0].superseeded.fiscalCode, ['NGRRGN77L69G407K']);
+  assert.deepEqual(members[0].superseeded.address, ['VIS ROMA 70/AP5']);
+  assert.equal(members[0].needsReview, false);
+});
+
 test('buildMembers flags same-email different-name members as family-email duplicates', () => {
   const complete = [
     { source: { file: 'complete', code: '1', line: 2 }, fiscalCode: 'CF1', surname: 'Rossi', firstName: 'Mario', email: 'shared@x.it', birthDate: '1980-01-01' }

@@ -7,6 +7,7 @@ import {
   duplicateReason,
   formatFullName,
   mergeMemberRecords,
+  previewMemberMerge,
   summarizeReview
 } from './form';
 
@@ -89,13 +90,14 @@ describe('members form helpers', () => {
     expect(duplicateReason(a, c)).toEqual({ kind: 'other' });
   });
 
-  it('merges a source into a target: gap-fill, conflicts, unions, cleared link', () => {
+  it('previews and merges by preferring the most recent record', () => {
     const target = makeMember({
       id: 'CF1',
       surname: 'Rossi',
       city: 'Milano',
       possibleDuplicateIds: ['email-abc'],
-      superseeded: { email: ['old@x.it'] }
+      superseeded: { email: ['old@x.it'] },
+      registrationDate: '2020-01-01'
     });
     const source = makeMember({
       id: 'email-abc',
@@ -105,20 +107,45 @@ describe('members form helpers', () => {
       sources: [{ file: 'importer', code: '8', line: 12 }],
       firstWorkDate: '2005-01-01',
       possibleDuplicateIds: ['CF1'],
-      superseeded: { city: ['Torino'] }
+      superseeded: { city: ['Torino'] },
+      registrationDate: '2024-01-01'
     });
+
+    const preview = previewMemberMerge(target, source);
+    expect(preview.preferredRecord).toBe('source');
+    expect(preview.overwrittenFields).toEqual([
+      {
+        field: 'city',
+        targetValue: 'Milano',
+        sourceValue: 'Roma',
+        chosenValue: 'Roma',
+        chosenFrom: 'source'
+      },
+      {
+        field: 'registrationDate',
+        targetValue: '2020-01-01',
+        sourceValue: '2024-01-01',
+        chosenValue: '2024-01-01',
+        chosenFrom: 'source'
+      }
+    ]);
 
     const patch = mergeMemberRecords(target, source);
     expect(patch.profession).toBe('Artista'); // filled gap
-    expect(patch.conflicts).toEqual({ city: ['Milano', 'Roma'] }); // divergence recorded
-    expect(patch.superseeded).toEqual({ email: ['old@x.it'], city: ['Torino'] });
+    expect(patch.city).toBe('Roma');
+    expect(patch.conflicts).toEqual({});
+    expect(patch.superseeded).toEqual({
+      email: ['old@x.it'],
+      city: ['Torino', 'Milano'],
+      registrationDate: ['2020-01-01']
+    });
     expect(patch.sources).toEqual([
       { file: 'complete', code: '1', line: 2 },
       { file: 'importer', code: '8', line: 12 }
     ]);
     expect(patch.firstWorkDate).toBe('2005-01-01');
     expect(patch.possibleDuplicateIds).toEqual([]); // the two merged ids drop out
-    expect(patch.needsReview).toBe(true); // because of the city conflict
+    expect(patch.needsReview).toBe(false);
   });
 
   it('keeps a family-email pair separate without dropping other duplicate review reasons', () => {

@@ -189,7 +189,30 @@ function tokensShareLeadingSequence(aTokens, bTokens) {
     && shorter.every((token, index) => editDistance(token, longer[index]) <= typoLimit(token, longer[index]));
 }
 
-function similarNameField(a, b, { allowLeadingExtraTokens = false } = {}) {
+function tokensShareOrderedSubset(aTokens, bTokens) {
+  if (aTokens.length === bTokens.length) return false;
+  const shorter = aTokens.length < bTokens.length ? aTokens : bTokens;
+  const longer = aTokens.length < bTokens.length ? bTokens : aTokens;
+  if (!shorter.length) return false;
+
+  let offset = 0;
+  for (const token of shorter) {
+    let matched = false;
+    while (offset < longer.length) {
+      if (editDistance(token, longer[offset]) <= typoLimit(token, longer[offset])) {
+        matched = true;
+        offset += 1;
+        break;
+      }
+      offset += 1;
+    }
+    if (!matched) return false;
+  }
+
+  return true;
+}
+
+function similarNameField(a, b, { allowLeadingExtraTokens = false, allowOrderedSubsetTokens = false } = {}) {
   const normalizedA = normName(a);
   const normalizedB = normName(b);
   if (!normalizedA || !normalizedB) return false;
@@ -199,6 +222,7 @@ function similarNameField(a, b, { allowLeadingExtraTokens = false } = {}) {
   const aTokens = nameTokens(a);
   const bTokens = nameTokens(b);
   if (tokensMatchWithTypos(aTokens, bTokens)) return true;
+  if (allowOrderedSubsetTokens && tokensShareOrderedSubset(aTokens, bTokens)) return true;
   return allowLeadingExtraTokens && tokensShareLeadingSequence(aTokens, bTokens);
 }
 
@@ -212,21 +236,36 @@ function namesLikelySamePerson(record, candidate) {
     && similarNameField(record.firstName, candidate.firstName, { allowLeadingExtraTokens: true });
 }
 
+function namesMatchExactBirthDate(record, candidate) {
+  return similarNameField(record.surname, candidate.surname, { allowOrderedSubsetTokens: true })
+    && similarNameField(record.firstName, candidate.firstName, {
+      allowLeadingExtraTokens: true,
+      allowOrderedSubsetTokens: true
+    });
+}
+
 function birthDateCompatible(record, candidate) {
   return !record.birthDate || !candidate.birthDate || record.birthDate === candidate.birthDate;
+}
+
+function birthDateMatchesExactly(record, candidate) {
+  return Boolean(record.birthDate)
+    && Boolean(candidate.birthDate)
+    && record.birthDate === candidate.birthDate;
 }
 
 function canAutoMergeByEmail(record, candidate) {
   const recordEmail = normEmail(record.email);
   if (!recordEmail || recordEmail !== normEmail(candidate.email)) return false;
   if (sameNormalizedName(record, candidate)) return true;
+  if (birthDateMatchesExactly(record, candidate) && namesMatchExactBirthDate(record, candidate)) return true;
   return birthDateCompatible(record, candidate) && namesLikelySamePerson(record, candidate);
 }
 
 function canAutoMergeByBirthDate(record, candidate) {
   return Boolean(record.birthDate)
     && record.birthDate === candidate.birthDate
-    && namesLikelySamePerson(record, candidate);
+    && namesMatchExactBirthDate(record, candidate);
 }
 
 const CLOUD_TYPO_TRUST_FIELDS = new Set(['surname', 'firstName', 'fiscalCode']);

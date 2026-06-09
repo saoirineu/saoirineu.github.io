@@ -59,6 +59,13 @@ export type MembersCopy = {
   remove: string;
   mergeHere: string;
   keepSeparate: string;
+  mergePreviewTitle: string;
+  mergePreviewMostRecent: (name: string) => string;
+  mergePreviewOverwritten: string;
+  mergePreviewSelected: string;
+  mergePreviewDuplicate: string;
+  mergePreviewChosen: string;
+  mergePreviewNoOverwrite: string;
   confirmMerge: (source: string, target: string) => string;
   confirmKeepSeparate: (source: string, target: string) => string;
   confirmDelete: (name: string) => string;
@@ -132,6 +139,13 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     remove: 'Apagar',
     mergeHere: 'Mesclar aqui',
     keepSeparate: 'Manter separados',
+    mergePreviewTitle: 'Revisar mesclagem',
+    mergePreviewMostRecent: name => `Entrada mais recente: ${name}`,
+    mergePreviewOverwritten: 'Valores que serão substituídos',
+    mergePreviewSelected: 'Registro atual',
+    mergePreviewDuplicate: 'Registro duplicado',
+    mergePreviewChosen: 'Valor mantido',
+    mergePreviewNoOverwrite: 'Nenhum valor existente será substituído. Apenas campos vazios serão preenchidos.',
     confirmMerge: (source, target) => `Mesclar "${source}" em "${target}"? O registro mesclado será apagado.`,
     confirmKeepSeparate: (source, target) => `Manter "${source}" e "${target}" como sócios separados? O alerta de e-mail de família será removido.`,
     confirmDelete: name => `Apagar o sócio "${name}"?`,
@@ -202,6 +216,13 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     remove: 'Delete',
     mergeHere: 'Merge here',
     keepSeparate: 'Keep separate',
+    mergePreviewTitle: 'Review merge',
+    mergePreviewMostRecent: name => `Most recent entry: ${name}`,
+    mergePreviewOverwritten: 'Values that will be replaced',
+    mergePreviewSelected: 'Current record',
+    mergePreviewDuplicate: 'Duplicate record',
+    mergePreviewChosen: 'Chosen value',
+    mergePreviewNoOverwrite: 'No existing value will be replaced. Only empty fields will be filled.',
     confirmMerge: (source, target) => `Merge "${source}" into "${target}"? The merged record will be deleted.`,
     confirmKeepSeparate: (source, target) => `Keep "${source}" and "${target}" as separate members? The family-email flag will be cleared.`,
     confirmDelete: name => `Delete member "${name}"?`,
@@ -272,6 +293,13 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     remove: 'Eliminar',
     mergeHere: 'Fusionar aquí',
     keepSeparate: 'Mantener separados',
+    mergePreviewTitle: 'Revisar fusión',
+    mergePreviewMostRecent: name => `Entrada más reciente: ${name}`,
+    mergePreviewOverwritten: 'Valores que se sustituirán',
+    mergePreviewSelected: 'Registro actual',
+    mergePreviewDuplicate: 'Registro duplicado',
+    mergePreviewChosen: 'Valor conservado',
+    mergePreviewNoOverwrite: 'No se sustituirá ningún valor existente. Solo se completarán los campos vacíos.',
     confirmMerge: (source, target) => `¿Fusionar "${source}" en "${target}"? El registro fusionado será eliminado.`,
     confirmKeepSeparate: (source, target) => `¿Mantener "${source}" y "${target}" como socios separados? Se quitará la alerta de correo familiar.`,
     confirmDelete: name => `¿Eliminar al socio "${name}"?`,
@@ -342,6 +370,13 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     remove: 'Elimina',
     mergeHere: 'Unisci qui',
     keepSeparate: 'Tieni separati',
+    mergePreviewTitle: 'Rivedi unione',
+    mergePreviewMostRecent: name => `Voce più recente: ${name}`,
+    mergePreviewOverwritten: 'Valori che saranno sostituiti',
+    mergePreviewSelected: 'Record attuale',
+    mergePreviewDuplicate: 'Record duplicato',
+    mergePreviewChosen: 'Valore mantenuto',
+    mergePreviewNoOverwrite: 'Nessun valore esistente sarà sostituito. Verranno riempiti solo i campi vuoti.',
     confirmMerge: (source, target) => `Unire "${source}" in "${target}"? Il record unito verrà eliminato.`,
     confirmKeepSeparate: (source, target) => `Mantenere "${source}" e "${target}" come soci separati? Il flag e-mail di famiglia verrà rimosso.`,
     confirmDelete: name => `Eliminare il socio "${name}"?`,

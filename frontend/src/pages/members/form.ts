@@ -24,6 +24,20 @@ export type DuplicateReason =
   | { kind: 'name-birthdate' }
   | { kind: 'other' };
 
+export type MergePreviewField = {
+  field: MemberTextField;
+  targetValue: string;
+  sourceValue: string;
+  chosenValue: string;
+  chosenFrom: 'target' | 'source';
+};
+
+export type MergePlan = {
+  patch: MemberPatch;
+  overwrittenFields: MergePreviewField[];
+  preferredRecord: 'target' | 'source';
+};
+
 function normEmailValue(value?: string): string {
   return (value ?? '').trim().toLowerCase();
 }
@@ -120,6 +134,27 @@ export function duplicateReason(member: MemberRecord, candidate: MemberRecord): 
 
 function normValue(value?: string): string {
   return (value ?? '').trim().toLowerCase();
+}
+
+function recordRecency(record: Pick<MemberRecord, 'registrationDate' | 'registrationRequestDate'>): string {
+  return record.registrationDate ?? record.registrationRequestDate ?? '';
+}
+
+function recordSequence(record: Pick<MemberRecord, 'sources'>): number {
+  return record.sources.reduce((latest, source, index) => {
+    if (typeof source.line === 'number' && Number.isFinite(source.line)) return Math.max(latest, source.line);
+    const numericCode = Number(source.code);
+    if (Number.isFinite(numericCode)) return Math.max(latest, numericCode);
+    return Math.max(latest, index + 1);
+  }, 0);
+}
+
+function preferredMergeRecord(target: MemberRecord, source: MemberRecord): 'target' | 'source' {
+  const targetRecency = recordRecency(target);
+  const sourceRecency = recordRecency(source);
+  if (sourceRecency > targetRecency) return 'source';
+  if (sourceRecency < targetRecency) return 'target';
+  return recordSequence(source) > recordSequence(target) ? 'source' : 'target';
 }
 
 function rememberSuperseeded(store: MemberSuperseeded, field: string, values: string[], winner?: string): void {
@@ -233,14 +268,17 @@ function unionSources(target: MemberSource[], source: MemberSource[]): MemberSou
 }
 
 /**
- * Merge `source` into `target`. Target values win; gaps are filled from source;
- * genuinely different values are recorded as conflicts for later resolution.
- * Returns the patch to apply to the target (the source doc is then deleted).
+ * Merge `source` into `target`, preferring the most recent record when both
+ * carry different values for the same field. Replaced values are preserved in
+ * `superseeded`, and the returned patch is applied to the target before the
+ * source doc is deleted.
  */
-export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): MemberPatch {
+export function previewMemberMerge(target: MemberRecord, source: MemberRecord): MergePlan {
   const patch: MemberPatch = {};
   const conflicts: MemberConflicts = { ...target.conflicts };
   const superseeded: MemberSuperseeded = { ...target.superseeded };
+  const overwrittenFields: MergePreviewField[] = [];
+  const preferredRecord = preferredMergeRecord(target, source);
 
   for (const [field, values] of Object.entries(source.superseeded ?? {})) {
     rememberSuperseeded(superseeded, field, values);
@@ -253,9 +291,18 @@ export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): 
     if (!targetValue) {
       patch[field] = sourceValue; // fill the gap
     } else if (normValue(targetValue) !== normValue(sourceValue)) {
-      const existing = conflicts[field] ?? [targetValue];
-      if (!existing.some(value => normValue(value) === normValue(sourceValue))) existing.push(sourceValue);
-      conflicts[field] = existing;
+      const chosenFrom = preferredRecord;
+      const chosenValue = chosenFrom === 'source' ? sourceValue : targetValue;
+      const replacedValue = chosenFrom === 'source' ? targetValue : sourceValue;
+      overwrittenFields.push({
+        field,
+        targetValue,
+        sourceValue,
+        chosenValue,
+        chosenFrom
+      });
+      rememberSuperseeded(superseeded, field, [replacedValue], chosenValue);
+      if (chosenFrom === 'source') patch[field] = sourceValue;
     }
   }
 
@@ -287,5 +334,13 @@ export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): 
     patch.firstWorkDate = source.firstWorkDate;
   }
 
-  return patch;
+  return {
+    patch,
+    overwrittenFields,
+    preferredRecord
+  };
+}
+
+export function mergeMemberRecords(target: MemberRecord, source: MemberRecord): MemberPatch {
+  return previewMemberMerge(target, source).patch;
 }

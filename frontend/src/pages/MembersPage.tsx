@@ -12,7 +12,15 @@ import {
   type MemberRecord,
   type MemberSourceFile
 } from '../lib/members';
-import { applyConflictResolution, dismissDuplicateLink, duplicateReason, formatFullName, mergeMemberRecords } from './members/form';
+import {
+  applyConflictResolution,
+  dismissDuplicateLink,
+  duplicateReason,
+  formatFullName,
+  mergeMemberRecords,
+  previewMemberMerge,
+  type MergePlan
+} from './members/form';
 import { type MembersCopy, membersCopyByLocale, memberFieldLabel, sourceBadgeLabels } from './members/copy';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -29,7 +37,7 @@ type SortKey =
   | 'family-email'
   | 'non-family-conflict';
 
-const NON_FAMILY_CONFLICT_REASONS = ['field-conflict', 'duplicate-in-importer', 'possible-duplicate'] as const;
+const NON_FAMILY_CONFLICT_REASONS = ['field-conflict', 'duplicate-in-importer'] as const;
 
 function hasReviewReason(member: MemberRecord, reason: string): boolean {
   return member.reviewReasons.includes(reason);
@@ -104,6 +112,7 @@ export default function MembersPage() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('review-first');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mergePreview, setMergePreview] = useState<{ target: MemberRecord; source: MemberRecord } | null>(null);
 
   const query = useQuery({ queryKey: ['members'], queryFn: fetchMembers });
 
@@ -139,6 +148,7 @@ export default function MembersPage() {
       }),
     onSuccess: () => {
       setErrorMessage('');
+      setMergePreview(null);
       invalidate();
     },
     onError
@@ -223,6 +233,14 @@ export default function MembersPage() {
     () => (selectedId ? (query.data ?? []).find(member => member.id === selectedId) ?? null : null),
     [query.data, selectedId]
   );
+  const mergePlan = useMemo<MergePlan | null>(
+    () => (mergePreview ? previewMemberMerge(mergePreview.target, mergePreview.source) : null),
+    [mergePreview]
+  );
+  const closeSelected = () => {
+    setSelectedId(null);
+    setMergePreview(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -411,7 +429,7 @@ export default function MembersPage() {
           busy={busy}
           copy={copy}
           locale={locale}
-          onClose={() => setSelectedId(null)}
+          onClose={closeSelected}
           onResolveConflict={(field, value) =>
             conflictMutation.mutate({ id: selected.id, field, value, record: selected })
           }
@@ -421,16 +439,25 @@ export default function MembersPage() {
               separateMutation.mutate({ member: selected, candidate, allMembers: query.data ?? [] });
             }
           }}
-          onMerge={source => {
-            if (window.confirm(copy.confirmMerge(formatFullName(source), formatFullName(selected)))) {
-              mergeMutation.mutate({ target: selected, source });
-            }
-          }}
+          onMerge={source => setMergePreview({ target: selected, source })}
           onDelete={() => {
             if (window.confirm(copy.confirmDelete(formatFullName(selected)))) {
               deleteMutation.mutate(selected.id);
             }
           }}
+        />
+      ) : null}
+
+      {mergePreview && mergePlan ? (
+        <MergePreviewModal
+          target={mergePreview.target}
+          source={mergePreview.source}
+          plan={mergePlan}
+          busy={busy}
+          copy={copy}
+          locale={locale}
+          onClose={() => setMergePreview(null)}
+          onConfirm={() => mergeMutation.mutate(mergePreview)}
         />
       ) : null}
     </div>
@@ -602,6 +629,95 @@ function MemberDetailModal({
               {copy.remove}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MergePreviewModal({
+  target,
+  source,
+  plan,
+  busy,
+  copy,
+  locale,
+  onClose,
+  onConfirm
+}: {
+  target: MemberRecord;
+  source: MemberRecord;
+  plan: MergePlan;
+  busy: boolean;
+  copy: MembersCopy;
+  locale: SiteLocale;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const preferredName = formatFullName(plan.preferredRecord === 'source' ? source : target)
+    || (plan.preferredRecord === 'source' ? source.id : target.id);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4" onClick={onClose}>
+      <div className="my-8 w-full max-w-4xl rounded-2xl bg-white shadow-xl" onClick={event => event.stopPropagation()}>
+        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">{copy.mergePreviewTitle}</h3>
+            <p className="text-xs text-slate-500">{copy.mergePreviewMostRecent(preferredName)}</p>
+          </div>
+          <button type="button" className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose}>
+            {copy.close}
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4">
+          {plan.overwrittenFields.length ? (
+            <section className="space-y-3">
+              <h4 className="text-sm font-semibold text-amber-800">{copy.mergePreviewOverwritten}</h4>
+              {plan.overwrittenFields.map(change => (
+                <div key={change.field} className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <div className="text-xs font-medium text-amber-800">{memberFieldLabel(locale, change.field)}</div>
+                  <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{copy.mergePreviewSelected}</dt>
+                      <dd className="mt-1 text-sm text-slate-900">{change.targetValue}</dd>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{copy.mergePreviewDuplicate}</dt>
+                      <dd className="mt-1 text-sm text-slate-900">{change.sourceValue}</dd>
+                    </div>
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">{copy.mergePreviewChosen}</dt>
+                      <dd className="mt-1 text-sm font-medium text-emerald-900">{change.chosenValue}</dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </section>
+          ) : (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              {copy.mergePreviewNoOverwrite}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-4">
+          <button
+            type="button"
+            disabled={busy}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            onClick={onClose}
+          >
+            {copy.close}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+            onClick={onConfirm}
+          >
+            {copy.mergeHere}
+          </button>
         </div>
       </div>
     </div>
