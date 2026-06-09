@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { MemberRecord } from '../../lib/members';
 import {
   applyConflictResolution,
+  dismissDuplicateLink,
   duplicateReason,
   formatFullName,
   mergeMemberRecords,
@@ -118,5 +119,43 @@ describe('members form helpers', () => {
     expect(patch.firstWorkDate).toBe('2005-01-01');
     expect(patch.possibleDuplicateIds).toEqual([]); // the two merged ids drop out
     expect(patch.needsReview).toBe(true); // because of the city conflict
+  });
+
+  it('keeps a family-email pair separate without dropping other duplicate review reasons', () => {
+    const member = makeMember({
+      id: 'CF1',
+      surname: 'Rossi',
+      firstName: 'Mario',
+      birthDate: '1980-01-01',
+      email: 'shared@x.it',
+      reviewReasons: ['family-email', 'possible-duplicate'],
+      possibleDuplicateIds: ['CF2', 'CF3']
+    });
+    const family = makeMember({
+      id: 'CF2',
+      surname: 'Verdi',
+      firstName: 'Anna',
+      birthDate: '1985-02-02',
+      email: 'shared@x.it',
+      reviewReasons: ['family-email'],
+      possibleDuplicateIds: ['CF1']
+    });
+    const duplicate = makeMember({
+      id: 'CF3',
+      surname: 'Rossi',
+      firstName: 'Mario',
+      birthDate: '1980-01-01',
+      email: 'other@x.it',
+      reviewReasons: ['possible-duplicate'],
+      possibleDuplicateIds: ['CF1']
+    });
+
+    const patches = dismissDuplicateLink({ member, candidate: family, allMembers: [member, family, duplicate] });
+    expect(patches.memberPatch.possibleDuplicateIds).toEqual(['CF3']);
+    expect(patches.memberPatch.reviewReasons).toEqual(['possible-duplicate']);
+    expect(patches.memberPatch.needsReview).toBe(true);
+    expect(patches.candidatePatch.possibleDuplicateIds).toEqual([]);
+    expect(patches.candidatePatch.reviewReasons).toEqual([]);
+    expect(patches.candidatePatch.needsReview).toBe(false);
   });
 });

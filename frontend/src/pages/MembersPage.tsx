@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  commitDuplicateSeparation,
   commitMemberMerge,
   deleteMember,
   fetchMembers,
@@ -11,7 +12,7 @@ import {
   type MemberRecord,
   type MemberSourceFile
 } from '../lib/members';
-import { applyConflictResolution, duplicateReason, formatFullName, mergeMemberRecords } from './members/form';
+import { applyConflictResolution, dismissDuplicateLink, duplicateReason, formatFullName, mergeMemberRecords } from './members/form';
 import { type MembersCopy, membersCopyByLocale, memberFieldLabel, sourceBadgeLabels } from './members/copy';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -19,7 +20,29 @@ import type { SiteLocale } from '../lib/siteLocale';
 
 type ReviewFilter = 'all' | 'flagged' | 'clean';
 type SourceFilter = 'all' | MemberSourceFile;
-type SortKey = 'name-asc' | 'name-desc' | 'review-first';
+type SortKey =
+  | 'name-asc'
+  | 'name-desc'
+  | 'review-first'
+  | 'field-conflict'
+  | 'duplicate-in-importer'
+  | 'family-email'
+  | 'non-family-conflict';
+
+const NON_FAMILY_CONFLICT_REASONS = ['field-conflict', 'duplicate-in-importer', 'possible-duplicate'] as const;
+
+function hasReviewReason(member: MemberRecord, reason: string): boolean {
+  return member.reviewReasons.includes(reason);
+}
+
+function hasAnyReviewReason(member: MemberRecord, reasons: readonly string[]): boolean {
+  return reasons.some(reason => hasReviewReason(member, reason));
+}
+
+function comparePriority(left: boolean, right: boolean): number {
+  if (left === right) return 0;
+  return left ? -1 : 1;
+}
 
 function sourceBadgeClasses(file: MemberSourceFile): string {
   switch (file) {
@@ -38,9 +61,26 @@ function sortMembers(members: MemberRecord[], sortKey: SortKey): MemberRecord[] 
   items.sort((left, right) => {
     const leftName = formatFullName(left);
     const rightName = formatFullName(right);
+    const byPriority = (leftPriority: boolean, rightPriority: boolean): number => {
+      const priority = comparePriority(leftPriority, rightPriority);
+      if (priority !== 0) return priority;
+      if (left.needsReview !== right.needsReview) return left.needsReview ? -1 : 1;
+      return leftName.localeCompare(rightName, 'it');
+    };
     switch (sortKey) {
       case 'name-desc':
         return rightName.localeCompare(leftName, 'it');
+      case 'field-conflict':
+        return byPriority(hasReviewReason(left, 'field-conflict'), hasReviewReason(right, 'field-conflict'));
+      case 'duplicate-in-importer':
+        return byPriority(hasReviewReason(left, 'duplicate-in-importer'), hasReviewReason(right, 'duplicate-in-importer'));
+      case 'family-email':
+        return byPriority(hasReviewReason(left, 'family-email'), hasReviewReason(right, 'family-email'));
+      case 'non-family-conflict':
+        return byPriority(
+          hasAnyReviewReason(left, NON_FAMILY_CONFLICT_REASONS),
+          hasAnyReviewReason(right, NON_FAMILY_CONFLICT_REASONS)
+        );
       case 'review-first':
         if (left.needsReview !== right.needsReview) return left.needsReview ? -1 : 1;
         return leftName.localeCompare(rightName, 'it');
@@ -104,6 +144,23 @@ export default function MembersPage() {
     onError
   });
 
+  const separateMutation = useMutation({
+    mutationFn: (args: { member: MemberRecord; candidate: MemberRecord; allMembers: MemberRecord[] }) => {
+      const patches = dismissDuplicateLink(args);
+      return commitDuplicateSeparation({
+        leftId: args.member.id,
+        leftData: patches.memberPatch,
+        rightId: args.candidate.id,
+        rightData: patches.candidatePatch
+      });
+    },
+    onSuccess: () => {
+      setErrorMessage('');
+      invalidate();
+    },
+    onError
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteMember(id),
     onSuccess: () => {
@@ -115,7 +172,11 @@ export default function MembersPage() {
   });
 
   const busy =
-    conflictMutation.isPending || reviewMutation.isPending || mergeMutation.isPending || deleteMutation.isPending;
+    conflictMutation.isPending
+    || reviewMutation.isPending
+    || mergeMutation.isPending
+    || separateMutation.isPending
+    || deleteMutation.isPending;
 
   const statusOptions = useMemo(() => {
     const values = new Set<string>();
@@ -147,6 +208,17 @@ export default function MembersPage() {
 
   const total = query.data?.length ?? 0;
   const flaggedCount = useMemo(() => (query.data ?? []).filter(member => member.needsReview).length, [query.data]);
+  const summary = useMemo(() => {
+    const members = query.data ?? [];
+    return {
+      members: members.length,
+      toReview: members.filter(member => member.needsReview).length,
+      conflicts: members.filter(member => hasAnyReviewReason(member, NON_FAMILY_CONFLICT_REASONS)).length,
+      duplicates: members.filter(member => hasReviewReason(member, 'possible-duplicate')).length,
+      familyEmail: members.filter(member => hasReviewReason(member, 'family-email')).length,
+      duplicateInImport: members.filter(member => hasReviewReason(member, 'duplicate-in-importer')).length
+    };
+  }, [query.data]);
   const selected = useMemo(
     () => (selectedId ? (query.data ?? []).find(member => member.id === selectedId) ?? null : null),
     [query.data, selectedId]
@@ -158,6 +230,22 @@ export default function MembersPage() {
         <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
         <p className="text-sm text-slate-600">{copy.subtitle(total, flaggedCount)}</p>
       </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        {[
+          { label: copy.summaryMembers, value: summary.members, classes: 'border-slate-200 bg-white text-slate-900' },
+          { label: copy.summaryToReview, value: summary.toReview, classes: 'border-rose-200 bg-rose-50 text-rose-900' },
+          { label: copy.summaryConflicts, value: summary.conflicts, classes: 'border-amber-200 bg-amber-50 text-amber-900' },
+          { label: copy.summaryDuplicates, value: summary.duplicates, classes: 'border-orange-200 bg-orange-50 text-orange-900' },
+          { label: copy.summaryFamilyEmail, value: summary.familyEmail, classes: 'border-sky-200 bg-sky-50 text-sky-900' },
+          { label: copy.summaryDuplicateInImport, value: summary.duplicateInImport, classes: 'border-slate-200 bg-slate-50 text-slate-900' }
+        ].map(card => (
+          <div key={card.label} className={`rounded-xl border p-4 shadow-sm ${card.classes}`}>
+            <div className="text-xs font-medium uppercase tracking-wide opacity-75">{card.label}</div>
+            <div className="mt-2 text-2xl font-semibold">{card.value}</div>
+          </div>
+        ))}
+      </section>
 
       <section className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))]">
         <label className="space-y-1 text-sm text-slate-700">
@@ -217,6 +305,10 @@ export default function MembersPage() {
             onChange={event => setSortKey(event.target.value as SortKey)}
           >
             <option value="review-first">{copy.sortReviewFirst}</option>
+            <option value="field-conflict">{copy.sortFieldConflict}</option>
+            <option value="duplicate-in-importer">{copy.sortDuplicateInImport}</option>
+            <option value="family-email">{copy.sortFamilyEmail}</option>
+            <option value="non-family-conflict">{copy.sortNonFamilyConflict}</option>
             <option value="name-asc">{copy.sortNameAsc}</option>
             <option value="name-desc">{copy.sortNameDesc}</option>
           </select>
@@ -324,6 +416,11 @@ export default function MembersPage() {
             conflictMutation.mutate({ id: selected.id, field, value, record: selected })
           }
           onMarkReviewed={() => reviewMutation.mutate(selected.id)}
+          onKeepSeparate={candidate => {
+            if (window.confirm(copy.confirmKeepSeparate(formatFullName(candidate), formatFullName(selected)))) {
+              separateMutation.mutate({ member: selected, candidate, allMembers: query.data ?? [] });
+            }
+          }}
           onMerge={source => {
             if (window.confirm(copy.confirmMerge(formatFullName(source), formatFullName(selected)))) {
               mergeMutation.mutate({ target: selected, source });
@@ -349,6 +446,7 @@ function MemberDetailModal({
   onClose,
   onResolveConflict,
   onMarkReviewed,
+  onKeepSeparate,
   onMerge,
   onDelete
 }: {
@@ -360,6 +458,7 @@ function MemberDetailModal({
   onClose: () => void;
   onResolveConflict: (field: string, value: string) => void;
   onMarkReviewed: () => void;
+  onKeepSeparate: (candidate: MemberRecord) => void;
   onMerge: (source: MemberRecord) => void;
   onDelete: () => void;
 }) {
@@ -434,14 +533,26 @@ function MemberDetailModal({
                         {reasonText}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-                      onClick={() => onMerge(candidate)}
-                    >
-                      {copy.mergeHere}
-                    </button>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {reason.kind === 'family-email' ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          onClick={() => onKeepSeparate(candidate)}
+                        >
+                          {copy.keepSeparate}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                        onClick={() => onMerge(candidate)}
+                      >
+                        {copy.mergeHere}
+                      </button>
+                    </div>
                   </div>
                 );
               })}

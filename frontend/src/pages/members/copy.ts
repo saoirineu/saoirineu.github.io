@@ -4,6 +4,12 @@ import type { MemberSourceFile, MemberTextField } from '../../lib/members';
 export type MembersCopy = {
   title: string;
   subtitle: (total: number, flagged: number) => string;
+  summaryMembers: string;
+  summaryToReview: string;
+  summaryConflicts: string;
+  summaryDuplicates: string;
+  summaryFamilyEmail: string;
+  summaryDuplicateInImport: string;
   search: string;
   searchPlaceholder: string;
   status: string;
@@ -19,6 +25,10 @@ export type MembersCopy = {
   sourceCertificates: string;
   sort: string;
   sortReviewFirst: string;
+  sortFieldConflict: string;
+  sortDuplicateInImport: string;
+  sortFamilyEmail: string;
+  sortNonFamilyConflict: string;
   sortNameAsc: string;
   sortNameDesc: string;
   colName: string;
@@ -48,7 +58,9 @@ export type MembersCopy = {
   markReviewed: string;
   remove: string;
   mergeHere: string;
+  keepSeparate: string;
   confirmMerge: (source: string, target: string) => string;
+  confirmKeepSeparate: (source: string, target: string) => string;
   confirmDelete: (name: string) => string;
   reason: Record<string, string>;
 };
@@ -65,6 +77,12 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     title: 'Sócios',
     subtitle: (total, flagged) =>
       `${total} sócios unificados das planilhas · ${flagged} marcados para revisão. Visualização restrita a administradores.`,
+    summaryMembers: 'Sócios',
+    summaryToReview: 'A revisar',
+    summaryConflicts: 'Conflitos',
+    summaryDuplicates: 'Duplicados',
+    summaryFamilyEmail: 'E-mail de família',
+    summaryDuplicateInImport: 'Duplicado no import',
     search: 'Buscar',
     searchPlaceholder: 'Nome, Codice Fiscale, e-mail, cidade',
     status: 'Situação',
@@ -80,6 +98,10 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     sourceCertificates: 'Certificados',
     sort: 'Ordenar',
     sortReviewFirst: 'A revisar primeiro',
+    sortFieldConflict: 'Conflito de campos primeiro',
+    sortDuplicateInImport: 'Duplicado no import primeiro',
+    sortFamilyEmail: 'E-mail de família primeiro',
+    sortNonFamilyConflict: 'Conflitos não familiares primeiro',
     sortNameAsc: 'Nome (A–Z)',
     sortNameDesc: 'Nome (Z–A)',
     colName: 'Nome',
@@ -109,7 +131,9 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     markReviewed: 'Marcar como revisado',
     remove: 'Apagar',
     mergeHere: 'Mesclar aqui',
+    keepSeparate: 'Manter separados',
     confirmMerge: (source, target) => `Mesclar "${source}" em "${target}"? O registro mesclado será apagado.`,
+    confirmKeepSeparate: (source, target) => `Manter "${source}" e "${target}" como sócios separados? O alerta de e-mail de família será removido.`,
     confirmDelete: name => `Apagar o sócio "${name}"?`,
     reason: {
       'field-conflict': 'Conflito de campos',
@@ -123,6 +147,12 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     title: 'Members',
     subtitle: (total, flagged) =>
       `${total} members unified from the spreadsheets · ${flagged} flagged for review. Admin-only view.`,
+    summaryMembers: 'Members',
+    summaryToReview: 'To review',
+    summaryConflicts: 'Conflicts',
+    summaryDuplicates: 'Duplicates',
+    summaryFamilyEmail: 'Family email',
+    summaryDuplicateInImport: 'Duplicate in import',
     search: 'Search',
     searchPlaceholder: 'Name, Codice Fiscale, email, city',
     status: 'Status',
@@ -138,6 +168,10 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     sourceCertificates: 'Certificates',
     sort: 'Sort',
     sortReviewFirst: 'To review first',
+    sortFieldConflict: 'Field conflict first',
+    sortDuplicateInImport: 'Duplicate in import first',
+    sortFamilyEmail: 'Family email first',
+    sortNonFamilyConflict: 'Non-family conflict first',
     sortNameAsc: 'Name (A–Z)',
     sortNameDesc: 'Name (Z–A)',
     colName: 'Name',
@@ -167,7 +201,9 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     markReviewed: 'Mark as reviewed',
     remove: 'Delete',
     mergeHere: 'Merge here',
+    keepSeparate: 'Keep separate',
     confirmMerge: (source, target) => `Merge "${source}" into "${target}"? The merged record will be deleted.`,
+    confirmKeepSeparate: (source, target) => `Keep "${source}" and "${target}" as separate members? The family-email flag will be cleared.`,
     confirmDelete: name => `Delete member "${name}"?`,
     reason: {
       'field-conflict': 'Field conflict',
@@ -181,6 +217,12 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     title: 'Socios',
     subtitle: (total, flagged) =>
       `${total} socios unificados de las planillas · ${flagged} marcados para revisión. Vista solo para administradores.`,
+    summaryMembers: 'Socios',
+    summaryToReview: 'Por revisar',
+    summaryConflicts: 'Conflictos',
+    summaryDuplicates: 'Duplicados',
+    summaryFamilyEmail: 'Correo familiar',
+    summaryDuplicateInImport: 'Duplicado en import',
     search: 'Buscar',
     searchPlaceholder: 'Nombre, Codice Fiscale, correo, ciudad',
     status: 'Situación',
@@ -196,6 +238,10 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     sourceCertificates: 'Certificados',
     sort: 'Ordenar',
     sortReviewFirst: 'Por revisar primero',
+    sortFieldConflict: 'Conflicto de campos primero',
+    sortDuplicateInImport: 'Duplicado en import primero',
+    sortFamilyEmail: 'Correo familiar primero',
+    sortNonFamilyConflict: 'Conflictos no familiares primero',
     sortNameAsc: 'Nombre (A–Z)',
     sortNameDesc: 'Nombre (Z–A)',
     colName: 'Nombre',
@@ -225,7 +271,9 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     markReviewed: 'Marcar como revisado',
     remove: 'Eliminar',
     mergeHere: 'Fusionar aquí',
+    keepSeparate: 'Mantener separados',
     confirmMerge: (source, target) => `¿Fusionar "${source}" en "${target}"? El registro fusionado será eliminado.`,
+    confirmKeepSeparate: (source, target) => `¿Mantener "${source}" y "${target}" como socios separados? Se quitará la alerta de correo familiar.`,
     confirmDelete: name => `¿Eliminar al socio "${name}"?`,
     reason: {
       'field-conflict': 'Conflicto de campos',
@@ -239,6 +287,12 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     title: 'Soci',
     subtitle: (total, flagged) =>
       `${total} soci unificati dai fogli · ${flagged} da revisionare. Vista riservata agli amministratori.`,
+    summaryMembers: 'Soci',
+    summaryToReview: 'Da revisionare',
+    summaryConflicts: 'Conflitti',
+    summaryDuplicates: 'Duplicati',
+    summaryFamilyEmail: 'E-mail di famiglia',
+    summaryDuplicateInImport: "Duplicato nell'import",
     search: 'Cerca',
     searchPlaceholder: 'Nome, Codice Fiscale, e-mail, città',
     status: 'Stato',
@@ -254,6 +308,10 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     sourceCertificates: 'Certificati',
     sort: 'Ordina',
     sortReviewFirst: 'Da revisionare prima',
+    sortFieldConflict: 'Conflitto di campi prima',
+    sortDuplicateInImport: "Duplicato nell'import prima",
+    sortFamilyEmail: 'E-mail di famiglia prima',
+    sortNonFamilyConflict: 'Conflitti non familiari prima',
     sortNameAsc: 'Nome (A–Z)',
     sortNameDesc: 'Nome (Z–A)',
     colName: 'Nome',
@@ -283,7 +341,9 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     markReviewed: 'Segna come revisionato',
     remove: 'Elimina',
     mergeHere: 'Unisci qui',
+    keepSeparate: 'Tieni separati',
     confirmMerge: (source, target) => `Unire "${source}" in "${target}"? Il record unito verrà eliminato.`,
+    confirmKeepSeparate: (source, target) => `Mantenere "${source}" e "${target}" come soci separati? Il flag e-mail di famiglia verrà rimosso.`,
     confirmDelete: name => `Eliminare il socio "${name}"?`,
     reason: {
       'field-conflict': 'Conflitto di campi',

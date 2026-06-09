@@ -11,6 +11,7 @@ import {
 const INFORMATIONAL_REVIEW_REASONS = ['duplicate-in-importer'];
 const DUPLICATE_REVIEW_REASONS = ['family-email', 'possible-duplicate'];
 const ACTIONABLE_PERSISTED_REVIEW_REASONS = ['certificate-only'];
+const DERIVED_REVIEW_REASONS = ['field-conflict', ...DUPLICATE_REVIEW_REASONS];
 
 export function formatFullName(record: Pick<MemberRecord, 'fullName' | 'surname' | 'firstName'>): string {
   if (record.fullName) return record.fullName;
@@ -131,6 +132,20 @@ function rememberSuperseeded(store: MemberSuperseeded, field: string, values: st
   if (existing.length) store[field] = existing;
 }
 
+function preservedReviewReasons(reviewReasons: string[]): string[] {
+  return reviewReasons.filter(reason => !DERIVED_REVIEW_REASONS.includes(reason));
+}
+
+function duplicateReviewReason(member: MemberRecord, candidate: MemberRecord): 'family-email' | 'possible-duplicate' {
+  return duplicateReason(member, candidate).kind === 'family-email' ? 'family-email' : 'possible-duplicate';
+}
+
+function duplicateReviewReasons(record: MemberRecord, duplicateCandidates: MemberRecord[]): string[] {
+  const reasons = new Set<string>(preservedReviewReasons(record.reviewReasons));
+  for (const candidate of duplicateCandidates) reasons.add(duplicateReviewReason(record, candidate));
+  return [...reasons];
+}
+
 /** Recompute review state from current conflicts / possible duplicates / sticky tags. */
 export function summarizeReview(
   record: Pick<MemberRecord, 'conflicts' | 'possibleDuplicateIds' | 'reviewReasons'>
@@ -172,6 +187,36 @@ export function applyConflictResolution(record: MemberRecord, field: string, val
     superseeded,
     reviewReasons: review.reviewReasons,
     needsReview: review.needsReview
+  };
+}
+
+export function dismissDuplicateLink(args: {
+  member: MemberRecord;
+  candidate: MemberRecord;
+  allMembers: MemberRecord[];
+}): { memberPatch: MemberPatch; candidatePatch: MemberPatch } {
+  const byId = new Map(args.allMembers.map(member => [member.id, member]));
+  const buildPatch = (record: MemberRecord, otherId: string): MemberPatch => {
+    const possibleDuplicateIds = record.possibleDuplicateIds.filter(id => id !== otherId);
+    const remainingCandidates = possibleDuplicateIds
+      .map(id => byId.get(id))
+      .filter((candidate): candidate is MemberRecord => Boolean(candidate));
+    const reviewReasons = duplicateReviewReasons(record, remainingCandidates);
+    const review = summarizeReview({
+      conflicts: record.conflicts,
+      possibleDuplicateIds,
+      reviewReasons
+    });
+    return {
+      possibleDuplicateIds,
+      reviewReasons: review.reviewReasons,
+      needsReview: review.needsReview
+    };
+  };
+
+  return {
+    memberPatch: buildPatch(args.member, args.candidate.id),
+    candidatePatch: buildPatch(args.candidate, args.member.id)
   };
 }
 

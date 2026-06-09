@@ -79,19 +79,32 @@ test('mergeGroup breaks ties by preferring cloud and dropping bare-numeric junk'
   assert.ok(!merged.reviewReasons.includes('field-conflict'));
 });
 
-test('mergeGroup keeps a conflict when ties cannot be broken (no cloud value)', () => {
+test('mergeGroup resolves no-date importer ties by preferring the later source entry', () => {
   const merged = mergeGroup('CF1', [
-    { source: { file: 'importer', code: '1' }, surname: 'Abbonati', city: 'Milano' },
-    { source: { file: 'importer', code: '9' }, surname: 'Abbondati', city: 'Roma', profession: 'X' }
+    { source: { file: 'importer', code: '1', line: 10 }, surname: 'Abbonati', city: 'Milano' },
+    { source: { file: 'importer', code: '9', line: 11 }, surname: 'Abbondati', city: 'Roma', profession: 'X' }
   ]);
-  // two importer rows, no dates, no cloud value to prefer → genuine conflict
-  assert.deepEqual(merged.conflicts.surname, ['Abbonati', 'Abbondati']);
-  assert.deepEqual(merged.conflicts.city, ['Milano', 'Roma']);
-  assert.equal(merged.superseeded.surname, undefined);
-  assert.equal(merged.superseeded.city, undefined);
+  assert.deepEqual(merged.conflicts, {});
+  assert.equal(merged.surname, 'Abbondati');
+  assert.equal(merged.city, 'Roma');
+  assert.deepEqual(merged.superseeded.surname, ['Abbonati']);
+  assert.deepEqual(merged.superseeded.city, ['Milano']);
   assert.equal(merged.profession, 'X'); // gap filled
-  assert.ok(merged.reviewReasons.includes('field-conflict'));
-  assert.ok(merged.reviewReasons.includes('duplicate-in-importer'));
+  assert.ok(!merged.reviewReasons.includes('field-conflict'));
+  assert.ok(!merged.reviewReasons.includes('duplicate-in-importer'));
+});
+
+test('buildMembers resolves same-date importer duplicates by later source entry', () => {
+  const importer = [
+    { source: { file: 'importer', code: '971', line: 975 }, surname: 'Colombo', firstName: 'Elisabetta', birthDate: '1990-12-17', city: 'Parabiago', registrationDate: '2015-03-30' },
+    { source: { file: 'importer', code: '972', line: 976 }, surname: 'Colombo', firstName: 'Elisabetta', birthDate: '1990-12-17', city: 'Dairago', registrationDate: '2015-03-30' }
+  ];
+
+  const { members } = buildMembers({ complete: [], importer, certificates: [] });
+  assert.equal(members.length, 1);
+  assert.equal(members[0].city, 'Dairago');
+  assert.deepEqual(members[0].superseeded.city, ['Parabiago']);
+  assert.equal(members[0].needsReview, false);
 });
 
 test('buildMembers does not flag clean importer duplicates when the newest entry wins', () => {

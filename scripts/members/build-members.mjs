@@ -256,6 +256,22 @@ function preferredCompleteTypoItem(field, items) {
   return otherItems.every(item => isTrustedCloudTypoVariant(field, trusted.value, item.value)) ? trusted : null;
 }
 
+function sourceSequence(record, index) {
+  const line = record.source?.line;
+  if (typeof line === 'number' && Number.isFinite(line)) return line;
+  const numericCode = Number(record.source?.code);
+  if (Number.isFinite(numericCode)) return numericCode;
+  return index + 1;
+}
+
+function compareCandidateRecency(left, right) {
+  if (left.date < right.date) return 1;
+  if (left.date > right.date) return -1;
+  if (left.sequence < right.sequence) return 1;
+  if (left.sequence > right.sequence) return -1;
+  return 0;
+}
+
 // ---------------------------------------------------------------------------
 // Sheet reading
 // ---------------------------------------------------------------------------
@@ -537,10 +553,11 @@ export function mergeGroup(id, records) {
   // Per field: normalized value -> { value, date, fromComplete } keeping the
   // most recent date and whether COMPLETO (the cloud registry) carried it.
   const candidates = {};
-  for (const record of records) {
+  for (const [index, record] of records.entries()) {
     if (record.source) sources.push(record.source);
     const date = recencyOf(record);
     const fromComplete = record.source?.file === 'complete';
+    const sequence = sourceSequence(record, index);
     for (const field of MERGE_FIELDS) {
       const value = record[field];
       if (value === undefined || value === '') continue;
@@ -548,11 +565,12 @@ export function mergeGroup(id, records) {
       if (!candidates[field]) candidates[field] = new Map();
       const existing = candidates[field].get(key);
       if (!existing) {
-        candidates[field].set(key, { value, date, fromComplete });
+        candidates[field].set(key, { value, date, fromComplete, sequence });
       } else {
-        if (date > existing.date) {
+        if (compareCandidateRecency({ value, date, fromComplete, sequence }, existing) < 0) {
           existing.date = date;
           existing.value = value; // freshest representation of the same value
+          existing.sequence = sequence;
         }
         existing.fromComplete = existing.fromComplete || fromComplete;
       }
@@ -567,7 +585,7 @@ export function mergeGroup(id, records) {
       merged[field] = items[0].value;
       continue;
     }
-    items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    items.sort(compareCandidateRecency);
     const trustedComplete = preferredCompleteTypoItem(field, items);
     if (trustedComplete) {
       merged[field] = trustedComplete.value;
@@ -602,8 +620,10 @@ export function mergeGroup(id, records) {
       rememberSuperseeded(superseeded, field, pool[0].value, items.map(item => item.value));
       tieResolved += 1;
     } else {
-      merged[field] = items[0].value; // genuinely ambiguous → manual review
-      conflicts[field] = items.map(item => item.value);
+      pool.sort((left, right) => right.sequence - left.sequence);
+      merged[field] = pool[0].value; // later source entry wins when dates tie or are missing
+      rememberSuperseeded(superseeded, field, pool[0].value, items.map(item => item.value));
+      tieResolved += 1;
     }
   }
 
@@ -896,7 +916,7 @@ export function buildReport(members, certStats, counts, duplicateCertificates = 
   for (const [reason, count] of Object.entries(reasonHist).sort((a, b) => b[1] - a[1])) {
     lines.push(`  - ${reason}: ${count}`);
   }
-  lines.push('', '## Remaining field conflicts (date tie / no date — left for manual review)', '');
+  lines.push('', '## Remaining field conflicts', '');
   const conflictRows = Object.entries(conflictFields).sort((a, b) => b[1] - a[1]);
   if (conflictRows.length === 0) lines.push('- none');
   for (const [field, count] of conflictRows) lines.push(`- ${field}: ${count}`);

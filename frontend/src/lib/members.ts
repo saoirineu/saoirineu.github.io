@@ -151,3 +151,23 @@ export async function commitMemberMerge(args: {
   batch.delete(doc(membersRef, args.sourceId));
   await batch.commit();
 }
+
+export async function commitDuplicateSeparation(args: {
+  leftId: string;
+  leftData: MemberPatch;
+  rightId: string;
+  rightData: MemberPatch;
+}): Promise<void> {
+  const batch = writeBatch(db);
+  batch.set(
+    doc(membersRef, args.leftId),
+    { ...removeUndefinedDeep(args.leftData), updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+  batch.set(
+    doc(membersRef, args.rightId),
+    { ...removeUndefinedDeep(args.rightData), updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+  await batch.commit();
+}
