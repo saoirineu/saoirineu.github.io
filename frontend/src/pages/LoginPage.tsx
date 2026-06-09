@@ -18,6 +18,7 @@ const copyByLocale = {
     google: 'Entrar com Google',
     signInError: 'Erro ao autenticar.',
     googleError: 'Erro ao autenticar com Google.',
+    verificationSent: 'Conta criada. Verifique sua caixa de entrada e confirme o email antes de entrar.',
     newHere: 'Novo por aqui?',
     alreadyHave: 'Já tem conta?',
     switchToSignUp: 'Criar conta',
@@ -35,6 +36,7 @@ const copyByLocale = {
     google: 'Continue with Google',
     signInError: 'Authentication failed.',
     googleError: 'Google authentication failed.',
+    verificationSent: 'Account created. Check your inbox and confirm your email before signing in.',
     newHere: 'New here?',
     alreadyHave: 'Already have an account?',
     switchToSignUp: 'Create account',
@@ -52,6 +54,7 @@ const copyByLocale = {
     google: 'Entrar con Google',
     signInError: 'Error al autenticar.',
     googleError: 'Error al autenticar con Google.',
+    verificationSent: 'Cuenta creada. Revise su bandeja de entrada y confirme el correo antes de entrar.',
     newHere: '¿Nuevo por aquí?',
     alreadyHave: '¿Ya tiene cuenta?',
     switchToSignUp: 'Crear cuenta',
@@ -69,6 +72,7 @@ const copyByLocale = {
     google: 'Accedi con Google',
     signInError: 'Errore di autenticazione.',
     googleError: 'Errore durante l\'autenticazione con Google.',
+    verificationSent: 'Account creato. Controlla la casella di posta e conferma l\'email prima di accedere.',
     newHere: 'Sei nuovo qui?',
     alreadyHave: 'Hai già un account?',
     switchToSignUp: 'Crea account',
@@ -89,20 +93,25 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleEmail = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setNotice(null);
 
     try {
       if (mode === 'signin') {
         await emailSignIn(email, password);
+        navigate(from, { replace: true });
       } else {
         await emailSignUp(email, password);
+        setMode('signin');
+        setPassword('');
+        setNotice(copy.verificationSent);
       }
-      navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.signInError);
     } finally {
@@ -113,6 +122,7 @@ export function LoginPage() {
   const handleGoogle = async () => {
     setSubmitting(true);
     setError(null);
+    setNotice(null);
     try {
       await signInWithGoogle();
       navigate(from, { replace: true });
@@ -197,6 +207,7 @@ export function LoginPage() {
           <span>{copy.google}</span>
         </button>
 
+        {notice && <p className="mt-4 text-sm text-green-700">{notice}</p>}
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
         <div className="mt-6 text-center text-sm text-[color:rgba(36,54,77,0.72)]">
@@ -204,7 +215,11 @@ export function LoginPage() {
           <button
             type="button"
             className="ml-2 font-semibold text-[color:var(--brand-blue-deep)] underline decoration-[color:var(--brand-gold)] underline-offset-4"
-            onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+            onClick={() => {
+              setMode(mode === 'signin' ? 'signup' : 'signin');
+              setError(null);
+              setNotice(null);
+            }}
           >
             {mode === 'signin' ? copy.switchToSignUp : copy.switchToSignIn}
           </button>

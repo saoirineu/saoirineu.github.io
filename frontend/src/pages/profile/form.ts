@@ -5,11 +5,46 @@ import type { UserProfile } from '../../lib/users';
 export type ProfileFormState = {
   displayName: string;
   email: string;
+  email2: string;
   phone: string;
+  mobile: string;
   avatarUrl: string;
+  memberId: string;
+  surname: string;
+  firstName: string;
+  fullName: string;
+  fiscalCode: string;
+  sex: string;
+  birthDate: string;
+  birthPlace: string;
+  birthProvince: string;
+  birthCountry: string;
+  citizenship: string;
+  nationality: string;
+  address: string;
+  postalCode: string;
   city: string;
   state: string;
+  province: string;
+  region: string;
   country: string;
+  profession: string;
+  memberCode: string;
+  memberStatus: string;
+  group: string;
+  category: string;
+  cardNumber: string;
+  cardExpiry: string;
+  referenceSeat: string;
+  originSociety: string;
+  registrationRequestDate: string;
+  registrationDate: string;
+  renewalDate: string;
+  cancellationDate: string;
+  firstWorkDate: string;
+  identityDocumentPrimaryName: string;
+  identityDocumentSecondaryName: string;
+  membershipFeeAmount: string;
   currentChurchId: string;
   currentChurchName: string;
   originChurchName: string;
@@ -35,11 +70,46 @@ export type ProfileFormFieldSetter = <K extends keyof ProfileFormState>(
 export const initialProfileForm: ProfileFormState = {
   displayName: '',
   email: '',
+  email2: '',
   phone: '',
+  mobile: '',
   avatarUrl: '',
+  memberId: '',
+  surname: '',
+  firstName: '',
+  fullName: '',
+  fiscalCode: '',
+  sex: '',
+  birthDate: '',
+  birthPlace: '',
+  birthProvince: '',
+  birthCountry: '',
+  citizenship: '',
+  nationality: '',
+  address: '',
+  postalCode: '',
   city: '',
   state: '',
+  province: '',
+  region: '',
   country: '',
+  profession: '',
+  memberCode: '',
+  memberStatus: '',
+  group: '',
+  category: '',
+  cardNumber: '',
+  cardExpiry: '',
+  referenceSeat: '',
+  originSociety: '',
+  registrationRequestDate: '',
+  registrationDate: '',
+  renewalDate: '',
+  cancellationDate: '',
+  firstWorkDate: '',
+  identityDocumentPrimaryName: '',
+  identityDocumentSecondaryName: '',
+  membershipFeeAmount: '',
   currentChurchId: '',
   currentChurchName: '',
   originChurchName: '',
@@ -73,11 +143,46 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
   return {
     displayName: profile?.displayName || user.displayName || '',
     email: user.email || profile?.email || '',
+    email2: profile?.email2 || '',
     phone: profile?.phone || '',
+    mobile: profile?.mobile || '',
     avatarUrl: profile?.avatarUrl || '',
+    memberId: profile?.memberId || '',
+    surname: profile?.surname || '',
+    firstName: profile?.firstName || '',
+    fullName: profile?.fullName || '',
+    fiscalCode: profile?.fiscalCode || '',
+    sex: profile?.sex || '',
+    birthDate: profile?.birthDate || '',
+    birthPlace: profile?.birthPlace || '',
+    birthProvince: profile?.birthProvince || '',
+    birthCountry: profile?.birthCountry || '',
+    citizenship: profile?.citizenship || '',
+    nationality: profile?.nationality || '',
+    address: profile?.address || '',
+    postalCode: profile?.postalCode || '',
     city: profile?.city || '',
     state: profile?.state || '',
+    province: profile?.province || '',
+    region: profile?.region || '',
     country: profile?.country || '',
+    profession: profile?.profession || '',
+    memberCode: profile?.memberCode || '',
+    memberStatus: profile?.memberStatus || '',
+    group: profile?.group || '',
+    category: profile?.category || '',
+    cardNumber: profile?.cardNumber || '',
+    cardExpiry: profile?.cardExpiry || '',
+    referenceSeat: profile?.referenceSeat || '',
+    originSociety: profile?.originSociety || '',
+    registrationRequestDate: profile?.registrationRequestDate || '',
+    registrationDate: profile?.registrationDate || '',
+    renewalDate: profile?.renewalDate || '',
+    cancellationDate: profile?.cancellationDate || '',
+    firstWorkDate: profile?.firstWorkDate || '',
+    identityDocumentPrimaryName: profile?.identityDocumentPrimaryName || '',
+    identityDocumentSecondaryName: profile?.identityDocumentSecondaryName || '',
+    membershipFeeAmount: profile?.membershipFeeAmount || '',
     currentChurchId: profile?.currentChurchId || '',
     currentChurchName: profile?.currentChurchName || '',
     originChurchName: profile?.originChurchName || '',
@@ -106,11 +211,46 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     uid: user.uid,
     displayName: form.displayName || undefined,
     email: form.email || user.email || undefined,
+    email2: form.email2 || undefined,
     phone: form.phone || undefined,
+    mobile: form.mobile || undefined,
     avatarUrl: form.avatarUrl || undefined,
+    memberId: form.memberId || undefined,
+    surname: form.surname || undefined,
+    firstName: form.firstName || undefined,
+    fullName: form.fullName || undefined,
+    fiscalCode: form.fiscalCode || undefined,
+    sex: form.sex || undefined,
+    birthDate: form.birthDate || undefined,
+    birthPlace: form.birthPlace || undefined,
+    birthProvince: form.birthProvince || undefined,
+    birthCountry: form.birthCountry || undefined,
+    citizenship: form.citizenship || undefined,
+    nationality: form.nationality || undefined,
+    address: form.address || undefined,
+    postalCode: form.postalCode || undefined,
     city: form.city || undefined,
     state: form.state || undefined,
+    province: form.province || undefined,
+    region: form.region || undefined,
     country: form.country || undefined,
+    profession: form.profession || undefined,
+    memberCode: form.memberCode || undefined,
+    memberStatus: form.memberStatus || undefined,
+    group: form.group || undefined,
+    category: form.category || undefined,
+    cardNumber: form.cardNumber || undefined,
+    cardExpiry: form.cardExpiry || undefined,
+    referenceSeat: form.referenceSeat || undefined,
+    originSociety: form.originSociety || undefined,
+    registrationRequestDate: form.registrationRequestDate || undefined,
+    registrationDate: form.registrationDate || undefined,
+    renewalDate: form.renewalDate || undefined,
+    cancellationDate: form.cancellationDate || undefined,
+    firstWorkDate: form.firstWorkDate || undefined,
+    identityDocumentPrimaryName: form.identityDocumentPrimaryName || undefined,
+    identityDocumentSecondaryName: form.identityDocumentSecondaryName || undefined,
+    membershipFeeAmount: form.membershipFeeAmount || undefined,
     currentChurchId: form.currentChurchId || undefined,
     currentChurchName: form.currentChurchName || undefined,
     originChurchName: form.originChurchName || undefined,

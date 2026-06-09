@@ -88,9 +88,9 @@ function App() {
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route element={<DevOnlyRoute />}>
               <Route path="/churches" element={<ChurchesPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/hymnals" element={<HymnsPage />} />
               <Route path="/works" element={<WorksPage />} />

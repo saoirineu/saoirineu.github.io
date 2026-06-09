@@ -12,11 +12,11 @@ type NavCopy = typeof copyByLocale.pt;
 type NavCopyKey = keyof NavCopy;
 
 const stableLinks: Array<{ to: string; key: NavCopyKey }> = [
-  { to: '/', key: 'home' }
+  { to: '/', key: 'home' },
+  { to: '/profile', key: 'profile' }
 ];
 
 const devLinks: Array<{ to: string; key: NavCopyKey }> = [
-  { to: '/profile', key: 'profile' },
   { to: '/churches', key: 'churches' },
   { to: '/people', key: 'people' },
   { to: '/hymnals', key: 'hymns' },

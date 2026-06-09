@@ -38,6 +38,15 @@ service cloud.firestore {
       return isAdmin() || hasStoredRole('custodian');
     }
 
+    function isOwnMemberRecord() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && (
+          resource.data.email == request.auth.token.email
+          || resource.data.email2 == request.auth.token.email
+        );
+    }
+
     function hasValidUserSystemRole() {
       return !request.resource.data.keys().hasAny(['systemRole'])
         || request.resource.data.systemRole in ['user', 'admin', 'superadmin', 'custodian'];
@@ -292,9 +301,10 @@ service cloud.firestore {
     }
 
     // Association members ("soci") unified from the registry/import spreadsheets.
-    // Holds personal data (tax codes, addresses), so it is admin-only.
+    // Holds personal data (tax codes, addresses), so general browsing stays admin-only.
+    // A signed-in user may read only the member document tied to their auth email for profile prefill.
     match /members/{id} {
-      allow read: if isAdmin();
+      allow get, list: if isAdmin() || isOwnMemberRecord();
       allow create, update, delete: if isAdmin();
     }
 

@@ -11,15 +11,59 @@ type BaseSectionProps = {
   setField: ProfileFormFieldSetter;
 };
 
+type TextProfileField = {
+  [K in keyof ProfileFormState]: ProfileFormState[K] extends string ? K : never;
+}[keyof ProfileFormState];
+
 export type ProfileSectionsCopy = {
+  identity: string;
+  residence: string;
+  association: string;
+  memberLinked: string;
   name: string;
   yourName: string;
+  firstName: string;
+  surname: string;
+  fullName: string;
   email: string;
+  email2: string;
   phone: string;
+  mobile: string;
   optional: string;
+  fiscalCode: string;
+  sex: string;
+  sexFemale: string;
+  sexMale: string;
+  birthDate: string;
+  birthPlace: string;
+  birthProvince: string;
+  birthCountry: string;
+  citizenship: string;
+  nationality: string;
+  address: string;
+  postalCode: string;
   city: string;
   state: string;
+  province: string;
+  region: string;
   country: string;
+  profession: string;
+  memberCode: string;
+  memberStatus: string;
+  group: string;
+  category: string;
+  cardNumber: string;
+  cardExpiry: string;
+  referenceSeat: string;
+  originSociety: string;
+  registrationRequestDate: string;
+  registrationDate: string;
+  renewalDate: string;
+  cancellationDate: string;
+  firstWorkDate: string;
+  identityDocumentPrimary: string;
+  identityDocumentSecondary: string;
+  membershipFeeAmount: string;
   avatar: string;
   avatarUrl: string;
   useGooglePhoto: string;
@@ -53,6 +97,33 @@ function selectChurchName(churches: ChurchInfo[] | undefined, id: string) {
   return churches?.find(church => church.id === id)?.name ?? '';
 }
 
+function TextInput<K extends TextProfileField>({
+  field,
+  form,
+  label,
+  placeholder,
+  setField,
+  type = 'text'
+}: BaseSectionProps & {
+  field: K;
+  label: string;
+  placeholder?: string;
+  type?: 'date' | 'email' | 'number' | 'text';
+}) {
+  return (
+    <label className="text-sm text-slate-700">
+      {label}
+      <input
+        type={type}
+        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        value={form[field]}
+        onChange={event => setField(field, event.target.value as ProfileFormState[K])}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
 export function ProfilePersonalSection({
   avatarUrl,
   copy,
@@ -65,15 +136,12 @@ export function ProfilePersonalSection({
   return (
     <div className="grid gap-4 rounded-lg bg-slate-100 p-3 sm:grid-cols-[1fr,240px]">
       <div className="space-y-3">
-        <label className="text-sm text-slate-700">
-          {copy.name}
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.displayName}
-            onChange={event => setField('displayName', event.target.value)}
-            placeholder={copy.yourName}
-          />
-        </label>
+        <TextInput copy={copy} field="displayName" form={form} label={copy.name} placeholder={copy.yourName} setField={setField} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <TextInput copy={copy} field="firstName" form={form} label={copy.firstName} setField={setField} />
+          <TextInput copy={copy} field="surname" form={form} label={copy.surname} setField={setField} />
+          <TextInput copy={copy} field="fullName" form={form} label={copy.fullName} setField={setField} />
+        </div>
         <label className="text-sm text-slate-700">
           {copy.email}
           <input
@@ -82,40 +150,10 @@ export function ProfilePersonalSection({
             readOnly
           />
         </label>
-        <label className="text-sm text-slate-700">
-          {copy.phone}
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.phone}
-            onChange={event => setField('phone', event.target.value)}
-            placeholder={copy.optional}
-          />
-        </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="text-sm text-slate-700">
-            {copy.city}
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.city}
-              onChange={event => setField('city', event.target.value)}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            {copy.state}
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.state}
-              onChange={event => setField('state', event.target.value)}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            {copy.country}
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.country}
-              onChange={event => setField('country', event.target.value)}
-            />
-          </label>
+          <TextInput copy={copy} field="email2" form={form} label={copy.email2} setField={setField} type="email" />
+          <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} />
+          <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} placeholder={copy.optional} setField={setField} />
         </div>
       </div>
       <div className="flex flex-col items-center gap-3 rounded-lg bg-white/60 p-3 shadow-sm">
@@ -144,6 +182,88 @@ export function ProfilePersonalSection({
         ) : null}
       </div>
     </div>
+  );
+}
+
+export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProps) {
+  return (
+    <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-900">{copy.identity}</h2>
+        {form.memberId ? (
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+            {copy.memberLinked}: {form.memberId}
+          </span>
+        ) : null}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <TextInput copy={copy} field="fiscalCode" form={form} label={copy.fiscalCode} setField={setField} />
+        <label className="text-sm text-slate-700">
+          {copy.sex}
+          <select
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            value={form.sex}
+            onChange={event => setField('sex', event.target.value)}
+          >
+            <option value="">{copy.selectPlaceholder}</option>
+            <option value="F">{copy.sexFemale}</option>
+            <option value="M">{copy.sexMale}</option>
+          </select>
+        </label>
+        <TextInput copy={copy} field="birthDate" form={form} label={copy.birthDate} setField={setField} type="date" />
+        <TextInput copy={copy} field="birthPlace" form={form} label={copy.birthPlace} setField={setField} />
+        <TextInput copy={copy} field="birthProvince" form={form} label={copy.birthProvince} setField={setField} />
+        <TextInput copy={copy} field="birthCountry" form={form} label={copy.birthCountry} setField={setField} />
+        <TextInput copy={copy} field="citizenship" form={form} label={copy.citizenship} setField={setField} />
+        <TextInput copy={copy} field="nationality" form={form} label={copy.nationality} setField={setField} />
+        <TextInput copy={copy} field="profession" form={form} label={copy.profession} setField={setField} />
+      </div>
+    </section>
+  );
+}
+
+export function ProfileResidenceSection({ copy, form, setField }: BaseSectionProps) {
+  return (
+    <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+      <h2 className="text-sm font-semibold text-slate-900">{copy.residence}</h2>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <TextInput copy={copy} field="address" form={form} label={copy.address} setField={setField} />
+        </div>
+        <TextInput copy={copy} field="postalCode" form={form} label={copy.postalCode} setField={setField} />
+        <TextInput copy={copy} field="city" form={form} label={copy.city} setField={setField} />
+        <TextInput copy={copy} field="province" form={form} label={copy.province} setField={setField} />
+        <TextInput copy={copy} field="state" form={form} label={copy.state} setField={setField} />
+        <TextInput copy={copy} field="region" form={form} label={copy.region} setField={setField} />
+        <TextInput copy={copy} field="country" form={form} label={copy.country} setField={setField} />
+      </div>
+    </section>
+  );
+}
+
+export function ProfileAssociationSection({ copy, form, setField }: BaseSectionProps) {
+  return (
+    <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+      <h2 className="text-sm font-semibold text-slate-900">{copy.association}</h2>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <TextInput copy={copy} field="memberCode" form={form} label={copy.memberCode} setField={setField} />
+        <TextInput copy={copy} field="memberStatus" form={form} label={copy.memberStatus} setField={setField} />
+        <TextInput copy={copy} field="group" form={form} label={copy.group} setField={setField} />
+        <TextInput copy={copy} field="category" form={form} label={copy.category} setField={setField} />
+        <TextInput copy={copy} field="cardNumber" form={form} label={copy.cardNumber} setField={setField} />
+        <TextInput copy={copy} field="cardExpiry" form={form} label={copy.cardExpiry} setField={setField} />
+        <TextInput copy={copy} field="referenceSeat" form={form} label={copy.referenceSeat} setField={setField} />
+        <TextInput copy={copy} field="originSociety" form={form} label={copy.originSociety} setField={setField} />
+        <TextInput copy={copy} field="registrationRequestDate" form={form} label={copy.registrationRequestDate} setField={setField} type="date" />
+        <TextInput copy={copy} field="registrationDate" form={form} label={copy.registrationDate} setField={setField} type="date" />
+        <TextInput copy={copy} field="renewalDate" form={form} label={copy.renewalDate} setField={setField} type="date" />
+        <TextInput copy={copy} field="cancellationDate" form={form} label={copy.cancellationDate} setField={setField} type="date" />
+        <TextInput copy={copy} field="firstWorkDate" form={form} label={copy.firstWorkDate} setField={setField} type="date" />
+        <TextInput copy={copy} field="identityDocumentPrimaryName" form={form} label={copy.identityDocumentPrimary} setField={setField} />
+        <TextInput copy={copy} field="identityDocumentSecondaryName" form={form} label={copy.identityDocumentSecondary} setField={setField} />
+        <TextInput copy={copy} field="membershipFeeAmount" form={form} label={copy.membershipFeeAmount} setField={setField} type="number" />
+      </div>
+    </section>
   );
 }
 

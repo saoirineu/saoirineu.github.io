@@ -5,14 +5,12 @@
 ### usuarios (perfil do auth)
 - uid (igual ao auth)
 - systemRole: `user` | `admin` | `superadmin`
-- nomeExibicao
-- email
-- fardado: bool
-- fardadoDesde: date?
-- fardadoPor: ref(pessoas)?
-- igrejaFardamento: ref(igrejas)?
-- igrejasVinculos: ref[](igrejas)
-- papeis: string[] (rótulos SKOS/OWL; ex.: "padrinho", "fardado", "membro")
+- displayName, email, email2, phone, mobile, avatarUrl
+- memberId: id do documento em `members` usado para preencher o perfil quando o e-mail de login coincide
+- identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex, birthDate, birthPlace, birthProvince, birthCountry, citizenship, nationality, profession
+- residencia Cloud32/socio: address, postalCode, city, province, state, region, country
+- associacao Cloud32/socio: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, registrationRequestDate, registrationDate, renewalDate, cancellationDate, firstWorkDate, identityDocumentPrimaryName, identityDocumentSecondaryName, membershipFeeAmount
+- doutrina: isInitiated, initiationDate, initiationVenue, initiationChurchId, initiationChurchName, initiatorName, initiatedWith, isSponsor, sponsorChurchIds, sponsorChurchNames, currentChurchId, currentChurchName, originChurchName, doctrineRoles, observations
 - createdAt, updatedAt
 
 ### pessoas

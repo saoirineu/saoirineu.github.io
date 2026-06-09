@@ -15,6 +15,11 @@ describe('profile form helpers', () => {
       uid: 'user-1',
       displayName: 'Nome Perfil',
       email: 'perfil@example.com',
+      firstName: 'Maria',
+      surname: 'Rossi',
+      fiscalCode: 'CF123',
+      birthDate: '1980-01-02',
+      address: 'Via Roma 1',
       currentChurchId: 'igreja-1',
       currentChurchName: 'Igreja Atual',
       sponsorChurchIds: ['i1'],
@@ -24,6 +29,9 @@ describe('profile form helpers', () => {
 
     expect(form.displayName).toBe('Nome Perfil');
     expect(form.email).toBe('auth@example.com');
+    expect(form.firstName).toBe('Maria');
+    expect(form.fiscalCode).toBe('CF123');
+    expect(form.address).toBe('Via Roma 1');
     expect(form.currentChurchName).toBe('Igreja Atual');
     expect(form.sponsorChurchesText).toBe('Igreja Madrinha');
     expect(form.doctrineRolesText).toBe('fiscal, apoio');
@@ -34,6 +42,15 @@ describe('profile form helpers', () => {
       ...initialProfileForm,
       displayName: 'Nome Form',
       email: '',
+      firstName: 'Maria',
+      surname: 'Rossi',
+      fiscalCode: 'CF123',
+      birthDate: '1980-01-02',
+      address: 'Via Roma 1',
+      postalCode: '00100',
+      city: 'Roma',
+      province: 'RM',
+      profession: 'Insegnante',
       isInitiated: true,
       initiationDate: '2020-01-01',
       initiationChurchId: 'igreja-farda',
@@ -46,6 +63,10 @@ describe('profile form helpers', () => {
 
     expect(payload.uid).toBe('user-1');
     expect(payload.email).toBe('auth@example.com');
+    expect(payload.firstName).toBe('Maria');
+    expect(payload.fiscalCode).toBe('CF123');
+    expect(payload.address).toBe('Via Roma 1');
+    expect(payload.province).toBe('RM');
     expect(payload.isInitiated).toBe(true);
     expect(payload.isSponsor).toBe(true);
     expect(payload.sponsorChurchIds).toEqual(['i1']);

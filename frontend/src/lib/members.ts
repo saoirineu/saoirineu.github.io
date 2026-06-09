@@ -1,4 +1,15 @@
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch
+} from 'firebase/firestore';
 
 import { db } from './firebase';
 import {
@@ -108,6 +119,30 @@ export function mapMember(id: string, value: unknown): MemberRecord {
 export async function fetchMembers(): Promise<MemberRecord[]> {
   const snapshot = await getDocs(membersRef);
   return snapshot.docs.map(docSnap => mapMember(docSnap.id, docSnap.data()));
+}
+
+function uniqueMembersById(members: MemberRecord[]): MemberRecord[] {
+  const seen = new Set<string>();
+  return members.filter(member => {
+    if (seen.has(member.id)) return false;
+    seen.add(member.id);
+    return true;
+  });
+}
+
+export async function fetchMembersByEmail(email: string): Promise<MemberRecord[]> {
+  const normalizedEmail = email.trim();
+  if (!normalizedEmail) return [];
+
+  const [primarySnapshot, secondarySnapshot] = await Promise.all([
+    getDocs(query(membersRef, where('email', '==', normalizedEmail), limit(5))),
+    getDocs(query(membersRef, where('email2', '==', normalizedEmail), limit(5)))
+  ]);
+
+  return uniqueMembersById([
+    ...primarySnapshot.docs.map(docSnap => mapMember(docSnap.id, docSnap.data())),
+    ...secondarySnapshot.docs.map(docSnap => mapMember(docSnap.id, docSnap.data()))
+  ]);
 }
 
 /** Apply a partial field update, refreshing updatedAt. */
