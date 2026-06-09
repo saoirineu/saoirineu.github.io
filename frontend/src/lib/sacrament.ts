@@ -200,6 +200,14 @@ export async function fetchTransactions(itemId: string): Promise<SacramentTransa
   return txs.sort((a, b) => b.date.localeCompare(a.date));
 }
 
+export async function fetchTransactionsByStock(stockId: string): Promise<SacramentTransaction[]> {
+  const snap = await getDocs(
+    query(transactionsRef, where('stockId', '==', stockId)),
+  );
+  const txs = snap.docs.map(d => mapTransaction(d.id, d.data()));
+  return txs.sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export async function createTransaction(
   data: Omit<SacramentTransaction, 'id'>,
 ): Promise<string> {

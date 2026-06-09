@@ -333,7 +333,8 @@ service cloud.firestore {
 
     match /sacramentStocks/{id} {
       allow read: if isSignedIn();
-      allow create, update: if isCustodianOrHigher();
+      allow create: if isAdmin();
+      allow update: if isCustodianOrHigher();
       allow delete: if isAdmin();
     }
 

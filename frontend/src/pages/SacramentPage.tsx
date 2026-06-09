@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -12,6 +12,7 @@ import {
   fetchItems,
   fetchStocks,
   fetchTransactions,
+  fetchTransactionsByStock,
   updateTransaction,
   type SacramentForm,
   type SacramentItem,
@@ -48,8 +49,9 @@ const copyByLocale = {
     form: 'Forma',
     liquid: 'Líquida',
     gel: 'Gel',
-    originChurch: 'Igreja de origem',
+    originChurch: 'Casa de Feitio',
     selectChurch: 'Selecionar igreja...',
+    selectCasa: 'Selecionar casa...',
     responsiblePerson: 'Responsável',
     feitioDate: 'Data do feitio',
     feitioPeriod: 'Período de feitio',
@@ -97,8 +99,9 @@ const copyByLocale = {
     form: 'Form',
     liquid: 'Liquid',
     gel: 'Gel',
-    originChurch: 'Origin church',
+    originChurch: 'Casa de Feitio',
     selectChurch: 'Select church...',
+    selectCasa: 'Select casa...',
     responsiblePerson: 'Responsible',
     feitioDate: 'Feitio date',
     feitioPeriod: 'Feitio period',
@@ -146,8 +149,9 @@ const copyByLocale = {
     form: 'Forma',
     liquid: 'Líquida',
     gel: 'Gel',
-    originChurch: 'Iglesia de origen',
+    originChurch: 'Casa de Feitio',
     selectChurch: 'Seleccionar iglesia...',
+    selectCasa: 'Seleccionar casa...',
     responsiblePerson: 'Responsable',
     feitioDate: 'Fecha del feitio',
     feitioPeriod: 'Período del feitio',
@@ -195,8 +199,9 @@ const copyByLocale = {
     form: 'Forma',
     liquid: 'Liquida',
     gel: 'Gel',
-    originChurch: 'Chiesa di origine',
+    originChurch: 'Casa de Feitio',
     selectChurch: 'Seleziona chiesa...',
+    selectCasa: 'Seleziona casa...',
     responsiblePerson: 'Responsabile',
     feitioDate: 'Data del feitio',
     feitioPeriod: 'Periodo del feitio',
@@ -236,6 +241,55 @@ function inputCls(extra = '') {
 
 function labelCls() {
   return 'block text-xs font-medium text-slate-500 mb-0.5';
+}
+
+function toFeitioMonth(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+  const month = trimmed.match(/^(\d{4}-\d{2})/);
+  return month?.[1] ?? trimmed;
+}
+
+function formatFeitioMonth(item: SacramentItem) {
+  const start = toFeitioMonth(item.feitioDate);
+  const end = toFeitioMonth(item.feitioDateEnd);
+
+  if (start && end && start !== end) {
+    return `${start} → ${end}`;
+  }
+
+  return start || end || '—';
+}
+
+function formatQuantity(value: number, unit: string) {
+  return `${value.toFixed(2)} ${unit}`;
+}
+
+function buildBalanceByItem(transactions: SacramentTransaction[]) {
+  return transactions.reduce((balances, tx) => {
+    const current = balances.get(tx.itemId) ?? 0;
+    balances.set(tx.itemId, current + (tx.type === 'entry' ? tx.quantity : -tx.quantity));
+    return balances;
+  }, new Map<string, number>());
+}
+
+function getStockSummary(items: SacramentItem[], balanceByItem: Map<string, number>) {
+  return items.reduce(
+    (summary, item) => {
+      const balance = balanceByItem.get(item.id) ?? 0;
+      if (item.form === 'gel') {
+        summary.kg += balance;
+      } else {
+        summary.liters += balance;
+      }
+      return summary;
+    },
+    { liters: 0, kg: 0 },
+  );
+}
+
+function getItemUnit(item: SacramentItem, copy: Copy) {
+  return item.form === 'gel' ? copy.kg : copy.liters;
 }
 
 // ─── TransactionList ──────────────────────────────────────────────────────────
@@ -296,6 +350,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentTransactions', item.id] });
+      await qc.invalidateQueries({ queryKey: ['sacramentStockTransactions', item.stockId] });
       setShowForm(false);
       setTxDate('');
       setTxMissionary('');
@@ -321,6 +376,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentTransactions', item.id] });
+      await qc.invalidateQueries({ queryKey: ['sacramentStockTransactions', item.stockId] });
       setEditingTxId(null);
     },
   });
@@ -329,6 +385,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
     mutationFn: (txId: string) => deleteTransaction(txId),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentTransactions', item.id] });
+      await qc.invalidateQueries({ queryKey: ['sacramentStockTransactions', item.stockId] });
     },
   });
 
@@ -572,88 +629,233 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
   );
 }
 
-// ─── ItemCard ─────────────────────────────────────────────────────────────────
+// ─── BatchTable ───────────────────────────────────────────────────────────────
 
-type ItemCardProps = {
+type BatchSortKey = 'casa' | 'date' | 'responsible' | 'degree' | 'concentration' | 'balance';
+type BatchSort = { key: BatchSortKey; direction: 'asc' | 'desc' };
+
+type SortableHeaderProps = {
+  label: string;
+  sortKey: BatchSortKey;
+  sort: BatchSort;
+  onSort: (key: BatchSortKey) => void;
+  className?: string;
+};
+
+function sortText(value?: string) {
+  return (value ?? '').trim().toLocaleLowerCase();
+}
+
+function firstDegreeNumber(item: SacramentItem) {
+  const match = item.degree.match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+function compareBatchItems(a: SacramentItem, b: SacramentItem, sort: BatchSort, balanceByItem: Map<string, number>) {
+  let result = 0;
+
+  switch (sort.key) {
+    case 'casa':
+      result = sortText(a.originChurchName).localeCompare(sortText(b.originChurchName));
+      break;
+    case 'date':
+      result = formatFeitioMonth(a).localeCompare(formatFeitioMonth(b));
+      break;
+    case 'responsible':
+      result = sortText(a.responsiblePerson).localeCompare(sortText(b.responsiblePerson));
+      break;
+    case 'degree':
+      result = firstDegreeNumber(a) - firstDegreeNumber(b);
+      break;
+    case 'concentration':
+      result = sortText(a.concentration ?? a.form).localeCompare(sortText(b.concentration ?? b.form));
+      break;
+    case 'balance':
+      result = (balanceByItem.get(a.id) ?? 0) - (balanceByItem.get(b.id) ?? 0);
+      break;
+  }
+
+  if (result === 0) {
+    result = a.id.localeCompare(b.id);
+  }
+
+  return sort.direction === 'asc' ? result : -result;
+}
+
+function SortableHeader({ label, sortKey, sort, onSort, className = '' }: SortableHeaderProps) {
+  const active = sort.key === sortKey;
+  const indicator = active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
+
+  return (
+    <th
+      className={`px-3 py-2 text-left font-medium ${className}`}
+      aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[color:var(--brand-blue-deep)]"
+      >
+        <span>{label}</span>
+        <span className="text-[10px] text-slate-400">{indicator}</span>
+      </button>
+    </th>
+  );
+}
+
+type BatchTableRowProps = {
   item: SacramentItem;
+  balance: number;
+  churches: ChurchInfo[];
+  copy: Copy;
+  uid: string;
+  isAdmin: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+};
+
+function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, onToggle }: BatchTableRowProps) {
+  const qc = useQueryClient();
+  const [deleting, setDeleting] = useState(false);
+  const unit = getItemUnit(item, copy);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteItem(item.id),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['sacramentItems', item.stockId] });
+      await qc.invalidateQueries({ queryKey: ['sacramentStockTransactions', item.stockId] });
+    },
+  });
+
+  return (
+    <>
+      <tr
+        className="cursor-pointer border-b border-slate-100 bg-white text-sm hover:bg-slate-50"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={event => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        <td className="px-3 py-2 font-semibold text-slate-800">{item.originChurchName ?? '—'}</td>
+        <td className="px-3 py-2 font-semibold text-slate-800">{formatFeitioMonth(item)}</td>
+        <td className="px-3 py-2 text-slate-600">{item.responsiblePerson ?? '—'}</td>
+        <td className="px-3 py-2 text-slate-600">{item.degree ? `${item.degree}°` : '—'}</td>
+        <td className="px-3 py-2 text-slate-600">{item.concentration ?? (item.form === 'gel' ? copy.gel : '—')}</td>
+        <td className="px-3 py-2 text-right font-medium text-slate-800">
+          {formatQuantity(balance, unit)}
+        </td>
+        <td className="px-3 py-2">
+          <div className="flex items-center justify-end gap-1">
+            <button
+              type="button"
+              onClick={event => {
+                event.stopPropagation();
+                onToggle();
+              }}
+              className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
+            >
+              {expanded ? copy.hideMovements : copy.showMovements}
+            </button>
+            {deleting ? (
+              <span className="text-xs text-slate-400">{copy.deleting}</span>
+            ) : isAdmin ? (
+              <button
+                type="button"
+                onClick={event => {
+                  event.stopPropagation();
+                  if (window.confirm(copy.confirmDelete)) {
+                    setDeleting(true);
+                    deleteMutation.mutate();
+                  }
+                }}
+                className="rounded-full border border-red-100 px-2 py-1 text-xs text-red-400 hover:bg-red-50"
+              >
+                {copy.delete}
+              </button>
+            ) : null}
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-b border-slate-100 bg-slate-50/70">
+          <td colSpan={7} className="px-3 py-3">
+            <TransactionList item={item} churches={churches} copy={copy} uid={uid} isAdmin={isAdmin} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+type BatchTableProps = {
+  items: SacramentItem[];
+  balanceByItem: Map<string, number>;
   churches: ChurchInfo[];
   copy: Copy;
   uid: string;
   isAdmin: boolean;
 };
 
-function ItemCard({ item, churches, copy, uid, isAdmin }: ItemCardProps) {
-  const qc = useQueryClient();
-  const [showTx, setShowTx] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+function BatchTable({ items, balanceByItem, churches, copy, uid, isAdmin }: BatchTableProps) {
+  const [sort, setSort] = useState<BatchSort>({ key: 'date', direction: 'desc' });
+  const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
 
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteItem(item.id),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['sacramentItems', item.stockId] });
-    },
-  });
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => compareBatchItems(a, b, sort, balanceByItem)),
+    [balanceByItem, items, sort],
+  );
+
+  function handleSort(key: BatchSortKey) {
+    setSort(current => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  }
+
+  function toggleItem(itemId: string) {
+    setExpandedItemIds(current =>
+      current.includes(itemId)
+        ? current.filter(id => id !== itemId)
+        : [...current, itemId],
+    );
+  }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-slate-800">
-            {item.degree}
-            {item.concentration ? ` · ${item.concentration}` : ''}
-            <span className="ml-2 text-xs font-normal text-slate-400">
-              ({item.form === 'gel' ? copy.gel : copy.liquid})
-            </span>
-          </p>
-          {item.originChurchName && (
-            <p className="text-xs text-slate-500">
-              {copy.originChurch}: {item.originChurchName}
-            </p>
-          )}
-          {item.responsiblePerson && (
-            <p className="text-xs text-slate-500">
-              {copy.responsiblePerson}: {item.responsiblePerson}
-            </p>
-          )}
-          {item.feitioDate && (
-            <p className="text-xs text-slate-500">
-              {copy.feitioDate}:{' '}
-              {item.feitioDateEnd
-                ? `${item.feitioDate} → ${item.feitioDateEnd}`
-                : item.feitioDate}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setShowTx(v => !v)}
-            className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
-          >
-            {showTx ? copy.hideMovements : copy.showMovements}
-          </button>
-          {deleting ? (
-            <span className="text-xs text-slate-400">{copy.deleting}</span>
-          ) : isAdmin ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm(copy.confirmDelete)) {
-                  setDeleting(true);
-                  deleteMutation.mutate();
-                }
-              }}
-              className="rounded-full border border-red-100 px-2 py-1 text-xs text-red-400 hover:bg-red-50"
-            >
-              {copy.delete}
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {showTx && (
-        <TransactionList item={item} churches={churches} copy={copy} uid={uid} isAdmin={isAdmin} />
-      )}
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-500">
+            <SortableHeader label={copy.originChurch} sortKey="casa" sort={sort} onSort={handleSort} />
+            <SortableHeader label={copy.feitioDate} sortKey="date" sort={sort} onSort={handleSort} />
+            <SortableHeader label={copy.responsiblePerson} sortKey="responsible" sort={sort} onSort={handleSort} />
+            <SortableHeader label={copy.degree} sortKey="degree" sort={sort} onSort={handleSort} />
+            <SortableHeader label={copy.concentration} sortKey="concentration" sort={sort} onSort={handleSort} />
+            <SortableHeader label={copy.currentBalance} sortKey="balance" sort={sort} onSort={handleSort} className="text-right" />
+            <th className="px-3 py-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {sortedItems.map(item => (
+            <BatchTableRow
+              key={item.id}
+              item={item}
+              balance={balanceByItem.get(item.id) ?? 0}
+              churches={churches}
+              copy={copy}
+              uid={uid}
+              isAdmin={isAdmin}
+              expanded={expandedItemIds.includes(item.id)}
+              onToggle={() => toggleItem(item.id)}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -669,15 +871,12 @@ type StockCardProps = {
 };
 
 type ItemFormState = {
-  degrees: number[];          // selected degree numbers 1-9
-  concentration: string;     // '1x1'...'10x1' | 'gel' | ''
+  degrees: number[];
+  concentration: string;
   form: SacramentForm;
   originChurchId: string;
   responsiblePerson: string;
-  feitioPeriod: boolean;     // false = single date, true = date range
-  feitioDate: string;        // used when feitioPeriod = false
-  feitioDateStart: string;   // used when feitioPeriod = true
-  feitioDateEnd: string;     // used when feitioPeriod = true
+  feitioDate: string;
 };
 
 const initialItemForm: ItemFormState = {
@@ -686,10 +885,7 @@ const initialItemForm: ItemFormState = {
   form: 'liquid',
   originChurchId: '',
   responsiblePerson: '',
-  feitioPeriod: false,
   feitioDate: '',
-  feitioDateStart: '',
-  feitioDateEnd: '',
 };
 
 const DEGREE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -712,7 +908,24 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
     queryFn: () => fetchItems(stock.id),
   });
 
-  const items: SacramentItem[] = itemsQuery.data ?? [];
+  const stockTransactionsQuery = useQuery({
+    queryKey: ['sacramentStockTransactions', stock.id],
+    queryFn: () => fetchTransactionsByStock(stock.id),
+  });
+
+  const items: SacramentItem[] = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
+  const stockTransactions: SacramentTransaction[] = useMemo(
+    () => stockTransactionsQuery.data ?? [],
+    [stockTransactionsQuery.data],
+  );
+  const balanceByItem = useMemo(
+    () => buildBalanceByItem(stockTransactions),
+    [stockTransactions],
+  );
+  const stockSummary = useMemo(
+    () => getStockSummary(items, balanceByItem),
+    [balanceByItem, items],
+  );
 
   const setField = <K extends keyof ItemFormState>(key: K, value: ItemFormState[K]) =>
     setItemForm(prev => ({ ...prev, [key]: value }));
@@ -724,12 +937,6 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
       const concentration = itemForm.concentration === 'gel'
         ? undefined
         : itemForm.concentration || undefined;
-      const feitioDate = itemForm.feitioPeriod
-        ? itemForm.feitioDateStart || undefined
-        : itemForm.feitioDate || undefined;
-      const feitioDateEnd = itemForm.feitioPeriod
-        ? itemForm.feitioDateEnd || undefined
-        : undefined;
       return createItem({
         stockId: stock.id,
         degree: degreeStr,
@@ -738,8 +945,8 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
         originChurchId: itemForm.originChurchId || undefined,
         originChurchName: church?.name ?? undefined,
         responsiblePerson: itemForm.responsiblePerson || undefined,
-        feitioDate,
-        feitioDateEnd,
+        feitioDate: itemForm.feitioDate || undefined,
+        feitioDateEnd: undefined,
       });
     },
     onSuccess: async () => {
@@ -759,12 +966,20 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
   return (
     <div className="rounded-xl border border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.6)] p-4 shadow-sm space-y-3">
       {/* header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-[color:var(--brand-ink)]">{stock.name}</h2>
           {stock.location && (
             <p className="text-xs text-slate-500">{stock.location}</p>
           )}
+          <p className="mt-1 text-xs text-slate-500">
+            {copy.currentBalance}:{' '}
+            <span className="font-semibold text-slate-800">
+              {stockTransactionsQuery.isLoading
+                ? copy.loading
+                : `${formatQuantity(stockSummary.liters, copy.liters)} · ${formatQuantity(stockSummary.kg, copy.kg)}`}
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -876,7 +1091,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
                 value={itemForm.originChurchId}
                 onChange={e => setField('originChurchId', e.target.value)}
               >
-                <option value="">{copy.selectChurch}</option>
+                <option value="">{copy.selectCasa}</option>
                 {churches.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -895,45 +1110,15 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
             </div>
           </div>
 
-          {/* feitio date / period */}
+          {/* feitio month */}
           <div>
-            <div className="flex items-center gap-3 mb-1.5">
-              <label className={labelCls()}>{copy.feitioDate}</label>
-              <label className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="accent-[color:var(--brand-blue-deep)]"
-                  checked={itemForm.feitioPeriod}
-                  onChange={e => setField('feitioPeriod', e.target.checked)}
-                />
-                {copy.feitioPeriod}
-              </label>
-            </div>
-            {itemForm.feitioPeriod ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">{copy.feitioFrom}</span>
-                <input
-                  type="date"
-                  className={inputCls('')}
-                  value={itemForm.feitioDateStart}
-                  onChange={e => setField('feitioDateStart', e.target.value)}
-                />
-                <span className="text-xs text-slate-400">{copy.feitioTo}</span>
-                <input
-                  type="date"
-                  className={inputCls('')}
-                  value={itemForm.feitioDateEnd}
-                  onChange={e => setField('feitioDateEnd', e.target.value)}
-                />
-              </div>
-            ) : (
-              <input
-                type="date"
-                className={inputCls('w-48')}
-                value={itemForm.feitioDate}
-                onChange={e => setField('feitioDate', e.target.value)}
-              />
-            )}
+            <label className={labelCls()}>{copy.feitioDate}</label>
+            <input
+              type="month"
+              className={inputCls('w-48')}
+              value={toFeitioMonth(itemForm.feitioDate)}
+              onChange={e => setField('feitioDate', e.target.value)}
+            />
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -960,17 +1145,20 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
         </div>
       )}
 
-      {/* items list */}
+      {/* items table */}
       {itemsQuery.isLoading ? (
         <p className="text-sm text-slate-400">{copy.loading}</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-slate-400">{copy.noItems}</p>
       ) : (
-        <div className="space-y-2">
-          {items.map(item => (
-            <ItemCard key={item.id} item={item} churches={churches} copy={copy} uid={uid} isAdmin={isAdmin} />
-          ))}
-        </div>
+        <BatchTable
+          items={items}
+          balanceByItem={balanceByItem}
+          churches={churches}
+          copy={copy}
+          uid={uid}
+          isAdmin={isAdmin}
+        />
       )}
     </div>
   );
@@ -1000,11 +1188,16 @@ export default function SacramentPage() {
   const churches: ChurchInfo[] = churchesQuery.data ?? [];
 
   const addStockMutation = useMutation({
-    mutationFn: () =>
-      createStock({
+    mutationFn: () => {
+      if (!isAdmin) {
+        throw new Error('Admin role required.');
+      }
+
+      return createStock({
         name: stockForm.name.trim(),
         location: stockForm.location.trim() || undefined,
-      }),
+      });
+    },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentStocks'] });
       setShowStockForm(false);
@@ -1020,17 +1213,19 @@ export default function SacramentPage() {
           <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
           <p className="text-sm text-slate-600">{copy.intro}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowStockForm(v => !v)}
-          className="rounded-full bg-[color:var(--brand-green)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-80"
-        >
-          + {copy.newStock}
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setShowStockForm(v => !v)}
+            className="rounded-full bg-[color:var(--brand-green)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-80"
+          >
+            + {copy.newStock}
+          </button>
+        )}
       </div>
 
       {/* new stock form */}
-      {showStockForm && (
+      {isAdmin && showStockForm && (
         <div className="rounded-xl border border-[color:var(--brand-sand)] bg-white p-4 shadow-sm space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
