@@ -1,13 +1,34 @@
 import type { User } from 'firebase/auth';
 import { describe, expect, it } from 'vitest';
 
-import { avatarFallback, buildProfileForm, buildUserPayload, initialProfileForm } from './form';
+import type { MemberRecord } from '../../lib/members';
+import {
+  applyAuthFallback,
+  applyMemberPrefill,
+  avatarFallback,
+  buildProfileForm,
+  buildUserPayload,
+  initialProfileForm
+} from './form';
 
 const user = {
   uid: 'user-1',
   displayName: 'Nome Auth',
   email: 'auth@example.com'
 } as User;
+
+function makeMember(overrides: Partial<MemberRecord> = {}): MemberRecord {
+  return {
+    id: 'CF1',
+    sources: [{ file: 'complete', code: '1', line: 2 }],
+    conflicts: {},
+    superseeded: {},
+    reviewReasons: [],
+    possibleDuplicateIds: [],
+    needsReview: false,
+    ...overrides
+  };
+}
 
 describe('profile form helpers', () => {
   it('builds form state preferring stored profile values', () => {
@@ -91,5 +112,52 @@ describe('profile form helpers', () => {
   it('creates avatar fallback url from name or email', () => {
     expect(avatarFallback('Maria Silva')).toContain('Maria%20Silva');
     expect(avatarFallback(undefined, 'mail@example.com')).toContain('mail%40example.com');
+  });
+
+  it('prefills only empty fields from the linked member and records the link', () => {
+    const member = makeMember({
+      id: 'SRRMRA74E68L219U',
+      surname: 'SERRE',
+      firstName: 'MARA',
+      birthDate: '1974-05-28',
+      city: 'VEZZANO SUL CROSTOLO',
+      profession: 'CASALINGA',
+      email: 'skywalter@eirene.re.it',
+      firstWorkDate: '1996-10-01'
+    });
+    const form = applyMemberPrefill(
+      { ...initialProfileForm, city: 'Bologna', email: 'auth@example.com' },
+      member
+    );
+
+    expect(form.memberId).toBe('SRRMRA74E68L219U');
+    expect(form.surname).toBe('SERRE');
+    expect(form.firstName).toBe('MARA');
+    expect(form.birthDate).toBe('1974-05-28');
+    expect(form.firstWorkDate).toBe('1996-10-01');
+    expect(form.city).toBe('Bologna'); // saved/typed values always win
+    expect(form.email).toBe('auth@example.com');
+    expect(form.displayName).toBe('SERRE MARA');
+  });
+
+  it('falls back to auth provider data only for fields still empty', () => {
+    const googleUser = {
+      uid: 'user-1',
+      displayName: 'Renato Fabbri',
+      email: 'renato@example.com',
+      phoneNumber: '+39 333 0000000'
+    } as User;
+
+    const empty = applyAuthFallback({ ...initialProfileForm }, googleUser);
+    expect(empty.fullName).toBe('Renato Fabbri');
+    expect(empty.displayName).toBe('Renato Fabbri');
+    expect(empty.email).toBe('renato@example.com');
+    expect(empty.mobile).toBe('+39 333 0000000');
+
+    // member data applied first wins over the auth provider
+    const member = makeMember({ surname: 'FABBRI', firstName: 'RENATO', fullName: 'FABBRI RENATO', mobile: '333111' });
+    const prefilled = applyAuthFallback(applyMemberPrefill({ ...initialProfileForm }, member), googleUser);
+    expect(prefilled.fullName).toBe('FABBRI RENATO');
+    expect(prefilled.mobile).toBe('333111');
   });
 });

@@ -1,5 +1,6 @@
 import type { User } from 'firebase/auth';
 
+import type { MemberRecord } from '../../lib/members';
 import type { UserProfile } from '../../lib/users';
 
 export type ProfileFormState = {
@@ -199,6 +200,49 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     doctrineRolesText: profile?.doctrineRoles?.join(', ') || '',
     observations: profile?.observations || ''
   };
+}
+
+/** Member registry fields copied into the form when the matching form field is empty. */
+const MEMBER_PREFILL_FIELDS = [
+  'surname', 'firstName', 'fullName', 'fiscalCode', 'sex', 'birthDate',
+  'birthPlace', 'birthProvince', 'birthCountry', 'citizenship', 'nationality',
+  'address', 'postalCode', 'city', 'province', 'region', 'country',
+  'profession', 'memberCode', 'memberStatus', 'group', 'category',
+  'cardNumber', 'cardExpiry', 'referenceSeat', 'originSociety',
+  'registrationRequestDate', 'registrationDate', 'renewalDate',
+  'cancellationDate', 'firstWorkDate', 'email2', 'phone', 'mobile'
+] as const;
+
+/**
+ * Prefill empty form fields from the member ("socio") record tied to the
+ * user's email and remember the link via memberId. Values already in the form
+ * (saved profile or user edits) always win — the member record only fills gaps,
+ * so the user remains free to change everything.
+ */
+export function applyMemberPrefill(form: ProfileFormState, member: MemberRecord): ProfileFormState {
+  const next: ProfileFormState = { ...form, memberId: member.id };
+  for (const field of MEMBER_PREFILL_FIELDS) {
+    if (!next[field]) next[field] = member[field] ?? '';
+  }
+  if (!next.email) next.email = member.email ?? '';
+  if (!next.displayName) {
+    next.displayName = member.fullName || [member.surname, member.firstName].filter(Boolean).join(' ');
+  }
+  return next;
+}
+
+/**
+ * Last-resort enrichment from the auth provider (e.g. Google gives the full
+ * name and sometimes a phone number). Applied after the member prefill, so
+ * registry data wins over provider data and saved data wins over both.
+ */
+export function applyAuthFallback(form: ProfileFormState, user: User): ProfileFormState {
+  const next = { ...form };
+  if (!next.displayName && user.displayName) next.displayName = user.displayName;
+  if (!next.email && user.email) next.email = user.email;
+  if (!next.fullName && user.displayName) next.fullName = user.displayName;
+  if (!next.mobile && user.phoneNumber) next.mobile = user.phoneNumber;
+  return next;
 }
 
 export function buildUserPayload(user: User, form: ProfileFormState): Partial<UserProfile> {

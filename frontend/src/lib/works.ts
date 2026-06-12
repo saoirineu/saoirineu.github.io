@@ -149,6 +149,9 @@ export type ChurchInfo = {
   state?: string;
   country?: string;
   lineage?: string;
+  leaderName?: string;
+  leaderEmail?: string;
+  churchEmail?: string;
   observations?: string;
   lat?: number;
   lng?: number;
@@ -172,6 +175,9 @@ export async function fetchChurches(): Promise<ChurchInfo[]> {
         state: typeof data.state === 'string' ? data.state : undefined,
         country: typeof data.country === 'string' ? data.country : undefined,
         lineage: typeof data.lineage === 'string' ? data.lineage : undefined,
+        leaderName: typeof data.leaderName === 'string' ? data.leaderName : undefined,
+        leaderEmail: typeof data.leaderEmail === 'string' ? data.leaderEmail : undefined,
+        churchEmail: typeof data.churchEmail === 'string' ? data.churchEmail : undefined,
         observations: typeof data.observations === 'string' ? data.observations : undefined,
         lat: typeof data.lat === 'number' ? data.lat : undefined,
         lng: typeof data.lng === 'number' ? data.lng : undefined
@@ -188,6 +194,9 @@ export type ChurchInput = {
   state?: string;
   country?: string;
   lineage?: string;
+  leaderName?: string;
+  leaderEmail?: string;
+  churchEmail?: string;
   observations?: string;
   lat?: number;
   lng?: number;
@@ -200,6 +209,9 @@ export async function createChurch(input: ChurchInput) {
     state: input.state || undefined,
     country: input.country || undefined,
     lineage: input.lineage || undefined,
+    leaderName: input.leaderName || undefined,
+    leaderEmail: input.leaderEmail || undefined,
+    churchEmail: input.churchEmail || undefined,
     observations: input.observations || undefined,
     lat: typeof input.lat === 'number' ? input.lat : undefined,
     lng: typeof input.lng === 'number' ? input.lng : undefined,
@@ -218,6 +230,9 @@ export async function updateChurch(id: string, input: Partial<ChurchInput>) {
     state: input.state,
     country: input.country,
     lineage: input.lineage,
+    leaderName: input.leaderName,
+    leaderEmail: input.leaderEmail,
+    churchEmail: input.churchEmail,
     observations: input.observations,
     lat: typeof input.lat === 'number' ? input.lat : undefined,
     lng: typeof input.lng === 'number' ? input.lng : undefined,

@@ -36,6 +36,9 @@ export type ChurchesCopy = {
   city: string;
   state: string;
   country: string;
+  leader: string;
+  leaderEmail: string;
+  churchEmail: string;
   latitude: string;
   longitude: string;
   notes: string;
@@ -142,6 +145,38 @@ export function ChurchFormSection({
           </label>
         </div>
 
+        <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-3">
+          <label className="text-sm text-slate-700">
+            {copy.leader}
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={form.leaderName}
+              onChange={event => setField('leaderName', event.target.value)}
+              placeholder="Ex.: Madrinha Maria"
+            />
+          </label>
+          <label className="text-sm text-slate-700">
+            {copy.leaderEmail}
+            <input
+              type="email"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={form.leaderEmail}
+              onChange={event => setField('leaderEmail', event.target.value)}
+              placeholder="lider@example.org"
+            />
+          </label>
+          <label className="text-sm text-slate-700">
+            {copy.churchEmail}
+            <input
+              type="email"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={form.churchEmail}
+              onChange={event => setField('churchEmail', event.target.value)}
+              placeholder="igreja@example.org"
+            />
+          </label>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 sm:col-span-2">
           <label className="text-sm text-slate-700">
             {copy.latitude}
@@ -227,6 +262,9 @@ function ChurchCard({
       </div>
       <div className="mt-2 space-y-1 text-sm text-slate-700">
         {localParts ? <p>{localParts}</p> : null}
+        {church.leaderName ? <p>{copy.leader}: {church.leaderName}</p> : null}
+        {church.leaderEmail ? <p><a className="text-slate-600 underline" href={`mailto:${church.leaderEmail}`}>{church.leaderEmail}</a></p> : null}
+        {church.churchEmail ? <p><a className="text-slate-600 underline" href={`mailto:${church.churchEmail}`}>{church.churchEmail}</a></p> : null}
         {church.observations ? <p className="text-slate-600">{church.observations}</p> : null}
         {mapLink ? (
           <a className="text-xs text-slate-600 underline" href={mapLink} target="_blank" rel="noreferrer">

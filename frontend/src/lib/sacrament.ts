@@ -27,6 +27,7 @@ export type SacramentStock = {
   id: string;
   name: string;
   location?: string;
+  notes?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -42,6 +43,7 @@ export type SacramentItem = {
   responsiblePerson?: string;
   feitioDate?: string;
   feitioDateEnd?: string;
+  notes?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -71,6 +73,7 @@ function mapStock(id: string, value: unknown): SacramentStock {
     id,
     name: asOptionalString(data.name) ?? '',
     location: asOptionalString(data.location),
+    notes: asOptionalString(data.notes),
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined,
     updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
   };
@@ -89,6 +92,7 @@ function mapItem(id: string, value: unknown): SacramentItem {
     responsiblePerson: asOptionalString(data.responsiblePerson),
     feitioDate: asOptionalString(data.feitioDate),
     feitioDateEnd: asOptionalString(data.feitioDateEnd),
+    notes: asOptionalString(data.notes),
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined,
     updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
   };
@@ -125,6 +129,7 @@ export async function createStock(data: Omit<SacramentStock, 'id'>): Promise<str
     removeUndefinedDeep({
       name: data.name,
       location: data.location,
+      notes: data.notes,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
@@ -160,6 +165,7 @@ export async function createItem(data: Omit<SacramentItem, 'id'>): Promise<strin
       responsiblePerson: data.responsiblePerson,
       feitioDate: data.feitioDate,
       feitioDateEnd: data.feitioDateEnd,
+      notes: data.notes,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),

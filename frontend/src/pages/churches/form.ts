@@ -7,6 +7,9 @@ export type ChurchFormState = {
   state: string;
   country: string;
   lineage: string;
+  leaderName: string;
+  leaderEmail: string;
+  churchEmail: string;
   observations: string;
   lat: string;
   lng: string;
@@ -32,6 +35,9 @@ export const initialChurchForm: ChurchFormState = {
   state: '',
   country: '',
   lineage: '',
+  leaderName: '',
+  leaderEmail: '',
+  churchEmail: '',
   observations: '',
   lat: '',
   lng: ''
@@ -53,6 +59,9 @@ export function buildChurchPayload(form: ChurchFormState): ChurchInput {
     state: form.state.trim() || undefined,
     country: form.country.trim() || undefined,
     lineage: form.lineage.trim() || undefined,
+    leaderName: form.leaderName.trim() || undefined,
+    leaderEmail: form.leaderEmail.trim() || undefined,
+    churchEmail: form.churchEmail.trim() || undefined,
     observations: form.observations.trim() || undefined,
     lat: Number.isFinite(latNum) ? latNum : undefined,
     lng: Number.isFinite(lngNum) ? lngNum : undefined
@@ -66,6 +75,9 @@ export function prefillChurchForm(church: ChurchInfo): ChurchFormState {
     state: church.state ?? '',
     country: church.country ?? '',
     lineage: church.lineage ?? '',
+    leaderName: church.leaderName ?? '',
+    leaderEmail: church.leaderEmail ?? '',
+    churchEmail: church.churchEmail ?? '',
     observations: church.observations ?? '',
     lat: church.lat?.toString() ?? '',
     lng: church.lng?.toString() ?? ''

@@ -23,10 +23,12 @@ import {
   type TransactionType,
 } from '../lib/sacrament';
 import { hasRequiredRole } from '../lib/systemRole';
-import { fetchChurches, type ChurchInfo } from '../lib/works';
+import { createChurch, fetchChurches, type ChurchInfo } from '../lib/works';
 import { useAuth } from '../providers/useAuth';
 import { useSystemRole } from '../providers/useSystemRole';
 import { useSiteLocale } from '../providers/useSiteLocale';
+import { ChurchFormSection, type ChurchesCopy } from './churches/ChurchesSections';
+import { buildChurchPayload, initialChurchForm, type ChurchFormState } from './churches/form';
 
 // ─── copy ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,7 @@ const copyByLocale = {
     originChurch: 'Casa de Feitio',
     selectChurch: 'Selecionar igreja...',
     selectCasa: 'Selecionar casa...',
+    addChurch: 'Cadastrar nova igreja',
     responsiblePerson: 'Responsável',
     feitioDate: 'Data do feitio',
     feitioPeriod: 'Período de feitio',
@@ -110,6 +113,7 @@ const copyByLocale = {
     originChurch: 'Casa de Feitio',
     selectChurch: 'Select church...',
     selectCasa: 'Select casa...',
+    addChurch: 'Create new church',
     responsiblePerson: 'Responsible',
     feitioDate: 'Feitio date',
     feitioPeriod: 'Feitio period',
@@ -163,6 +167,7 @@ const copyByLocale = {
     originChurch: 'Casa de Feitio',
     selectChurch: 'Seleccionar iglesia...',
     selectCasa: 'Seleccionar casa...',
+    addChurch: 'Registrar nueva iglesia',
     responsiblePerson: 'Responsable',
     feitioDate: 'Fecha del feitio',
     feitioPeriod: 'Período del feitio',
@@ -216,6 +221,7 @@ const copyByLocale = {
     originChurch: 'Casa de Feitio',
     selectChurch: 'Seleziona chiesa...',
     selectCasa: 'Seleziona casa...',
+    addChurch: 'Registra nuova chiesa',
     responsiblePerson: 'Responsabile',
     feitioDate: 'Data del feitio',
     feitioPeriod: 'Periodo del feitio',
@@ -246,6 +252,25 @@ const copyByLocale = {
 } as const;
 
 type Copy = { [K in keyof typeof copyByLocale.pt]: string };
+type AddChurchModalState = {
+  onCreated: (churchId: string) => void;
+};
+
+const ADD_CHURCH_VALUE = '__add_church__';
+
+const churchFormCopyByLocale: Record<keyof typeof copyByLocale, ChurchesCopy> = {
+  pt: { newChurch: 'Nova igreja', formHint: 'Preencha o nome e, se quiser, localização, linhagem e coordenadas (para mapa).', editing: 'Editando', loginToSave: 'Faça login para salvar', name: 'Nome', lineage: 'Linhagem / casa', city: 'Cidade', state: 'Estado', country: 'País', leader: 'Dirigente', leaderEmail: 'Email do dirigente', churchEmail: 'Email da igreja', latitude: 'Latitude', longitude: 'Longitude', notes: 'Observações', saveChanges: 'Salvar alterações', createChurch: 'Cadastrar igreja', saving: 'Salvando...', cancelEdit: 'Cancelar edição', saved: 'Salvo.', map: 'Ver no mapa', works: 'Trabalhos', local: 'Local', responsible: 'Responsável', people: 'Pessoas', current: 'Atuais', initiation: 'Fardamento', edit: 'Editar', deleting: 'Excluindo...', delete: 'Excluir', churchesRegistered: 'Igrejas cadastradas', loading: 'Carregando...', noChurches: 'Nenhuma igreja cadastrada ainda.' },
+  en: { newChurch: 'New church', formHint: 'Fill in the name and, if desired, location, lineage, and coordinates (for maps).', editing: 'Editing', loginToSave: 'Sign in to save', name: 'Name', lineage: 'Lineage / house', city: 'City', state: 'State', country: 'Country', leader: 'Leader', leaderEmail: 'Leader email', churchEmail: 'Church email', latitude: 'Latitude', longitude: 'Longitude', notes: 'Notes', saveChanges: 'Save changes', createChurch: 'Create church', saving: 'Saving...', cancelEdit: 'Cancel edit', saved: 'Saved.', map: 'View on map', works: 'Works', local: 'Location', responsible: 'Responsible', people: 'People', current: 'Current', initiation: 'Fardamento', edit: 'Edit', deleting: 'Deleting...', delete: 'Delete', churchesRegistered: 'Registered churches', loading: 'Loading...', noChurches: 'No churches registered yet.' },
+  es: { newChurch: 'Nueva iglesia', formHint: 'Complete el nombre y, si quiere, ubicación, linaje y coordenadas (para el mapa).', editing: 'Editando', loginToSave: 'Inicie sesión para guardar', name: 'Nombre', lineage: 'Linaje / casa', city: 'Ciudad', state: 'Estado', country: 'País', leader: 'Dirigente', leaderEmail: 'Email del dirigente', churchEmail: 'Email de la iglesia', latitude: 'Latitud', longitude: 'Longitud', notes: 'Observaciones', saveChanges: 'Guardar cambios', createChurch: 'Registrar iglesia', saving: 'Guardando...', cancelEdit: 'Cancelar edición', saved: 'Guardado.', map: 'Ver en el mapa', works: 'Trabajos', local: 'Local', responsible: 'Responsable', people: 'Personas', current: 'Actuales', initiation: 'Fardamento', edit: 'Editar', deleting: 'Eliminando...', delete: 'Eliminar', churchesRegistered: 'Iglesias registradas', loading: 'Cargando...', noChurches: 'Todavía no hay iglesias registradas.' },
+  it: { newChurch: 'Nuova chiesa', formHint: 'Compila il nome e, se vuoi, posizione, linea e coordinate (per la mappa).', editing: 'Modifica', loginToSave: 'Accedi per salvare', name: 'Nome', lineage: 'Linea / casa', city: 'Città', state: 'Stato', country: 'Paese', leader: 'Dirigente', leaderEmail: 'Email del dirigente', churchEmail: 'Email della chiesa', latitude: 'Latitudine', longitude: 'Longitudine', notes: 'Osservazioni', saveChanges: 'Salva modifiche', createChurch: 'Registra chiesa', saving: 'Salvataggio...', cancelEdit: 'Annulla modifica', saved: 'Salvato.', map: 'Vedi sulla mappa', works: 'Lavori', local: 'Luogo', responsible: 'Responsabile', people: 'Persone', current: 'Attuali', initiation: 'Fardamento', edit: 'Modifica', deleting: 'Eliminazione...', delete: 'Elimina', churchesRegistered: 'Chiese registrate', loading: 'Caricamento...', noChurches: 'Nessuna chiesa registrata.' },
+};
+
+const requiredChurchNameByLocale: Record<keyof typeof copyByLocale, string> = {
+  pt: 'Nome é obrigatório',
+  en: 'Name is required',
+  es: 'El nombre es obligatorio',
+  it: 'Il nome è obbligatorio',
+};
 
 // ─── shared helpers ───────────────────────────────────────────────────────────
 
@@ -257,22 +282,42 @@ function labelCls() {
   return 'block text-xs font-medium text-slate-500 mb-0.5';
 }
 
-function toFeitioMonth(value?: string) {
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function toDateInputValue(value?: string) {
   const trimmed = value?.trim();
   if (!trimmed) return '';
-  const month = trimmed.match(/^(\d{4}-\d{2})/);
-  return month?.[1] ?? trimmed;
+  const date = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (date) return date[1];
+  const month = trimmed.match(/^(\d{4}-\d{2})$/);
+  return month ? `${month[1]}-01` : trimmed;
 }
 
-function formatFeitioMonth(item: SacramentItem) {
-  const start = toFeitioMonth(item.feitioDate);
-  const end = toFeitioMonth(item.feitioDateEnd);
+function formatSacramentDate(value?: string) {
+  const inputValue = toDateInputValue(value);
+  const match = inputValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return value?.trim() || '';
+
+  const [, year, month, day] = match;
+  const monthIndex = Number(month) - 1;
+  const monthLabel = MONTH_LABELS[monthIndex];
+
+  return monthLabel ? `${day}/${monthLabel}/${year}` : value?.trim() || '';
+}
+
+function formatFeitioDate(item: SacramentItem) {
+  const start = formatSacramentDate(item.feitioDate);
+  const end = formatSacramentDate(item.feitioDateEnd);
 
   if (start && end && start !== end) {
     return `${start} → ${end}`;
   }
 
   return start || end || '—';
+}
+
+function sortDateValue(value?: string) {
+  return toDateInputValue(value) || '';
 }
 
 function formatQuantity(value: number, unit: string) {
@@ -304,6 +349,67 @@ function getStockSummary(items: SacramentItem[], balanceByItem: Map<string, numb
 
 function getItemUnit(item: SacramentItem, copy: Copy) {
   return item.form === 'gel' ? copy.kg : copy.liters;
+}
+
+type AddChurchModalProps = {
+  copy: ChurchesCopy;
+  loginToCreate: string;
+  onClose: () => void;
+  onCreated: (churchId: string) => void;
+  requiredName: string;
+  userPresent: boolean;
+};
+
+function AddChurchModal({ copy, loginToCreate, onClose, onCreated, requiredName, userPresent }: AddChurchModalProps) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<ChurchFormState>(initialChurchForm);
+
+  const setField = <K extends keyof ChurchFormState>(field: K, value: ChurchFormState[K]) => {
+    setForm(current => ({ ...current, [field]: value }));
+  };
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!userPresent) throw new Error(loginToCreate);
+      if (!form.name.trim()) throw new Error(requiredName);
+
+      const ref = await createChurch(buildChurchPayload(form));
+      return ref.id;
+    },
+    onSuccess: async churchId => {
+      await qc.invalidateQueries({ queryKey: ['churches'] });
+      onCreated(churchId);
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 px-4 py-8">
+      <div className="w-full max-w-3xl rounded-xl bg-white p-4 shadow-xl">
+        <ChurchFormSection
+          copy={copy}
+          editingId={null}
+          errorMessage={mutation.error?.message}
+          form={form}
+          isSuccess={mutation.isSuccess}
+          mutation={mutation}
+          onCancelEdit={onClose}
+          onSubmit={() => mutation.mutate()}
+          setField={setField}
+          userPresent={userPresent}
+        />
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+            onClick={onClose}
+          >
+            {copy.cancelEdit}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── TransactionList ──────────────────────────────────────────────────────────
@@ -605,7 +711,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                 </tr>
               ) : (
                 <tr key={tx.id} className="border-b border-slate-50">
-                  <td className="py-1 pr-2 text-slate-600">{tx.date}</td>
+                  <td className="py-1 pr-2 text-slate-600">{formatSacramentDate(tx.date) || '—'}</td>
                   <td className="py-1 pr-2">
                     <span className={`rounded-full px-1.5 py-0.5 font-medium ${tx.type === 'entry' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                       {tx.type === 'entry' ? copy.entry : copy.exit}
@@ -673,7 +779,7 @@ function compareBatchItems(a: SacramentItem, b: SacramentItem, sort: BatchSort, 
       result = sortText(a.originChurchName).localeCompare(sortText(b.originChurchName));
       break;
     case 'date':
-      result = formatFeitioMonth(a).localeCompare(formatFeitioMonth(b));
+      result = sortDateValue(a.feitioDate).localeCompare(sortDateValue(b.feitioDate));
       break;
     case 'responsible':
       result = sortText(a.responsiblePerson).localeCompare(sortText(b.responsiblePerson));
@@ -725,10 +831,11 @@ type BatchTableRowProps = {
   uid: string;
   isAdmin: boolean;
   expanded: boolean;
+  onRequestCreateChurch: (onCreated: (churchId: string) => void) => void;
   onToggle: () => void;
 };
 
-function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, onToggle }: BatchTableRowProps) {
+function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, onRequestCreateChurch, onToggle }: BatchTableRowProps) {
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -770,10 +877,13 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
         }}
       >
         <td className="px-3 py-2 font-semibold text-slate-800">{item.originChurchName ?? '—'}</td>
-        <td className="px-3 py-2 font-semibold text-slate-800">{formatFeitioMonth(item)}</td>
+        <td className="px-3 py-2 font-semibold text-slate-800">{formatFeitioDate(item)}</td>
         <td className="px-3 py-2 text-slate-600">{item.responsiblePerson ?? '—'}</td>
         <td className="px-3 py-2 text-slate-600">{item.degree ? `${item.degree}°` : '—'}</td>
-        <td className="px-3 py-2 text-slate-600">{item.concentration ?? (item.form === 'gel' ? copy.gel : '—')}</td>
+        <td className="px-3 py-2 text-slate-600">
+          <div>{item.concentration ?? (item.form === 'gel' ? copy.gel : '—')}</div>
+          {item.notes ? <div className="mt-0.5 text-xs text-slate-400">{item.notes}</div> : null}
+        </td>
         <td className="px-3 py-2 text-right font-medium text-slate-800">
           {formatQuantity(balance, unit)}
         </td>
@@ -828,11 +938,17 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
         <tr className="border-b border-slate-100 bg-blue-50/30">
           <td colSpan={7} className="px-3 py-3">
             <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
-              <BatchFormFields itemForm={editForm} churches={churches} copy={copy} setField={setEditField} />
+              <BatchFormFields
+                itemForm={editForm}
+                churches={churches}
+                copy={copy}
+                onRequestCreateChurch={onRequestCreateChurch}
+                setField={setEditField}
+              />
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={editMutation.isPending || editForm.degrees.length === 0}
+                  disabled={editMutation.isPending}
                   onClick={() => editMutation.mutate()}
                   className="rounded-lg bg-[color:var(--brand-green)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                 >
@@ -876,9 +992,10 @@ type BatchTableProps = {
   copy: Copy;
   uid: string;
   isAdmin: boolean;
+  onRequestCreateChurch: (onCreated: (churchId: string) => void) => void;
 };
 
-function BatchTable({ items, balanceByItem, churches, copy, uid, isAdmin }: BatchTableProps) {
+function BatchTable({ items, balanceByItem, churches, copy, uid, isAdmin, onRequestCreateChurch }: BatchTableProps) {
   const [sort, setSort] = useState<BatchSort>({ key: 'date', direction: 'desc' });
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
 
@@ -927,6 +1044,7 @@ function BatchTable({ items, balanceByItem, churches, copy, uid, isAdmin }: Batc
               uid={uid}
               isAdmin={isAdmin}
               expanded={expandedItemIds.includes(item.id)}
+              onRequestCreateChurch={onRequestCreateChurch}
               onToggle={() => toggleItem(item.id)}
             />
           ))}
@@ -944,6 +1062,7 @@ type StockCardProps = {
   copy: Copy;
   uid: string;
   isAdmin: boolean;
+  onRequestCreateChurch: (onCreated: (churchId: string) => void) => void;
 };
 
 type ItemFormState = {
@@ -953,6 +1072,7 @@ type ItemFormState = {
   originChurchId: string;
   responsiblePerson: string;
   feitioDate: string;
+  notes: string;
 };
 
 const initialItemForm: ItemFormState = {
@@ -962,6 +1082,7 @@ const initialItemForm: ItemFormState = {
   originChurchId: '',
   responsiblePerson: '',
   feitioDate: '',
+  notes: '',
 };
 
 const DEGREE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -991,7 +1112,8 @@ function itemToItemForm(item: SacramentItem): ItemFormState {
     form: item.form,
     originChurchId: item.originChurchId ?? '',
     responsiblePerson: item.responsiblePerson ?? '',
-    feitioDate: toFeitioMonth(item.feitioDate),
+    feitioDate: toDateInputValue(item.feitioDate),
+    notes: item.notes ?? '',
   };
 }
 
@@ -1012,6 +1134,7 @@ function buildItemPayload(itemForm: ItemFormState, stockId: string, churches: Ch
     responsiblePerson: itemForm.responsiblePerson || undefined,
     feitioDate: itemForm.feitioDate || undefined,
     feitioDateEnd: undefined,
+    notes: itemForm.notes.trim(),
   };
 }
 
@@ -1021,10 +1144,11 @@ type BatchFormFieldsProps = {
   itemForm: ItemFormState;
   churches: ChurchInfo[];
   copy: Copy;
+  onRequestCreateChurch: (onCreated: (churchId: string) => void) => void;
   setField: SetItemField;
 };
 
-function BatchFormFields({ itemForm, churches, copy, setField }: BatchFormFieldsProps) {
+function BatchFormFields({ itemForm, churches, copy, onRequestCreateChurch, setField }: BatchFormFieldsProps) {
   return (
     <>
       <div>
@@ -1102,9 +1226,18 @@ function BatchFormFields({ itemForm, churches, copy, setField }: BatchFormFields
           <select
             className={inputCls('w-full')}
             value={itemForm.originChurchId}
-            onChange={e => setField('originChurchId', e.target.value)}
+            onChange={e => {
+              const value = e.target.value;
+              if (value === ADD_CHURCH_VALUE) {
+                onRequestCreateChurch(churchId => setField('originChurchId', churchId));
+                return;
+              }
+
+              setField('originChurchId', value);
+            }}
           >
             <option value="">{copy.selectCasa}</option>
+            <option value={ADD_CHURCH_VALUE}>+ {copy.addChurch}</option>
             {churches.map(c => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -1126,17 +1259,27 @@ function BatchFormFields({ itemForm, churches, copy, setField }: BatchFormFields
       <div>
         <label className={labelCls()}>{copy.feitioDate}</label>
         <input
-          type="month"
+          type="date"
           className={inputCls('w-48')}
-          value={toFeitioMonth(itemForm.feitioDate)}
+          value={toDateInputValue(itemForm.feitioDate)}
           onChange={e => setField('feitioDate', e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className={labelCls()}>{copy.notes}</label>
+        <textarea
+          className={inputCls('w-full')}
+          rows={2}
+          value={itemForm.notes}
+          onChange={e => setField('notes', e.target.value)}
         />
       </div>
     </>
   );
 }
 
-function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
+function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreateChurch }: StockCardProps) {
   const qc = useQueryClient();
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemForm, setItemForm] = useState<ItemFormState>(initialItemForm);
@@ -1144,6 +1287,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
   const [stockEditForm, setStockEditForm] = useState<StockFormState>({
     name: stock.name,
     location: stock.location ?? '',
+    notes: stock.notes ?? '',
   });
   const [deleting, setDeleting] = useState(false);
 
@@ -1188,6 +1332,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
       updateStock(stock.id, {
         name: stockEditForm.name.trim(),
         location: stockEditForm.location.trim() || undefined,
+        notes: stockEditForm.notes.trim(),
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentStocks'] });
@@ -1227,12 +1372,24 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
                   onChange={e => setStockEditForm(prev => ({ ...prev, location: e.target.value }))}
                 />
               </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls()}>{copy.notes}</label>
+                <textarea
+                  className={inputCls('w-full')}
+                  rows={2}
+                  value={stockEditForm.notes}
+                  onChange={e => setStockEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
             </div>
           ) : (
             <>
               <h2 className="text-base font-semibold text-[color:var(--brand-ink)]">{stock.name}</h2>
               {stock.location && (
                 <p className="text-xs text-slate-500">{stock.location}</p>
+              )}
+              {stock.notes && (
+                <p className="mt-1 text-xs text-slate-500">{stock.notes}</p>
               )}
             </>
           )}
@@ -1260,7 +1417,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
                 type="button"
                 onClick={() => {
                   setEditingStock(false);
-                  setStockEditForm({ name: stock.name, location: stock.location ?? '' });
+                  setStockEditForm({ name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '' });
                 }}
                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
               >
@@ -1285,7 +1442,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    setStockEditForm({ name: stock.name, location: stock.location ?? '' });
+                    setStockEditForm({ name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '' });
                     setEditingStock(true);
                   }}
                   className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
@@ -1319,11 +1476,17 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
       {/* new item form */}
       {showItemForm && (
         <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
-          <BatchFormFields itemForm={itemForm} churches={churches} copy={copy} setField={setField} />
+          <BatchFormFields
+            itemForm={itemForm}
+            churches={churches}
+            copy={copy}
+            onRequestCreateChurch={onRequestCreateChurch}
+            setField={setField}
+          />
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={addItemMutation.isPending || itemForm.degrees.length === 0}
+              disabled={addItemMutation.isPending}
               onClick={() => addItemMutation.mutate()}
               className="rounded-lg bg-[color:var(--brand-green)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
@@ -1358,6 +1521,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
           copy={copy}
           uid={uid}
           isAdmin={isAdmin}
+          onRequestCreateChurch={onRequestCreateChurch}
         />
       )}
     </div>
@@ -1366,8 +1530,8 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
 
 // ─── SacramentPage ────────────────────────────────────────────────────────────
 
-type StockFormState = { name: string; location: string };
-const initialStockForm: StockFormState = { name: '', location: '' };
+type StockFormState = { name: string; location: string; notes: string };
+const initialStockForm: StockFormState = { name: '', location: '', notes: '' };
 
 export default function SacramentPage() {
   const { locale } = useSiteLocale();
@@ -1380,12 +1544,15 @@ export default function SacramentPage() {
 
   const [showStockForm, setShowStockForm] = useState(false);
   const [stockForm, setStockForm] = useState<StockFormState>(initialStockForm);
+  const [addChurchModal, setAddChurchModal] = useState<AddChurchModalState | null>(null);
 
   const stocksQuery = useQuery({ queryKey: ['sacramentStocks'], queryFn: fetchStocks });
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
 
   const stocks: SacramentStock[] = stocksQuery.data ?? [];
   const churches: ChurchInfo[] = churchesQuery.data ?? [];
+  const churchFormCopy = churchFormCopyByLocale[locale];
+  const requiredChurchName = requiredChurchNameByLocale[locale];
 
   const addStockMutation = useMutation({
     mutationFn: () => {
@@ -1396,6 +1563,7 @@ export default function SacramentPage() {
       return createStock({
         name: stockForm.name.trim(),
         location: stockForm.location.trim() || undefined,
+        notes: stockForm.notes.trim(),
       });
     },
     onSuccess: async () => {
@@ -1448,6 +1616,15 @@ export default function SacramentPage() {
                 onChange={e => setStockForm(prev => ({ ...prev, location: e.target.value }))}
               />
             </div>
+            <div className="col-span-2">
+              <label className={labelCls()}>{copy.notes}</label>
+              <textarea
+                className={inputCls('w-full')}
+                rows={2}
+                value={stockForm.notes}
+                onChange={e => setStockForm(prev => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1484,10 +1661,29 @@ export default function SacramentPage() {
       ) : (
         <div className="space-y-4">
           {stocks.map(stock => (
-            <StockCard key={stock.id} stock={stock} churches={churches} copy={copy} uid={uid} isAdmin={isAdmin} />
+            <StockCard
+              key={stock.id}
+              stock={stock}
+              churches={churches}
+              copy={copy}
+              uid={uid}
+              isAdmin={isAdmin}
+              onRequestCreateChurch={onCreated => setAddChurchModal({ onCreated })}
+            />
           ))}
         </div>
       )}
+
+      {addChurchModal ? (
+        <AddChurchModal
+          copy={churchFormCopy}
+          loginToCreate={churchFormCopy.loginToSave}
+          onClose={() => setAddChurchModal(null)}
+          onCreated={addChurchModal.onCreated}
+          requiredName={requiredChurchName}
+          userPresent={!!user}
+        />
+      ) : null}
     </div>
   );
 }

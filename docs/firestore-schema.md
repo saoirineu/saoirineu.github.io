@@ -25,6 +25,7 @@
 - nome
 - localizacao: { cidade, uf, pais?, coords? }
 - linhagem?
+- leaderName?, leaderEmail?, churchEmail?
 - responsaveis: ref[](pessoas)
 - contatos
 - createdAt, updatedAt
@@ -131,7 +132,7 @@ senao `email-<hash>` ou `name-<hash>`.
 - trabalhos: permitir criar/editar se `request.auth.uid == resource.data.createdBy` ou tiver claim/role apropriada.
 - bebidaLotes: escrita apenas para responsaveis ou admins (claim).
 - usuarios: cada uid edita apenas seu perfil; leitura publica opcional.
-- members: leitura e escrita apenas para admins (dados pessoais sensiveis).
+- members: escrita apenas para admins; leitura para admins ou para o usuario autenticado cujo e-mail do token coincide com `email`/`email2` do documento (prefill do perfil; dados pessoais sensiveis).
 - `usuarios.systemRole` deve ser alterado apenas por superadmin; `renato.fabbri@gmail.com` atua como bootstrap superadmin.
 - Storage (se usar): uploads apenas autenticados; path por uid ou por colecao; validar tipo/tamanho.
 

@@ -10,6 +10,9 @@ describe('churches form helpers', () => {
       state: ' AC ',
       country: ' Brasil ',
       lineage: ' ICEFLU ',
+      leaderName: ' Madrinha Maria ',
+      leaderEmail: ' maria@example.org ',
+      churchEmail: ' igreja@example.org ',
       observations: ' nota ',
       lat: ' -9.974 ',
       lng: ' invalido '
@@ -21,6 +24,9 @@ describe('churches form helpers', () => {
       state: 'AC',
       country: 'Brasil',
       lineage: 'ICEFLU',
+      leaderName: 'Madrinha Maria',
+      leaderEmail: 'maria@example.org',
+      churchEmail: 'igreja@example.org',
       observations: 'nota',
       lat: -9.974,
       lng: undefined
@@ -32,11 +38,17 @@ describe('churches form helpers', () => {
       id: '2',
       name: 'Centro',
       city: 'Rio Branco',
+      leaderName: 'Padrinho João',
+      leaderEmail: 'joao@example.org',
+      churchEmail: 'centro@example.org',
       lat: -9.9,
       lng: -67.8
     } as import('../../lib/works').ChurchInfo);
 
     expect(form.name).toBe('Centro');
+    expect(form.leaderName).toBe('Padrinho João');
+    expect(form.leaderEmail).toBe('joao@example.org');
+    expect(form.churchEmail).toBe('centro@example.org');
     expect(form.lat).toBe('-9.9');
     expect(sortChurches([{ id: 'b', name: 'Zulu' }, { id: 'a', name: 'Alpha' }] as import('../../lib/works').ChurchInfo[]).map(item => item.name)).toEqual([
       'Alpha',
