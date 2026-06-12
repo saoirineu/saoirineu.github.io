@@ -13,6 +13,8 @@ import {
   fetchStocks,
   fetchTransactions,
   fetchTransactionsByStock,
+  updateItem,
+  updateStock,
   updateTransaction,
   type SacramentForm,
   type SacramentItem,
@@ -37,6 +39,9 @@ const copyByLocale = {
     stockLocation: 'Localização',
     save: 'Salvar',
     cancel: 'Cancelar',
+    edit: 'Editar',
+    editStock: 'Editar estoque',
+    editBatch: 'Editar lote',
     delete: 'Excluir',
     confirmDelete: 'Excluir este item?',
     loading: 'Carregando...',
@@ -87,6 +92,9 @@ const copyByLocale = {
     stockLocation: 'Location',
     save: 'Save',
     cancel: 'Cancel',
+    edit: 'Edit',
+    editStock: 'Edit stock',
+    editBatch: 'Edit batch',
     delete: 'Delete',
     confirmDelete: 'Delete this item?',
     loading: 'Loading...',
@@ -137,6 +145,9 @@ const copyByLocale = {
     stockLocation: 'Ubicación',
     save: 'Guardar',
     cancel: 'Cancelar',
+    edit: 'Editar',
+    editStock: 'Editar existencia',
+    editBatch: 'Editar lote',
     delete: 'Eliminar',
     confirmDelete: '¿Eliminar este elemento?',
     loading: 'Cargando...',
@@ -187,6 +198,9 @@ const copyByLocale = {
     stockLocation: 'Posizione',
     save: 'Salva',
     cancel: 'Annulla',
+    edit: 'Modifica',
+    editStock: 'Modifica scorta',
+    editBatch: 'Modifica lotto',
     delete: 'Elimina',
     confirmDelete: 'Eliminare questo elemento?',
     loading: 'Caricamento...',
@@ -717,7 +731,20 @@ type BatchTableRowProps = {
 function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, onToggle }: BatchTableRowProps) {
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<ItemFormState>(() => itemToItemForm(item));
   const unit = getItemUnit(item, copy);
+
+  const setEditField: SetItemField = (key, value) =>
+    setEditForm(prev => ({ ...prev, [key]: value }));
+
+  const editMutation = useMutation({
+    mutationFn: () => updateItem(item.id, buildItemPayload(editForm, item.stockId, churches)),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['sacramentItems', item.stockId] });
+      setEditing(false);
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteItem(item.id),
@@ -762,26 +789,75 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
             >
               {expanded ? copy.hideMovements : copy.showMovements}
             </button>
-            {deleting ? (
-              <span className="text-xs text-slate-400">{copy.deleting}</span>
-            ) : isAdmin ? (
-              <button
-                type="button"
-                onClick={event => {
-                  event.stopPropagation();
-                  if (window.confirm(copy.confirmDelete)) {
-                    setDeleting(true);
-                    deleteMutation.mutate();
-                  }
-                }}
-                className="rounded-full border border-red-100 px-2 py-1 text-xs text-red-400 hover:bg-red-50"
-              >
-                {copy.delete}
-              </button>
-            ) : null}
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={event => {
+                    event.stopPropagation();
+                    setEditForm(itemToItemForm(item));
+                    setEditing(true);
+                  }}
+                  className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
+                >
+                  {copy.editBatch}
+                </button>
+                {deleting ? (
+                  <span className="text-xs text-slate-400">{copy.deleting}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={event => {
+                      event.stopPropagation();
+                      if (window.confirm(copy.confirmDelete)) {
+                        setDeleting(true);
+                        deleteMutation.mutate();
+                      }
+                    }}
+                    className="rounded-full border border-red-100 px-2 py-1 text-xs text-red-400 hover:bg-red-50"
+                  >
+                    {copy.delete}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </td>
       </tr>
+      {editing && (
+        <tr className="border-b border-slate-100 bg-blue-50/30">
+          <td colSpan={7} className="px-3 py-3">
+            <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
+              <BatchFormFields itemForm={editForm} churches={churches} copy={copy} setField={setEditField} />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={editMutation.isPending || editForm.degrees.length === 0}
+                  onClick={() => editMutation.mutate()}
+                  className="rounded-lg bg-[color:var(--brand-green)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  {editMutation.isPending ? copy.saving : copy.save}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setEditForm(itemToItemForm(item));
+                  }}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+                >
+                  {copy.cancel}
+                </button>
+                {editMutation.isError && (
+                  <span className="text-xs text-red-600">
+                    {(editMutation.error as Error)?.message ?? 'Error'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
       {expanded && (
         <tr className="border-b border-slate-100 bg-slate-50/70">
           <td colSpan={7} className="px-3 py-3">
@@ -897,10 +973,178 @@ function degreesToString(degrees: number[]): string {
   return sorted.join('-');
 }
 
+function degreesFromString(value: string): number[] {
+  const seen = new Set<number>();
+  value.match(/\d+/g)?.forEach(part => {
+    const degree = Number(part);
+    if (DEGREE_OPTIONS.includes(degree)) {
+      seen.add(degree);
+    }
+  });
+  return [...seen].sort((a, b) => a - b);
+}
+
+function itemToItemForm(item: SacramentItem): ItemFormState {
+  return {
+    degrees: degreesFromString(item.degree),
+    concentration: item.form === 'gel' ? 'gel' : item.concentration ?? '',
+    form: item.form,
+    originChurchId: item.originChurchId ?? '',
+    responsiblePerson: item.responsiblePerson ?? '',
+    feitioDate: toFeitioMonth(item.feitioDate),
+  };
+}
+
+function buildItemPayload(itemForm: ItemFormState, stockId: string, churches: ChurchInfo[]): Omit<SacramentItem, 'id'> {
+  const church = churches.find(c => c.id === itemForm.originChurchId);
+  const form = itemForm.concentration === 'gel' ? 'gel' : itemForm.form;
+  const concentration = form === 'gel'
+    ? undefined
+    : itemForm.concentration || undefined;
+
+  return {
+    stockId,
+    degree: degreesToString(itemForm.degrees),
+    concentration,
+    form,
+    originChurchId: itemForm.originChurchId || undefined,
+    originChurchName: church?.name ?? undefined,
+    responsiblePerson: itemForm.responsiblePerson || undefined,
+    feitioDate: itemForm.feitioDate || undefined,
+    feitioDateEnd: undefined,
+  };
+}
+
+type SetItemField = <K extends keyof ItemFormState>(key: K, value: ItemFormState[K]) => void;
+
+type BatchFormFieldsProps = {
+  itemForm: ItemFormState;
+  churches: ChurchInfo[];
+  copy: Copy;
+  setField: SetItemField;
+};
+
+function BatchFormFields({ itemForm, churches, copy, setField }: BatchFormFieldsProps) {
+  return (
+    <>
+      <div>
+        <label className={labelCls()}>{copy.degree}</label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {DEGREE_OPTIONS.map(d => {
+            const checked = itemForm.degrees.includes(d);
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() =>
+                  setField(
+                    'degrees',
+                    checked
+                      ? itemForm.degrees.filter(x => x !== d)
+                      : [...itemForm.degrees, d],
+                  )
+                }
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
+                  checked
+                    ? 'border-[color:var(--brand-blue-deep)] bg-[color:var(--brand-blue-deep)] text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {d}°
+              </button>
+            );
+          })}
+          {itemForm.degrees.length > 0 && (
+            <span className="ml-1 self-center text-xs text-slate-400">
+              → {degreesToString(itemForm.degrees)}°
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelCls()}>{copy.concentration}</label>
+          <select
+            className={inputCls('w-full')}
+            value={itemForm.concentration}
+            onChange={e => {
+              const val = e.target.value;
+              setField('concentration', val);
+              if (val === 'gel') setField('form', 'gel');
+              else if (itemForm.form === 'gel') setField('form', 'liquid');
+            }}
+          >
+            <option value="">—</option>
+            {CONCENTRATION_OPTIONS.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+            <option value="gel">{copy.gel}</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls()}>{copy.form}</label>
+          <select
+            className={inputCls('w-full')}
+            value={itemForm.form}
+            disabled={itemForm.concentration === 'gel'}
+            onChange={e => setField('form', e.target.value as SacramentForm)}
+          >
+            <option value="liquid">{copy.liquid}</option>
+            <option value="gel">{copy.gel}</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelCls()}>{copy.originChurch}</label>
+          <select
+            className={inputCls('w-full')}
+            value={itemForm.originChurchId}
+            onChange={e => setField('originChurchId', e.target.value)}
+          >
+            <option value="">{copy.selectCasa}</option>
+            {churches.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls()}>{copy.responsiblePerson}</label>
+          <input
+            type="text"
+            className={inputCls('w-full')}
+            value={itemForm.responsiblePerson}
+            onChange={e => setField('responsiblePerson', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls()}>{copy.feitioDate}</label>
+        <input
+          type="month"
+          className={inputCls('w-48')}
+          value={toFeitioMonth(itemForm.feitioDate)}
+          onChange={e => setField('feitioDate', e.target.value)}
+        />
+      </div>
+    </>
+  );
+}
+
 function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
   const qc = useQueryClient();
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemForm, setItemForm] = useState<ItemFormState>(initialItemForm);
+  const [editingStock, setEditingStock] = useState(false);
+  const [stockEditForm, setStockEditForm] = useState<StockFormState>({
+    name: stock.name,
+    location: stock.location ?? '',
+  });
   const [deleting, setDeleting] = useState(false);
 
   const itemsQuery = useQuery({
@@ -931,28 +1175,23 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
     setItemForm(prev => ({ ...prev, [key]: value }));
 
   const addItemMutation = useMutation({
-    mutationFn: () => {
-      const church = churches.find(c => c.id === itemForm.originChurchId);
-      const degreeStr = degreesToString(itemForm.degrees);
-      const concentration = itemForm.concentration === 'gel'
-        ? undefined
-        : itemForm.concentration || undefined;
-      return createItem({
-        stockId: stock.id,
-        degree: degreeStr,
-        concentration,
-        form: itemForm.concentration === 'gel' ? 'gel' : itemForm.form,
-        originChurchId: itemForm.originChurchId || undefined,
-        originChurchName: church?.name ?? undefined,
-        responsiblePerson: itemForm.responsiblePerson || undefined,
-        feitioDate: itemForm.feitioDate || undefined,
-        feitioDateEnd: undefined,
-      });
-    },
+    mutationFn: () => createItem(buildItemPayload(itemForm, stock.id, churches)),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentItems', stock.id] });
       setShowItemForm(false);
       setItemForm(initialItemForm);
+    },
+  });
+
+  const editStockMutation = useMutation({
+    mutationFn: () =>
+      updateStock(stock.id, {
+        name: stockEditForm.name.trim(),
+        location: stockEditForm.location.trim() || undefined,
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['sacramentStocks'] });
+      setEditingStock(false);
     },
   });
 
@@ -966,11 +1205,36 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
   return (
     <div className="rounded-xl border border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.6)] p-4 shadow-sm space-y-3">
       {/* header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-[color:var(--brand-ink)]">{stock.name}</h2>
-          {stock.location && (
-            <p className="text-xs text-slate-500">{stock.location}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          {editingStock ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div>
+                <label className={labelCls()}>{copy.stockName}</label>
+                <input
+                  type="text"
+                  className={inputCls('w-full')}
+                  value={stockEditForm.name}
+                  onChange={e => setStockEditForm(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className={labelCls()}>{copy.stockLocation}</label>
+                <input
+                  type="text"
+                  className={inputCls('w-full')}
+                  value={stockEditForm.location}
+                  onChange={e => setStockEditForm(prev => ({ ...prev, location: e.target.value }))}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-base font-semibold text-[color:var(--brand-ink)]">{stock.name}</h2>
+              {stock.location && (
+                <p className="text-xs text-slate-500">{stock.location}</p>
+              )}
+            </>
           )}
           <p className="mt-1 text-xs text-slate-500">
             {copy.currentBalance}:{' '}
@@ -981,29 +1245,73 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowItemForm(v => !v)}
-            className="rounded-full bg-[color:var(--brand-blue-deep)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-80"
-          >
-            + {copy.newItem}
-          </button>
-          {deleting ? (
-            <span className="text-xs text-slate-400">{copy.deleting}</span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {editingStock ? (
+            <>
+              <button
+                type="button"
+                disabled={editStockMutation.isPending || !stockEditForm.name.trim()}
+                onClick={() => editStockMutation.mutate()}
+                className="rounded-lg bg-[color:var(--brand-green)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                {editStockMutation.isPending ? copy.saving : copy.save}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingStock(false);
+                  setStockEditForm({ name: stock.name, location: stock.location ?? '' });
+                }}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+              >
+                {copy.cancel}
+              </button>
+              {editStockMutation.isError && (
+                <span className="text-xs text-red-600">
+                  {(editStockMutation.error as Error)?.message ?? 'Error'}
+                </span>
+              )}
+            </>
           ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm(copy.confirmDelete)) {
-                  setDeleting(true);
-                  deleteStockMutation.mutate();
-                }
-              }}
-              className="rounded-full border border-red-100 px-2 py-1 text-xs text-red-400 hover:bg-red-50"
-            >
-              {copy.delete}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowItemForm(v => !v)}
+                className="rounded-full bg-[color:var(--brand-blue-deep)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-80"
+              >
+                + {copy.newItem}
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStockEditForm({ name: stock.name, location: stock.location ?? '' });
+                    setEditingStock(true);
+                  }}
+                  className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
+                >
+                  {copy.editStock}
+                </button>
+              )}
+              {isAdmin && (
+                deleting ? (
+                  <span className="text-xs text-slate-400">{copy.deleting}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(copy.confirmDelete)) {
+                        setDeleting(true);
+                        deleteStockMutation.mutate();
+                      }
+                    }}
+                    className="rounded-full border border-red-100 px-2 py-1 text-xs text-red-400 hover:bg-red-50"
+                  >
+                    {copy.delete}
+                  </button>
+                )
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1011,115 +1319,7 @@ function StockCard({ stock, churches, copy, uid, isAdmin }: StockCardProps) {
       {/* new item form */}
       {showItemForm && (
         <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
-          {/* degree checkboxes */}
-          <div>
-            <label className={labelCls()}>{copy.degree}</label>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {DEGREE_OPTIONS.map(d => {
-                const checked = itemForm.degrees.includes(d);
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() =>
-                      setField(
-                        'degrees',
-                        checked
-                          ? itemForm.degrees.filter(x => x !== d)
-                          : [...itemForm.degrees, d],
-                      )
-                    }
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
-                      checked
-                        ? 'border-[color:var(--brand-blue-deep)] bg-[color:var(--brand-blue-deep)] text-white'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {d}°
-                  </button>
-                );
-              })}
-              {itemForm.degrees.length > 0 && (
-                <span className="ml-1 self-center text-xs text-slate-400">
-                  → {degreesToString(itemForm.degrees)}°
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* concentration + form */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls()}>{copy.concentration}</label>
-              <select
-                className={inputCls('w-full')}
-                value={itemForm.concentration}
-                onChange={e => {
-                  const val = e.target.value;
-                  setField('concentration', val);
-                  if (val === 'gel') setField('form', 'gel');
-                  else if (itemForm.form === 'gel') setField('form', 'liquid');
-                }}
-              >
-                <option value="">—</option>
-                {CONCENTRATION_OPTIONS.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-                <option value="gel">{copy.gel}</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls()}>{copy.form}</label>
-              <select
-                className={inputCls('w-full')}
-                value={itemForm.form}
-                disabled={itemForm.concentration === 'gel'}
-                onChange={e => setField('form', e.target.value as SacramentForm)}
-              >
-                <option value="liquid">{copy.liquid}</option>
-                <option value="gel">{copy.gel}</option>
-              </select>
-            </div>
-          </div>
-
-          {/* origin church + responsible */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls()}>{copy.originChurch}</label>
-              <select
-                className={inputCls('w-full')}
-                value={itemForm.originChurchId}
-                onChange={e => setField('originChurchId', e.target.value)}
-              >
-                <option value="">{copy.selectCasa}</option>
-                {churches.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls()}>{copy.responsiblePerson}</label>
-              <input
-                type="text"
-                className={inputCls('w-full')}
-                value={itemForm.responsiblePerson}
-                onChange={e => setField('responsiblePerson', e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* feitio month */}
-          <div>
-            <label className={labelCls()}>{copy.feitioDate}</label>
-            <input
-              type="month"
-              className={inputCls('w-48')}
-              value={toFeitioMonth(itemForm.feitioDate)}
-              onChange={e => setField('feitioDate', e.target.value)}
-            />
-          </div>
+          <BatchFormFields itemForm={itemForm} churches={churches} copy={copy} setField={setField} />
           <div className="flex items-center gap-2">
             <button
               type="button"
