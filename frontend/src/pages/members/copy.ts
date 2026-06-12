@@ -42,6 +42,7 @@ export type MembersCopy = {
   details: string;
   loading: string;
   loadError: string;
+  downloadCsv: (count: number) => string;
   empty: string;
   opError: string;
   firstWork: string;
@@ -122,6 +123,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     details: 'Detalhes',
     loading: 'Carregando sócios...',
     loadError: 'Falha ao carregar sócios.',
+    downloadCsv: count => `Baixar CSV (${count})`,
     empty: 'Nenhum sócio encontrado com os filtros atuais.',
     opError: 'Falha na operação.',
     firstWork: '1º Trab.',
@@ -199,6 +201,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     details: 'Details',
     loading: 'Loading members...',
     loadError: 'Failed to load members.',
+    downloadCsv: count => `Download CSV (${count})`,
     empty: 'No members found with the current filters.',
     opError: 'Operation failed.',
     firstWork: '1st work',
@@ -276,6 +279,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     details: 'Detalles',
     loading: 'Cargando socios...',
     loadError: 'Error al cargar socios.',
+    downloadCsv: count => `Descargar CSV (${count})`,
     empty: 'No se encontraron socios con los filtros actuales.',
     opError: 'La operación falló.',
     firstWork: '1º Trab.',
@@ -353,6 +357,7 @@ export const membersCopyByLocale: Record<SiteLocale, MembersCopy> = {
     details: 'Dettagli',
     loading: 'Caricamento soci...',
     loadError: 'Impossibile caricare i soci.',
+    downloadCsv: count => `Scarica CSV (${count})`,
     empty: 'Nessun socio trovato con i filtri attuali.',
     opError: 'Operazione non riuscita.',
     firstWork: '1º Lav.',

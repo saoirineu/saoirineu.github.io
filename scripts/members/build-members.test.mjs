@@ -44,38 +44,41 @@ test('keyFor follows CF → name|dob → email+name fallback priority', () => {
   assert.ok(keyFor({ surname: 'Rossi', firstName: 'Mario', birthDate: '1980-01-01' }).startsWith('name-'));
 });
 
-test('mergeGroup auto-resolves a conflict to the most recently registered value', () => {
+test('mergeGroup gives COMPLETO precedence and the importer wins registrationDate', () => {
   const complete = { source: { file: 'complete', code: '1' }, city: 'Roma', registrationDate: '2024-12-01' };
   const importer = { source: { file: 'importer', code: '9' }, city: 'Milano', profession: 'X', registrationDate: '2010-05-01' };
   const merged = mergeGroup('CF1', [complete, importer]);
-  assert.equal(merged.city, 'Roma'); // complete is more recent → wins, no conflict
+  assert.equal(merged.city, 'Roma'); // COMPLETO is the main source → wins, no conflict
   assert.equal(merged.conflicts.city, undefined);
   assert.deepEqual(merged.superseeded.city, ['Milano']);
   assert.equal(merged.profession, 'X'); // gap filled from importer
+  assert.equal(merged.registrationDate, '2010-05-01'); // "data di iscrizione": importer wins
+  assert.deepEqual(merged.superseeded.registrationDate, ['2024-12-01']);
   assert.ok(!merged.reviewReasons.includes('field-conflict'));
   assert.ok(!merged.reviewReasons.includes('duplicate-in-importer'));
   assert.ok(merged.autoResolved >= 1);
 
-  // reverse: when the importer row is the more recent one, it wins
+  // COMPLETO wins even when the importer row is the more recently registered one
   const merged2 = mergeGroup('CF2', [
     { source: { file: 'complete', code: '1' }, city: 'Roma', registrationDate: '2010-01-01' },
     { source: { file: 'importer', code: '9' }, city: 'Milano', registrationDate: '2024-01-01' }
   ]);
-  assert.equal(merged2.city, 'Milano');
+  assert.equal(merged2.city, 'Roma');
+  assert.equal(merged2.registrationDate, '2024-01-01');
 });
 
-test('mergeGroup breaks ties by preferring cloud and dropping bare-numeric junk', () => {
+test('mergeGroup prefers cloud values and drops bare-numeric junk', () => {
   const merged = mergeGroup('CF1', [
     { source: { file: 'complete', code: '1' }, country: '118', surname: 'Abbonati', registrationDate: '2014-05-09' },
     { source: { file: 'importer', code: '9' }, country: 'Italia', surname: 'Abbondati', registrationDate: '2014-05-09' }
   ]);
-  assert.equal(merged.country, 'Italia'); // same date → bare-numeric "118" dropped in favor of text
+  assert.equal(merged.country, 'Italia'); // bare-numeric "118" dropped in favor of text
   assert.equal(merged.conflicts.country, undefined);
   assert.deepEqual(merged.superseeded.country, ['118']);
-  assert.equal(merged.surname, 'Abbonati'); // same date, both text → prefer cloud (COMPLETO)
+  assert.equal(merged.surname, 'Abbonati'); // COMPLETO is the main source
   assert.equal(merged.conflicts.surname, undefined);
   assert.deepEqual(merged.superseeded.surname, ['Abbondati']);
-  assert.ok(merged.tieResolved >= 2);
+  assert.ok(merged.autoResolved >= 2);
   assert.ok(!merged.reviewReasons.includes('field-conflict'));
 });
 
@@ -264,6 +267,30 @@ test('buildMembers auto-merges exact-birthdate email matches with extra surname 
   assert.equal(members[0].needsReview, false);
 });
 
+test('buildMembers folds a first-name-less fragment row into its same-email same-birthdate twin', () => {
+  // Real-world shape (Anzuini): an importer row lost its first name but shares
+  // email, surname and exact birth date with the cloud row — same person, and
+  // the certificate must land on the merged member.
+  const complete = [
+    { source: { file: 'complete', code: '622', line: 342 }, surname: 'Anzuini', firstName: 'Angelo', birthDate: '1962-01-08', email: 'anzangelo@yahoo.com', registrationDate: '2014-05-28' }
+  ];
+  const importer = [
+    { source: { file: 'importer', code: '811', line: 815 }, surname: 'Anzuini', birthDate: '1962-01-08', email: 'anzangelo@yahoo.com', profession: 'operaio', registrationDate: '2014-05-28' }
+  ];
+  const certificates = [
+    { line: 6, code: '91013', subject: 'Anzuini Angelo', type: 'Primo Lavoro', date: '2014-05-28', email: 'anzangelo@yahoo.com', subjectKey: normName('Anzuini Angelo') }
+  ];
+
+  const { members } = buildMembers({ complete, importer, certificates });
+  assert.equal(members.length, 1);
+  const angelo = members[0];
+  assert.equal(angelo.fullName, 'Anzuini Angelo');
+  assert.equal(angelo.profession, 'operaio'); // gap filled from the fragment row
+  assert.equal(angelo.firstWorkDate, '2014-05-28');
+  assert.ok(!angelo.reviewReasons.includes('family-email'));
+  assert.equal(angelo.needsReview, false);
+});
+
 test('buildMembers flags same-email different-name members as family-email duplicates', () => {
   const complete = [
     { source: { file: 'complete', code: '1', line: 2 }, fiscalCode: 'CF1', surname: 'Rossi', firstName: 'Mario', email: 'shared@x.it', birthDate: '1980-01-01' }
@@ -319,6 +346,52 @@ test('buildMembers auto-merges same-name birthdate records even when two CFs dis
   assert.ok(members[0].sources.some(source => source.file === 'importer'));
   assert.deepEqual(members[0].superseeded.fiscalCode, members[0].id === 'CFA' ? ['CFB'] : ['CFA']);
   assert.equal(members[0].needsReview, false);
+});
+
+test('buildMembers attaches a shared-family-email certificate to the member whose name matches', () => {
+  // Real-world shape: Carlo Menozzi and Mara Serre share a family email, and
+  // Mara's "Primo Lavoro" certificate carries that shared address. The email
+  // match must be confirmed by the subject name, or Mara's firstWorkDate
+  // wrongly lands on Carlo.
+  const complete = [
+    { source: { file: 'complete', code: '35', line: 93 }, fiscalCode: 'MNZCRL35R19H223I', surname: 'MENOZZI', firstName: 'CARLO', birthDate: '1935-10-19', email: 'skywalter@eirene.re.it', registrationDate: '2024-12-16' },
+    { source: { file: 'complete', code: '12', line: 407 }, fiscalCode: 'SRRMRA74E68L219U', surname: 'SERRE', firstName: 'MARA', birthDate: '1974-05-28', email: 'skywalter@eirene.re.it', registrationDate: '2024-10-03' }
+  ];
+  const certificates = [
+    { line: 33, code: '89037', subject: 'SERRE MARA', type: 'Primo Lavoro', date: '1996-10-01', email: 'skywalter@eirene.re.it', subjectKey: normName('SERRE MARA') }
+  ];
+
+  const { members, certStats } = buildMembers({ complete, importer: [], certificates });
+  const carlo = members.find(m => m.id === 'MNZCRL35R19H223I');
+  const mara = members.find(m => m.id === 'SRRMRA74E68L219U');
+  assert.ok(carlo && mara);
+  assert.equal(mara.firstWorkDate, '1996-10-01');
+  assert.equal(carlo.firstWorkDate, undefined);
+  assert.equal(certStats.matchedByEmail, 1);
+  assert.equal(certStats.unmatched, 0);
+});
+
+test('buildMembers leaves a certificate unmatched instead of guessing on a family email', () => {
+  // The cert's email belongs to a member whose name clearly differs and no
+  // member matches the subject by name → orphan flagged for review, never a
+  // wrong attachment.
+  const complete = [
+    { source: { file: 'complete', code: '1', line: 2 }, fiscalCode: 'CF1', surname: 'MENOZZI', firstName: 'CARLO', email: 'shared@x.it' }
+  ];
+  const certificates = [
+    { line: 5, code: 'C9', subject: 'BIANCHI LUISA', type: 'Primo Lavoro', date: '2001-03-01', email: 'shared@x.it', subjectKey: normName('BIANCHI LUISA') }
+  ];
+
+  const { members, certStats } = buildMembers({ complete, importer: [], certificates });
+  const carlo = members.find(m => m.id === 'CF1');
+  assert.equal(carlo.firstWorkDate, undefined);
+  assert.equal(certStats.emailRejectedByName, 1);
+  assert.equal(certStats.unmatched, 1);
+  const orphan = members.find(m => m.id.startsWith('cert-'));
+  assert.ok(orphan);
+  assert.equal(orphan.firstWorkDate, '2001-03-01');
+  assert.ok(orphan.reviewReasons.includes('certificate-only'));
+  assert.equal(orphan.needsReview, true);
 });
 
 test('buildMembers reports a member matched to multiple certificates', () => {

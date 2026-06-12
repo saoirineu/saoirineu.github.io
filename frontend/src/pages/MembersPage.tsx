@@ -21,6 +21,7 @@ import {
   previewMemberMerge,
   type MergePlan
 } from './members/form';
+import { downloadMembersCsv } from './members/csv';
 import { type MembersCopy, membersCopyByLocale, memberFieldLabel, sourceBadgeLabels } from './members/copy';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -244,9 +245,19 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
-        <p className="text-sm text-slate-600">{copy.subtitle(total, flaggedCount)}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
+          <p className="text-sm text-slate-600">{copy.subtitle(total, flaggedCount)}</p>
+        </div>
+        <button
+          type="button"
+          disabled={members.length === 0}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          onClick={() => downloadMembersCsv(members, `soci-${new Date().toISOString().slice(0, 10)}.csv`)}
+        >
+          {copy.downloadCsv(members.length)}
+        </button>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">

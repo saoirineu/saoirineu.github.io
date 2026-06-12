@@ -9,16 +9,21 @@
  *
  * Identifier strategy (confirmed with the user):
  *   Codice Fiscale (CF) → strong non-CF key from name/birthdate or email+name.
- * Records that resolve to the same key are merged. When distinct values exist,
- * the most recent entry wins automatically and older values are kept in
- * `superseeded`; only unresolved ties remain in `conflicts` and keep the record
- * flagged `needsReview`. A second pass then folds together cross-key records
- * that look like the same person: exact same name+birthdate, or small name
- * variants / middle-name additions when email or birthdate still line up.
- * Remaining same-email but clearly different-name pairs are kept separate and
- * flagged as `family-email` for manual review. Certificates are attached to
- * their member by email then by name; unmatched ones become certificate-only
- * members.
+ * Records that resolve to the same key are merged. Field precedence (confirmed
+ * with the user): COMPLETO (the cloud registry) is the main source — its values
+ * win outright and the importer only fills fields the cloud does not carry.
+ * The one exception is the registration date ("data di iscrizione"), where the
+ * importer wins (the cloud's "Data Iscrizione" tracks renewals, not the
+ * original enrolment). Distinct values within the winning source resolve to
+ * the most recent entry; losing values are kept in `superseeded`. A second
+ * pass then folds together cross-key records that look like the same person:
+ * exact same name+birthdate, or small name variants / middle-name additions
+ * when email or birthdate still line up. Remaining same-email but clearly
+ * different-name pairs are kept separate and flagged as `family-email` for
+ * manual review. Certificates are attached to their member by email — but only
+ * when the certificate subject also matches the member's name, since family
+ * members share addresses — then by name; unmatched ones become
+ * certificate-only members.
  *
  * Outputs (committed, reviewable artifacts):
  *   - data/members/members.normalized.json
@@ -226,6 +231,31 @@ function similarNameField(a, b, { allowLeadingExtraTokens = false, allowOrderedS
   return allowLeadingExtraTokens && tokensShareLeadingSequence(aTokens, bTokens);
 }
 
+// Any-order token compatibility with typo tolerance: every token of the
+// shorter name must match a distinct token of the longer one. Used to confirm
+// that a certificate subject ("COGNOME NOME") designates a member regardless
+// of token order or extra middle names.
+export function namesTokensCompatible(a, b) {
+  const normalizedA = normName(a);
+  const normalizedB = normName(b);
+  if (!normalizedA || !normalizedB) return false;
+  if (normalizedA === normalizedB) return true;
+  if (editDistance(normalizedA, normalizedB) <= typoLimit(normalizedA, normalizedB)) return true;
+
+  const aTokens = normalizedA.split(' ');
+  const bTokens = normalizedB.split(' ');
+  const [shorter, longer] = aTokens.length <= bTokens.length ? [aTokens, bTokens] : [bTokens, aTokens];
+  const used = new Set();
+  return shorter.every(token => {
+    for (let i = 0; i < longer.length; i += 1) {
+      if (used.has(i) || editDistance(token, longer[i]) > typoLimit(token, longer[i])) continue;
+      used.add(i);
+      return true;
+    }
+    return false;
+  });
+}
+
 function sameNormalizedName(record, candidate) {
   return normName(record.surname) === normName(candidate.surname)
     && normName(record.firstName) === normName(candidate.firstName);
@@ -259,6 +289,11 @@ function canAutoMergeByEmail(record, candidate) {
   if (!recordEmail || recordEmail !== normEmail(candidate.email)) return false;
   if (sameNormalizedName(record, candidate)) return true;
   if (birthDateMatchesExactly(record, candidate) && namesMatchExactBirthDate(record, candidate)) return true;
+  // Same email + exact same birth date + same surname, with the first name
+  // missing on one side: a fragment row of the same person, not a relative.
+  if (birthDateMatchesExactly(record, candidate)
+    && similarNameField(record.surname, candidate.surname)
+    && (!normName(record.firstName) || !normName(candidate.firstName))) return true;
   return birthDateCompatible(record, candidate) && namesLikelySamePerson(record, candidate);
 }
 
@@ -266,33 +301,6 @@ function canAutoMergeByBirthDate(record, candidate) {
   return Boolean(record.birthDate)
     && record.birthDate === candidate.birthDate
     && namesMatchExactBirthDate(record, candidate);
-}
-
-const CLOUD_TYPO_TRUST_FIELDS = new Set(['surname', 'firstName', 'fiscalCode']);
-
-function isTrustedCloudTypoVariant(field, trustedValue, candidateValue) {
-  if (!trustedValue || !candidateValue) return false;
-  if (field === 'surname') return similarNameField(trustedValue, candidateValue);
-  if (field === 'firstName') return similarNameField(trustedValue, candidateValue);
-  if (field === 'fiscalCode') {
-    const trusted = normCF(trustedValue);
-    const candidate = normCF(candidateValue);
-    return Boolean(trusted)
-      && Boolean(candidate)
-      && trusted.length === candidate.length
-      && editDistance(trusted, candidate) <= 2;
-  }
-  return false;
-}
-
-function preferredCompleteTypoItem(field, items) {
-  if (!CLOUD_TYPO_TRUST_FIELDS.has(field)) return null;
-  const completeItems = items.filter(item => item.fromComplete);
-  if (completeItems.length !== 1) return null;
-  const trusted = completeItems[0];
-  const otherItems = items.filter(item => item !== trusted);
-  if (!otherItems.length) return null;
-  return otherItems.every(item => isTrustedCloudTypoVariant(field, trusted.value, item.value)) ? trusted : null;
 }
 
 function sourceSequence(record, index) {
@@ -576,11 +584,17 @@ function needsAction(reviewReasons) {
     || reviewReasons.includes('certificate-only');
 }
 
+// Fields where the importer (ImporterAnagrafichePF) takes precedence over the
+// cloud registry. Everywhere else COMPLETO is the main source and the importer
+// only fills gaps.
+const IMPORTER_PRECEDENCE_FIELDS = new Set(['registrationDate']);
+
 // Merge a group of raw records (one COMPLETO + zero or more importer rows) that
 // share an identifier key into one member document. Conflicting fields are
-// resolved automatically to the value carried by the most recently registered
-// record; auto-resolved losers are stored in `superseeded`, and only ties
-// (same date, or no dates) remain as manual conflicts.
+// resolved automatically by source precedence: COMPLETO (the cloud registry)
+// wins and the importer only fills gaps, except `registrationDate` where the
+// importer wins. Distinct values within the winning source resolve to the most
+// recently registered record; losers are stored in `superseeded`.
 export function mergeGroup(id, records) {
   const merged = { id };
   const sources = [];
@@ -589,13 +603,14 @@ export function mergeGroup(id, records) {
   let autoResolved = 0;
   let tieResolved = 0;
 
-  // Per field: normalized value -> { value, date, fromComplete } keeping the
-  // most recent date and whether COMPLETO (the cloud registry) carried it.
+  // Per field: normalized value -> { value, date, fromComplete, fromImporter }
+  // keeping the most recent date and which source(s) carried it.
   const candidates = {};
   for (const [index, record] of records.entries()) {
     if (record.source) sources.push(record.source);
     const date = recencyOf(record);
     const fromComplete = record.source?.file === 'complete';
+    const fromImporter = record.source?.file === 'importer';
     const sequence = sourceSequence(record, index);
     for (const field of MERGE_FIELDS) {
       const value = record[field];
@@ -604,14 +619,15 @@ export function mergeGroup(id, records) {
       if (!candidates[field]) candidates[field] = new Map();
       const existing = candidates[field].get(key);
       if (!existing) {
-        candidates[field].set(key, { value, date, fromComplete, sequence });
+        candidates[field].set(key, { value, date, fromComplete, fromImporter, sequence });
       } else {
-        if (compareCandidateRecency({ value, date, fromComplete, sequence }, existing) < 0) {
+        if (compareCandidateRecency({ value, date, sequence }, existing) < 0) {
           existing.date = date;
           existing.value = value; // freshest representation of the same value
           existing.sequence = sequence;
         }
         existing.fromComplete = existing.fromComplete || fromComplete;
+        existing.fromImporter = existing.fromImporter || fromImporter;
       }
     }
   }
@@ -619,51 +635,55 @@ export function mergeGroup(id, records) {
   for (const field of MERGE_FIELDS) {
     const map = candidates[field];
     if (!map) continue;
-    const items = [...map.values()];
+    let items = [...map.values()];
     if (items.length === 1) {
       merged[field] = items[0].value;
       continue;
     }
-    items.sort(compareCandidateRecency);
-    const trustedComplete = preferredCompleteTypoItem(field, items);
-    if (trustedComplete) {
-      merged[field] = trustedComplete.value;
-      rememberSuperseeded(superseeded, field, trustedComplete.value, items.map(item => item.value));
-      tieResolved += 1;
-      continue;
+    const allValues = items.map(item => item.value);
+
+    // Drop bare-numeric junk (e.g. country "118") when a text value is also
+    // present, whichever source carried it.
+    if (items.some(item => isBareNumber(item.value)) && items.some(item => !isBareNumber(item.value))) {
+      items = items.filter(item => !isBareNumber(item.value));
     }
-    const newestDate = items[0].date;
-    const newest = items.filter(item => item.date === newestDate);
-    if (newestDate !== '' && newest.length === 1) {
-      merged[field] = newest[0].value; // strictly most recent wins
-      rememberSuperseeded(superseeded, field, newest[0].value, items.map(item => item.value));
+
+    // Source precedence: COMPLETO (the cloud registry) wins; the importer only
+    // fills fields the cloud does not carry. Exception: `registrationDate`,
+    // where the importer is the trusted source.
+    const preferred = IMPORTER_PRECEDENCE_FIELDS.has(field)
+      ? items.filter(item => item.fromImporter)
+      : items.filter(item => item.fromComplete);
+    const pool = preferred.length ? preferred : items;
+    if (pool.length === 1) {
+      merged[field] = pool[0].value;
+      rememberSuperseeded(superseeded, field, pool[0].value, allValues);
       autoResolved += 1;
       continue;
     }
-    // Tie (same newest date, or no dates): prefer COMPLETO; drop bare-numeric
-    // junk (e.g. country "118") when a text value is also present.
-    let pool = newest;
-    if (pool.some(item => !isBareNumber(item.value))) {
-      pool = pool.filter(item => !isBareNumber(item.value));
+
+    // Several distinct values within the winning source: most recent wins.
+    pool.sort(compareCandidateRecency);
+    const newestDate = pool[0].date;
+    const newest = pool.filter(item => item.date === newestDate);
+    if (newestDate !== '' && newest.length === 1) {
+      merged[field] = newest[0].value;
+      rememberSuperseeded(superseeded, field, newest[0].value, allValues);
+      autoResolved += 1;
+      continue;
     }
-    const cloudPool = pool.filter(item => item.fromComplete);
-    if (cloudPool.length) pool = cloudPool;
-    if (field === 'fiscalCode' && items.some(item => normCF(item.value) === id)) {
+
+    // Same-source tie (same newest date, or no dates).
+    if (field === 'fiscalCode' && newest.some(item => normCF(item.value) === id)) {
       merged[field] = id;
-      rememberSuperseeded(superseeded, field, id, items.map(item => item.value));
+      rememberSuperseeded(superseeded, field, id, allValues);
       tieResolved += 1;
       continue;
     }
-    if (pool.length === 1) {
-      merged[field] = pool[0].value; // tiebreaker decided
-      rememberSuperseeded(superseeded, field, pool[0].value, items.map(item => item.value));
-      tieResolved += 1;
-    } else {
-      pool.sort((left, right) => right.sequence - left.sequence);
-      merged[field] = pool[0].value; // later source entry wins when dates tie or are missing
-      rememberSuperseeded(superseeded, field, pool[0].value, items.map(item => item.value));
-      tieResolved += 1;
-    }
+    newest.sort((left, right) => right.sequence - left.sequence);
+    merged[field] = newest[0].value; // later source entry wins when dates tie or are missing
+    rememberSuperseeded(superseeded, field, newest[0].value, allValues);
+    tieResolved += 1;
   }
 
   if (merged.fiscalCode && records.some(record => record.source?.file === 'complete' && normCF(record.fiscalCode) === normCF(merged.fiscalCode))) {
@@ -827,29 +847,62 @@ export function buildMembers({ complete, importer, certificates }) {
   // certificate is a "Primo Lavoro" carrying just a date). Email match first,
   // then normalized name. The index is built from the RAW source rows (every
   // email/name variant a person ever had), so cert matching does not depend on
-  // which value won conflict resolution. When several members share a contact,
+  // which value won conflict resolution. An email match alone is not proof of
+  // identity — family members share addresses — so it must be confirmed by the
+  // certificate subject matching the member's name; among confirmed candidates
   // prefer the canonical one (CF-keyed over email- or name-keyed).
   const setStronger = (map, key, id) => {
     if (!key) return;
     const existing = map.get(key);
     if (existing === undefined || memberKeyRank(id) < memberKeyRank(existing)) map.set(key, id);
   };
-  const emailIndex = new Map();
+  const emailIndex = new Map(); // email -> Set of every member id that carried it
   const nameIndex = new Map();
+  const nameKeysByMember = new Map(); // member id -> Set of raw name keys
+  const addEmailCandidate = (email, id) => {
+    if (!email) return;
+    if (!emailIndex.has(email)) emailIndex.set(email, new Set());
+    emailIndex.get(email).add(id);
+  };
   for (const record of allRecords) {
     const id = memberIdByGroupKey.get(groupedKeyFor(record));
-    setStronger(emailIndex, normEmail(record.email), id);
-    setStronger(emailIndex, normEmail(record.email2), id);
-    setStronger(nameIndex, `${normName(record.surname)} ${normName(record.firstName)}`.trim(), id);
+    addEmailCandidate(normEmail(record.email), id);
+    addEmailCandidate(normEmail(record.email2), id);
+    const nameKey = `${normName(record.surname)} ${normName(record.firstName)}`.trim();
+    setStronger(nameIndex, nameKey, id);
+    if (nameKey) {
+      if (!nameKeysByMember.has(id)) nameKeysByMember.set(id, new Set());
+      nameKeysByMember.get(id).add(nameKey);
+    }
   }
-  const certStats = { matchedByEmail: 0, matchedByName: 0, unmatched: 0 };
+  const certSubjectMatchesMember = (subjectKey, memberId) => {
+    for (const nameKey of nameKeysByMember.get(memberId) ?? []) {
+      if (namesTokensCompatible(subjectKey, nameKey)) return true;
+    }
+    return false;
+  };
+  const certStats = { matchedByEmail: 0, matchedByName: 0, emailRejectedByName: 0, unmatched: 0 };
   // memberId -> certificates matched to it (to report people with more than one).
   const certsByMember = new Map();
   for (const cert of certificates) {
-    let member = cert.email ? byId.get(emailIndex.get(cert.email)) : undefined;
-    if (member) {
-      certStats.matchedByEmail += 1;
-    } else if (cert.subjectKey) {
+    let member;
+    const emailCandidates = cert.email ? [...(emailIndex.get(cert.email) ?? [])] : [];
+    if (emailCandidates.length) {
+      const confirmed = cert.subjectKey
+        ? emailCandidates.filter(id => certSubjectMatchesMember(cert.subjectKey, id))
+        : emailCandidates;
+      if (confirmed.length) {
+        // Exact subject-name match beats a partial (token-subset) one, then
+        // prefer the canonical key (CF over email- or name-derived).
+        const exactness = id => (nameKeysByMember.get(id)?.has(cert.subjectKey) ? 0 : 1);
+        confirmed.sort((a, b) => exactness(a) - exactness(b) || memberKeyRank(a) - memberKeyRank(b) || a.localeCompare(b));
+        member = byId.get(confirmed[0]);
+        if (member) certStats.matchedByEmail += 1;
+      } else {
+        certStats.emailRejectedByName += 1;
+      }
+    }
+    if (!member && cert.subjectKey) {
       member = byId.get(nameIndex.get(cert.subjectKey));
       if (member) certStats.matchedByName += 1;
     }
@@ -947,8 +1000,8 @@ export function buildReport(members, certStats, counts, duplicateCertificates = 
   lines.push(`- Records carrying an Importer row: ${bySource.importer}`);
   lines.push(`- Members with a firstWorkDate (from a certificate): ${withFirstWorkDate}`, '');
   lines.push('## Conflict resolution', '');
-  lines.push(`- Auto-resolved by recency (most recent registration wins): ${autoResolved}`);
-  lines.push(`- Resolved on ties (prefer cloud, drop bare-numeric junk): ${tieResolved}`);
+  lines.push(`- Auto-resolved by source precedence (cloud wins, importer fills gaps and wins registrationDate) or recency: ${autoResolved}`);
+  lines.push(`- Resolved on same-source ties (drop bare-numeric junk, later entry wins): ${tieResolved}`);
   lines.push('');
   lines.push('## Needs review', '');
   lines.push(`- **Flagged: ${needsReview}** of ${members.length}`);
@@ -962,8 +1015,9 @@ export function buildReport(members, certStats, counts, duplicateCertificates = 
   lines.push('', '## Certificates', '');
   lines.push('Only the earliest certificate date is kept, as `firstWorkDate` (every certificate is a "Primo Lavoro" carrying just a date).');
   lines.push('');
-  lines.push(`- Matched by email: ${certStats.matchedByEmail}`);
+  lines.push(`- Matched by email (confirmed by subject name): ${certStats.matchedByEmail}`);
   lines.push(`- Matched by name: ${certStats.matchedByName}`);
+  lines.push(`- Email matches rejected because the subject name did not fit (family email): ${certStats.emailRejectedByName ?? 0}`);
   lines.push(`- Unmatched (became certificate-only members): ${certStats.unmatched}`, '');
 
   lines.push(`### Members with more than one certificate (${duplicateCertificates.length})`, '');
