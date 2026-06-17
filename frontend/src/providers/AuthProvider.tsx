@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await sendEmailVerification(credential.user);
       await firebaseSignOut(auth);
     },
+    sendPasswordReset: email => sendPasswordResetEmail(auth, email).then(() => undefined),
     refreshCurrentUser: async () => {
       if (!auth.currentUser) return;
       await auth.currentUser.reload();
