@@ -14,6 +14,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
 const EuropeanGatheringPage = lazy(() => import('./pages/EuropeanGatheringPage'));
 const EventsAdminPage = lazy(() => import('./pages/EventsAdminPage'));
+const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
 const LeaderReviewPage = lazy(() => import('./pages/LeaderReviewPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -90,6 +91,7 @@ function App() {
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/events/:slug" element={<EventRegistrationPage />} />
             <Route element={<DevOnlyRoute />}>
               <Route path="/churches" element={<ChurchesPage />} />
               <Route path="/people" element={<PeoplePage />} />

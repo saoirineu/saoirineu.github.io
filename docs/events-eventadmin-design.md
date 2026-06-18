@@ -370,9 +370,20 @@ _4c.2 — Firestore persistence — DONE (commit pending)_
       transactions (`adjustEventCapacity`, total bucket vs per-room); consent-ledger creation on
       upload (generalized from `europeanGathering.ts`).
 
-_4c.3 — generic registration renderer (pending)_
-- [ ] Config-driven registration page reusing `FileUploadField`, `InfoTooltip`, the contribution
-      UI, the consent gate (Phase 2) and the slots indicator (Part 1), driven by the event doc.
+_4c.3 — generic registration renderer — DONE (commit pending)_
+- [x] `components/InfoTooltip.tsx`: extracted shared component (EG untouched; unify at 4e).
+- [x] `pages/events/registrationCopy.ts`: compact 4-language form chrome copy (labels, errors,
+      upload strings) — event title/works/dates come from the event doc.
+- [x] `pages/EventRegistrationPage.tsx` at `/events/:slug`: config-driven form — personal data +
+      leader-email tooltip, status toggles, attendance mode, dates (event suggested), **slots
+      indicator** (fetchEventCapacity), works (localized from event.works), documents
+      (FileUploadField), **consent gate** (`isNovice || consentRequired`), contribution summary +
+      **caution deposit (event rate %)** + payment tooltip; create/edit via the 4c.2 CRUD.
+- [x] `App.tsx`: `/events/:slug` inside the authenticated Shell.
+
+**Events vertical is now usable end-to-end**: eventadmin creates an event (4b) → members register
+at `/events/:slug` (4c.3) → consent ledger + capacity tracked (4c.2/Phase 2). Remaining: seed the
+EG event + dashboard links (4d), then migrate the bespoke EG page onto this renderer (4e).
 
 **4d — seed + dashboard**
 - [ ] Seed `events/encontro-europeu-2026` from current constants (Sep 25/26/28/30, 30% deposit, rooms→capacity).
