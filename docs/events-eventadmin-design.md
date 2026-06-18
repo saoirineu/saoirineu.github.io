@@ -349,11 +349,23 @@ current touch points.
 - [x] `App.tsx`: `/admin/events` under `RoleGate requiredRole="eventadmin"`; `NavBar` link gated
       by `eventadmin` (the deferred Phase 1 items — now done).
 
-**4c — generic registrations + capacity**
+**4c — generic registrations + capacity** (split: 4c.1 pure logic / 4c.2 Firestore + UI)
+
+_4c.1 — pure logic — DONE (commit pending)_
+- [x] `eventRegistrations.ts`: `calculateEventContribution`/`calculateEventNightCount`/
+      `calculateEventCautionDeposit` (driven by `event.pricing`/`works`; **parity with the EG
+      numbers** — same 340 total in the test); capacity model (`eventCapacityBuckets`,
+      `totalEventCapacity`, `buildEventCapacitySnapshot`, `totalEventSlotsAvailable`; total bucket
+      vs per-room); `validateEventRegistration` (+ `requireConsent`).
+- [x] `eventRegistrations.test.ts`: 10 cases (EG-parity contribution, meals/spiritual, deposit,
+      capacity total/rooms/clamp, validation + consent).
+
+_4c.2 — Firestore + renderer (pending)_
 - [ ] `events/{id}/registrations/{rid}` + `events/{id}/capacity/{bucket}` rules (mirror EG;
-      capacity transactional, validated against the event doc).
+      capacity transactional).
 - [ ] `storage.rules`: `events/{eventId}/registrations/...` paths.
-- [ ] event-parameterized `calculateContribution`/`validate`/`buildPayload` + reserve/release.
+- [ ] registration CRUD + capacity reserve/release transactions + consent-ledger creation
+      (generalized from `europeanGathering.ts`; ships with its writer so rules aren't speculative).
 - [ ] Generic registration renderer (reuse `FileUploadField`, `InfoTooltip`, contribution UI).
 
 **4d — seed + dashboard**
