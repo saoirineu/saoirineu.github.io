@@ -102,10 +102,8 @@ function App() {
               <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />
               <Route path="/admin/members" element={<MembersPage />} />
             </Route>
-            <Route element={<RoleGate requiredRole="superadmin" />}>
-              <Route element={<DevOnlyRoute />}>
-                <Route path="/admin/users" element={<AdminUsersPage />} />
-              </Route>
+            <Route element={<RoleGate requiredRole="useradmin" />}>
+              <Route path="/admin/users" element={<AdminUsersPage />} />
             </Route>
           </Route>
         </Route>

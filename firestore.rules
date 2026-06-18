@@ -4,7 +4,13 @@ service cloud.firestore {
     function hasStoredRole(role) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRole == role;
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRole == role
+          || (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRoles is list
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRoles.hasAny([role])
+          )
+        );
     }
 
     function isSignedIn() {
@@ -34,6 +40,10 @@ service cloud.firestore {
       );
     }
 
+    function isUserAdmin() {
+      return isSuperadmin() || hasStoredRole('useradmin');
+    }
+
     function isCustodianOrHigher() {
       return isAdmin() || hasStoredRole('custodian');
     }
@@ -49,7 +59,36 @@ service cloud.firestore {
 
     function hasValidUserSystemRole() {
       return !request.resource.data.keys().hasAny(['systemRole'])
-        || request.resource.data.systemRole in ['user', 'admin', 'superadmin', 'custodian'];
+        || request.resource.data.systemRole in ['user', 'useradmin', 'admin', 'superadmin', 'custodian'];
+    }
+
+    function hasValidUserSystemRoles() {
+      return !request.resource.data.keys().hasAny(['systemRoles'])
+        || (
+          request.resource.data.systemRoles is list
+          && request.resource.data.systemRoles.size() <= 5
+          && request.resource.data.systemRoles.hasOnly(['user', 'useradmin', 'admin', 'superadmin', 'custodian'])
+        );
+    }
+
+    function hasValidUserApprovalStatus() {
+      return !request.resource.data.keys().hasAny(['approvalStatus'])
+        || request.resource.data.approvalStatus in ['needs-profile', 'pending', 'approved', 'needs-info'];
+    }
+
+    function userSelfMayWriteApprovalStatus() {
+      return !request.resource.data.diff(resource.data).changedKeys().hasAny(['approvalStatus'])
+        || request.resource.data.approvalStatus in ['needs-profile', 'pending'];
+    }
+
+    function useradminMayWriteApprovalFields() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'approvalStatus',
+          'approvalApprovedAt',
+          'approvalApprovedBy',
+          'updatedAt'
+        ])
+        && request.resource.data.approvalStatus in ['approved', 'needs-info'];
     }
 
     function hasValidEncontroEuropeuStatus() {
@@ -252,13 +291,20 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if true;
-      allow create: if hasValidUserSystemRole() && (
-        (isSignedIn() && request.auth.uid == uid && !request.resource.data.keys().hasAny(['systemRole']))
+      allow create: if hasValidUserSystemRole() && hasValidUserSystemRoles() && hasValidUserApprovalStatus() && (
+        (isSignedIn()
+          && request.auth.uid == uid
+          && !request.resource.data.keys().hasAny(['systemRole', 'systemRoles', 'approvalApprovedAt', 'approvalApprovedBy'])
+          && (!request.resource.data.keys().hasAny(['approvalStatus']) || request.resource.data.approvalStatus in ['needs-profile', 'pending']))
         || isSuperadmin()
       );
-      allow update: if hasValidUserSystemRole() && (
-        (isSignedIn() && request.auth.uid == uid && !request.resource.data.diff(resource.data).changedKeys().hasAny(['systemRole']))
+      allow update: if hasValidUserSystemRole() && hasValidUserSystemRoles() && hasValidUserApprovalStatus() && (
+        (isSignedIn()
+          && request.auth.uid == uid
+          && !request.resource.data.diff(resource.data).changedKeys().hasAny(['systemRole', 'systemRoles', 'approvalApprovedAt', 'approvalApprovedBy'])
+          && userSelfMayWriteApprovalStatus())
         || isSuperadmin()
+        || (isUserAdmin() && useradminMayWriteApprovalFields())
       );
       allow delete: if false;
     }

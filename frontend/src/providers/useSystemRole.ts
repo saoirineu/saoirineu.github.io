@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getEffectiveSystemRole } from '../lib/systemRole';
+import { getEffectiveSystemRoles } from '../lib/systemRole';
 import { fetchUser } from '../lib/users';
 import { useAuth } from './useAuth';
 
@@ -13,14 +13,16 @@ export function useSystemRole() {
     enabled: !!user
   });
 
-  const role = getEffectiveSystemRole({
+  const roles = getEffectiveSystemRoles({
     email: user?.email,
-    storedRole: profileQuery.data?.systemRole
+    storedRole: profileQuery.data?.systemRole,
+    storedRoles: profileQuery.data?.systemRoles
   });
 
   return {
     profile: profileQuery.data,
-    role,
+    role: roles,
+    roles,
     loading: !!user && profileQuery.isLoading,
     user
   };

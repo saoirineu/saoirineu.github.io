@@ -259,8 +259,6 @@ export function ProfileAssociationSection({ copy, form, setField }: BaseSectionP
         <TextInput copy={copy} field="renewalDate" form={form} label={copy.renewalDate} setField={setField} type="date" />
         <TextInput copy={copy} field="cancellationDate" form={form} label={copy.cancellationDate} setField={setField} type="date" />
         <TextInput copy={copy} field="firstWorkDate" form={form} label={copy.firstWorkDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="identityDocumentPrimaryName" form={form} label={copy.identityDocumentPrimary} setField={setField} />
-        <TextInput copy={copy} field="identityDocumentSecondaryName" form={form} label={copy.identityDocumentSecondary} setField={setField} />
         <TextInput copy={copy} field="membershipFeeAmount" form={form} label={copy.membershipFeeAmount} setField={setField} type="number" />
       </div>
     </section>

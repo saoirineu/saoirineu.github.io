@@ -1,6 +1,8 @@
 import { Timestamp, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes } from 'firebase/storage';
 
-import { db } from './firebase';
+import { db, storage } from './firebase';
+import { validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
 import {
   asOptionalBoolean,
   asOptionalString,
@@ -10,7 +12,7 @@ import {
   removeUndefinedDeep
 } from './firestoreData';
 import { fetchMembersByEmail, type MemberRecord } from './members';
-import { normalizeSystemRole, type SystemRole } from './systemRole';
+import { normalizeSystemRole, normalizeSystemRoles, primarySystemRole, type SystemRole } from './systemRole';
 import {
   buildUserProfileLoginPayload,
   selectMemberForProfilePrefill,
@@ -20,6 +22,11 @@ import {
 export type UserProfile = {
   uid: string;
   systemRole?: SystemRole;
+  systemRoles?: SystemRole[];
+  approvalStatus?: UserApprovalStatus;
+  approvalSubmittedAt?: Timestamp;
+  approvalApprovedAt?: Timestamp;
+  approvalApprovedBy?: string;
   displayName?: string;
   email?: string;
   email2?: string;
@@ -60,7 +67,9 @@ export type UserProfile = {
   cancellationDate?: string;
   firstWorkDate?: string;
   identityDocumentPrimaryName?: string;
+  identityDocumentPrimaryPath?: string;
   identityDocumentSecondaryName?: string;
+  identityDocumentSecondaryPath?: string;
   membershipFeeAmount?: string;
   currentChurchId?: string;
   currentChurchName?: string;
@@ -81,13 +90,36 @@ export type UserProfile = {
   createdAt?: Timestamp;
 };
 
+export type UserApprovalStatus = 'needs-profile' | 'pending' | 'approved' | 'needs-info';
+
 const usersRef = collection(db, 'users');
+
+function hasText(value: string | null | undefined) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeUserApprovalStatus(value: unknown): UserApprovalStatus | undefined {
+  if (value === 'approved') return 'approved';
+  if (value === 'pending') return 'pending';
+  if (value === 'needs-info') return 'needs-info';
+  if (value === 'needs-profile') return 'needs-profile';
+  return undefined;
+}
+
+function sanitizeFileName(value: string) {
+  return value.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
 
 function mapUserProfile(uid: string, value: unknown): UserProfile {
   const data = asRecord(value);
   return {
     uid,
     systemRole: normalizeSystemRole(data.systemRole),
+    systemRoles: normalizeSystemRoles(data.systemRoles, data.systemRole),
+    approvalStatus: normalizeUserApprovalStatus(data.approvalStatus),
+    approvalSubmittedAt: asOptionalTimestamp(data.approvalSubmittedAt) ?? undefined,
+    approvalApprovedAt: asOptionalTimestamp(data.approvalApprovedAt) ?? undefined,
+    approvalApprovedBy: asOptionalString(data.approvalApprovedBy),
     displayName: asOptionalString(data.displayName),
     email: asOptionalString(data.email),
     email2: asOptionalString(data.email2),
@@ -128,7 +160,9 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     cancellationDate: asOptionalString(data.cancellationDate),
     firstWorkDate: asOptionalString(data.firstWorkDate),
     identityDocumentPrimaryName: asOptionalString(data.identityDocumentPrimaryName),
+    identityDocumentPrimaryPath: asOptionalString(data.identityDocumentPrimaryPath),
     identityDocumentSecondaryName: asOptionalString(data.identityDocumentSecondaryName),
+    identityDocumentSecondaryPath: asOptionalString(data.identityDocumentSecondaryPath),
     membershipFeeAmount: asOptionalString(data.membershipFeeAmount),
     currentChurchId: asOptionalString(data.currentChurchId),
     currentChurchName: asOptionalString(data.currentChurchName),
@@ -150,6 +184,18 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
   };
 }
 
+export function isUserProfileReadyForApproval(profile: Partial<UserProfile>) {
+  const hasName = hasText(profile.fullName) || hasText(profile.displayName) || (hasText(profile.firstName) && hasText(profile.surname));
+  return hasName && hasText(profile.email) && hasText(profile.identityDocumentPrimaryPath);
+}
+
+export function nextUserApprovalStatus(profile: Partial<UserProfile>, currentStatus?: UserApprovalStatus): UserApprovalStatus {
+  if (currentStatus === 'approved') return 'approved';
+  if (isUserProfileReadyForApproval(profile)) return 'pending';
+  if (currentStatus === 'pending') return 'pending';
+  return 'needs-profile';
+}
+
 export async function fetchUsers(): Promise<UserProfile[]> {
   const snapshot = await getDocs(usersRef);
   return snapshot.docs.map(docSnap => mapUserProfile(docSnap.id, docSnap.data()));
@@ -167,6 +213,11 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
   const firestorePayload = {
     uid,
     systemRole: data.systemRole,
+    systemRoles: data.systemRoles,
+    approvalStatus: data.approvalStatus,
+    approvalSubmittedAt: data.approvalSubmittedAt,
+    approvalApprovedAt: data.approvalApprovedAt,
+    approvalApprovedBy: data.approvalApprovedBy,
     displayName: data.displayName,
     email: data.email,
     email2: data.email2,
@@ -207,7 +258,9 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     cancellationDate: data.cancellationDate,
     firstWorkDate: data.firstWorkDate,
     identityDocumentPrimaryName: data.identityDocumentPrimaryName,
+    identityDocumentPrimaryPath: data.identityDocumentPrimaryPath,
     identityDocumentSecondaryName: data.identityDocumentSecondaryName,
+    identityDocumentSecondaryPath: data.identityDocumentSecondaryPath,
     membershipFeeAmount: data.membershipFeeAmount,
     currentChurchId: data.currentChurchId,
     currentChurchName: data.currentChurchName,
@@ -238,7 +291,38 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
 }
 
 export async function updateUserSystemRole(uid: string, systemRole: SystemRole) {
-  return upsertUser(uid, { systemRole });
+  return updateUserSystemRoles(uid, systemRole === 'user' ? ['user'] : [systemRole]);
+}
+
+export async function updateUserSystemRoles(uid: string, systemRoles: SystemRole[]) {
+  const normalizedRoles = normalizeSystemRoles(systemRoles);
+  return upsertUser(uid, {
+    systemRole: primarySystemRole(normalizedRoles),
+    systemRoles: normalizedRoles
+  });
+}
+
+export async function updateUserApprovalStatus(uid: string, status: UserApprovalStatus, reviewerUid: string) {
+  return upsertUser(uid, {
+    approvalStatus: status,
+    approvalApprovedAt: status === 'approved' ? Timestamp.now() : undefined,
+    approvalApprovedBy: status === 'approved' ? reviewerUid : undefined
+  });
+}
+
+export async function uploadUserIdentityDocument(uid: string, file: File) {
+  const validationError = validateEuropeanGatheringUploadFile(file);
+  if (validationError === 'invalid-type') {
+    throw new Error('Only PDF, JPG, and PNG files are allowed.');
+  }
+
+  if (validationError === 'file-too-large') {
+    throw new Error('Uploaded files must be 10 MB or smaller.');
+  }
+
+  const storagePath = `users/${uid}/identityDocument-${Date.now()}-${sanitizeFileName(file.name)}`;
+  await uploadBytes(ref(storage, storagePath), file, { contentType: file.type || undefined });
+  return { name: file.name, path: storagePath };
 }
 
 export async function syncUserProfileForLogin(user: AuthProfileUser) {

@@ -7,8 +7,14 @@ service firebase.storage {
 
     function hasStoredRole(role) {
       return isSignedIn()
-        && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid))
-        && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.systemRole == role;
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && (
+          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.systemRole == role
+          || (
+            firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.systemRoles is list
+            && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.systemRoles.hasAny([role])
+          )
+        );
     }
 
     function isAdmin() {
@@ -20,6 +26,10 @@ service firebase.storage {
         || hasStoredRole('admin')
         || hasStoredRole('superadmin')
       );
+    }
+
+    function isUserAdmin() {
+      return isAdmin() || hasStoredRole('useradmin');
     }
 
     function isAllowedDocument() {
@@ -41,6 +51,16 @@ service firebase.storage {
         && isAllowedDocument()
         && fileName.matches('(identityDocument|paymentProof|consentDocument)-.*');
       allow delete: if isAdmin() || ownsPendingEuropeanGatheringRegistration(registrationId);
+      allow update: if false;
+    }
+
+    match /users/{uid}/{fileName} {
+      allow read: if isUserAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && isAllowedDocument()
+        && fileName.matches('identityDocument-.*');
+      allow delete: if isUserAdmin() || (isSignedIn() && request.auth.uid == uid);
       allow update: if false;
     }
 

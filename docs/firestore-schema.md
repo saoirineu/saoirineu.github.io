@@ -4,12 +4,15 @@
 
 ### usuarios (perfil do auth)
 - uid (igual ao auth)
-- systemRole: `user` | `admin` | `superadmin`
+- systemRole: `user` | `useradmin` | `custodian` | `admin` | `superadmin` (campo legado/primario para compatibilidade)
+- systemRoles: array de privilegios, ex.: `["useradmin", "custodian"]`; ausencia ou `["user"]` significa usuario comum
+- approvalStatus: `needs-profile` | `pending` | `approved` | `needs-info`
+- approvalSubmittedAt, approvalApprovedAt, approvalApprovedBy
 - displayName, email, email2, phone, mobile, avatarUrl
 - memberId: id do documento em `members` usado para preencher o perfil quando o e-mail de login coincide
 - identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex, birthDate, birthPlace, birthProvince, birthCountry, citizenship, nationality, profession
 - residencia Cloud32/socio: address, postalCode, city, province, state, region, country
-- associacao Cloud32/socio: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, registrationRequestDate, registrationDate, renewalDate, cancellationDate, firstWorkDate, identityDocumentPrimaryName, identityDocumentSecondaryName, membershipFeeAmount
+- associacao Cloud32/socio: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, registrationRequestDate, registrationDate, renewalDate, cancellationDate, firstWorkDate, identityDocumentPrimaryName, identityDocumentPrimaryPath, identityDocumentSecondaryName, identityDocumentSecondaryPath, membershipFeeAmount
 - doutrina: isInitiated, initiationDate, initiationVenue, initiationChurchId, initiationChurchName, initiatorName, initiatedWith, isSponsor, sponsorChurchIds, sponsorChurchNames, currentChurchId, currentChurchName, originChurchName, doctrineRoles, observations
 - createdAt, updatedAt
 
@@ -133,7 +136,7 @@ senao `email-<hash>` ou `name-<hash>`.
 - bebidaLotes: escrita apenas para responsaveis ou admins (claim).
 - usuarios: cada uid edita apenas seu perfil; leitura publica opcional.
 - members: escrita apenas para admins; leitura para admins ou para o usuario autenticado cujo e-mail do token coincide com `email`/`email2` do documento (prefill do perfil; dados pessoais sensiveis).
-- `usuarios.systemRole` deve ser alterado apenas por superadmin; `renato.fabbri@gmail.com` atua como bootstrap superadmin.
+- `users.systemRole`/`users.systemRoles` deve ser alterado apenas por superadmin; `useradmin` aprova usuarios (`approvalStatus`) mas nao concede privilegios. `renato.fabbri@gmail.com` atua como bootstrap superadmin.
 - Storage (se usar): uploads apenas autenticados; path por uid ou por colecao; validar tipo/tamanho.
 
 ## Notas de modelagem
@@ -142,4 +145,4 @@ senao `email-<hash>` ou `name-<hash>`.
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
 - `encontroEuropeuInscricoes` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
 - `encontroEuropeuQuartos` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
-- Ha dois niveis administrativos no app: `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia papeis de usuarios.
+- Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia privilegios de usuarios.

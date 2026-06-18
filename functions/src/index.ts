@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import * as nodemailer from 'nodemailer';
@@ -70,6 +70,73 @@ function createTransporter() {
     },
   });
 }
+
+async function loadUserAdminEmails() {
+  const db = admin.firestore();
+  const snapshots = await Promise.all([
+    db.collection('users').where('systemRoles', 'array-contains', 'useradmin').get(),
+    db.collection('users').where('systemRoles', 'array-contains', 'superadmin').get(),
+    db.collection('users').where('systemRole', '==', 'useradmin').get(),
+    db.collection('users').where('systemRole', '==', 'superadmin').get(),
+  ]);
+  const emails = new Set<string>();
+
+  snapshots.forEach(snapshot => {
+    snapshot.docs.forEach(doc => {
+      const email = doc.data().email;
+      if (typeof email === 'string' && email.trim()) {
+        emails.add(email.trim());
+      }
+    });
+  });
+
+  if (emails.size === 0) {
+    emails.add(NOTIFY_TO);
+  }
+
+  return Array.from(emails);
+}
+
+function buildUserApprovalEmailBody(args: { uid: string; data: FirebaseFirestore.DocumentData; reviewUrl: string }) {
+  const name = args.data.fullName ?? args.data.displayName ?? `${args.data.firstName ?? ''} ${args.data.surname ?? ''}`.trim() ?? '—';
+
+  return [
+    `A user profile is ready for administrative approval.`,
+    ``,
+    `Name: ${name || '—'}`,
+    `Email: ${args.data.email ?? '—'}`,
+    `UID: ${args.uid}`,
+    `Identity document: ${args.data.identityDocumentPrimaryName ?? 'uploaded'}`,
+    ``,
+    `Review users here:`,
+    args.reviewUrl,
+  ].join('\n');
+}
+
+export const onUserApprovalPending = onDocumentWritten(
+  {
+    document: 'users/{uid}',
+    secrets: [smtpHost, smtpPort, smtpUser, smtpPass],
+  },
+  async event => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!after) return;
+    if (after.approvalStatus !== 'pending' || before?.approvalStatus === 'pending') return;
+
+    const base = appBaseUrl.value().replace(/\/$/, '');
+    const reviewUrl = `${base}/admin/users`;
+    const transporter = createTransporter();
+    const recipients = await loadUserAdminEmails();
+
+    await transporter.sendMail({
+      from: smtpUser.value(),
+      to: recipients,
+      subject: `ICEFLU portal user approval — ${after.email ?? event.params.uid}`,
+      text: buildUserApprovalEmailBody({ uid: event.params.uid, data: after, reviewUrl }),
+    });
+  }
+);
 
 export const onEuropeanGatheringRegistration = onDocumentCreated(
   {

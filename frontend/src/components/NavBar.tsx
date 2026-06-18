@@ -107,7 +107,7 @@ export function NavBar() {
     ...(devModeEnabled ? devLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
     ...(hasRequiredRole(role, 'custodian') ? custodianLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
     ...(hasRequiredRole(role, 'admin') ? adminLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
-    ...(devModeEnabled && hasRequiredRole(role, 'superadmin') ? [{ to: '/admin/users', label: copy.users }] : [])
+    ...(hasRequiredRole(role, 'useradmin') ? [{ to: '/admin/users', label: copy.users }] : [])
   ];
 
   return (
@@ -132,7 +132,7 @@ export function NavBar() {
         </nav>
         <div className="flex items-center gap-3">
           <label className="hidden items-center gap-2 md:flex">
-            <span className="text-xs font-medium text-[color:var(--brand-blue-deep)]">{copy.language}</span>
+            <span className="sr-only">{copy.language}</span>
             <select
               className="rounded-full border border-[color:var(--brand-sand)] bg-white/90 px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm"
               value={locale}

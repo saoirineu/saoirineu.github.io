@@ -39,6 +39,8 @@ describe('profile form helpers', () => {
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
+      identityDocumentPrimaryName: 'id.pdf',
+      identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
       address: 'Via Roma 1',
       currentChurchId: 'igreja-1',
@@ -52,6 +54,7 @@ describe('profile form helpers', () => {
     expect(form.email).toBe('auth@example.com');
     expect(form.firstName).toBe('Maria');
     expect(form.fiscalCode).toBe('CF123');
+    expect(form.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(form.address).toBe('Via Roma 1');
     expect(form.currentChurchName).toBe('Igreja Atual');
     expect(form.sponsorChurchesText).toBe('Igreja Madrinha');
@@ -66,6 +69,8 @@ describe('profile form helpers', () => {
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
+      identityDocumentPrimaryName: 'id.pdf',
+      identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
       address: 'Via Roma 1',
       postalCode: '00100',
@@ -86,6 +91,7 @@ describe('profile form helpers', () => {
     expect(payload.email).toBe('auth@example.com');
     expect(payload.firstName).toBe('Maria');
     expect(payload.fiscalCode).toBe('CF123');
+    expect(payload.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(payload.address).toBe('Via Roma 1');
     expect(payload.province).toBe('RM');
     expect(payload.isInitiated).toBe(true);

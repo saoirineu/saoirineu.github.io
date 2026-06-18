@@ -44,7 +44,9 @@ export type ProfileFormState = {
   cancellationDate: string;
   firstWorkDate: string;
   identityDocumentPrimaryName: string;
+  identityDocumentPrimaryPath: string;
   identityDocumentSecondaryName: string;
+  identityDocumentSecondaryPath: string;
   membershipFeeAmount: string;
   currentChurchId: string;
   currentChurchName: string;
@@ -109,7 +111,9 @@ export const initialProfileForm: ProfileFormState = {
   cancellationDate: '',
   firstWorkDate: '',
   identityDocumentPrimaryName: '',
+  identityDocumentPrimaryPath: '',
   identityDocumentSecondaryName: '',
+  identityDocumentSecondaryPath: '',
   membershipFeeAmount: '',
   currentChurchId: '',
   currentChurchName: '',
@@ -182,7 +186,9 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     cancellationDate: profile?.cancellationDate || '',
     firstWorkDate: profile?.firstWorkDate || '',
     identityDocumentPrimaryName: profile?.identityDocumentPrimaryName || '',
+    identityDocumentPrimaryPath: profile?.identityDocumentPrimaryPath || '',
     identityDocumentSecondaryName: profile?.identityDocumentSecondaryName || '',
+    identityDocumentSecondaryPath: profile?.identityDocumentSecondaryPath || '',
     membershipFeeAmount: profile?.membershipFeeAmount || '',
     currentChurchId: profile?.currentChurchId || '',
     currentChurchName: profile?.currentChurchName || '',
@@ -293,7 +299,9 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     cancellationDate: form.cancellationDate || undefined,
     firstWorkDate: form.firstWorkDate || undefined,
     identityDocumentPrimaryName: form.identityDocumentPrimaryName || undefined,
+    identityDocumentPrimaryPath: form.identityDocumentPrimaryPath || undefined,
     identityDocumentSecondaryName: form.identityDocumentSecondaryName || undefined,
+    identityDocumentSecondaryPath: form.identityDocumentSecondaryPath || undefined,
     membershipFeeAmount: form.membershipFeeAmount || undefined,
     currentChurchId: form.currentChurchId || undefined,
     currentChurchName: form.currentChurchName || undefined,

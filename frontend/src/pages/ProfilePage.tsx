@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Timestamp } from 'firebase/firestore';
 
 import { fetchChurches } from '../lib/works';
 import { fetchMembersByEmail, type MemberRecord } from '../lib/members';
-import { fetchUser, upsertUser } from '../lib/users';
+import { fetchUser, nextUserApprovalStatus, uploadUserIdentityDocument, upsertUser } from '../lib/users';
+import { europeanGatheringUploadAccept } from '../lib/europeanGatheringUpload';
+import { getFileUploadLabels } from '../lib/fileUploadLabels';
+import { FileUploadField } from '../components/FileUploadField';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { formatFullName } from './members/form';
@@ -249,6 +253,11 @@ const copyByLocale: Record<ProfileLocale, {
   saving: string;
   save: string;
   saved: string;
+  idUploadTitle: string;
+  idUploadIntro: string;
+  idUploadCurrent: string;
+  idUploadChoose: string;
+  idUploadSelected: string;
   familyEmailTitle: string;
   familyEmailIntro: string;
   thisIsMe: string;
@@ -263,6 +272,11 @@ const copyByLocale: Record<ProfileLocale, {
     saving: 'Salvando...',
     save: 'Salvar perfil',
     saved: 'Salvo.',
+    idUploadTitle: 'Documento de identidade',
+    idUploadIntro: 'Envie um PDF, JPG ou PNG do seu documento para que a administração possa avaliar sua inscrição no ICEFLU.',
+    idUploadCurrent: 'Documento enviado',
+    idUploadChoose: 'Selecionar documento',
+    idUploadSelected: 'Selecionado',
     familyEmailTitle: 'Encontramos mais de um sócio com o seu e-mail',
     familyEmailIntro: 'Este e-mail é compartilhado por mais de um cadastro de sócio. Selecione quem é você para preencher o perfil com os dados corretos.',
     thisIsMe: 'Sou eu',
@@ -272,13 +286,13 @@ const copyByLocale: Record<ProfileLocale, {
     }
   },
   en: {
-    title: 'Profile', intro: 'User details and initiation information.', sessionExpired: 'Session expired', saveError: 'Error while saving', saving: 'Saving...', save: 'Save profile', saved: 'Saved.', familyEmailTitle: 'We found more than one member with your email', familyEmailIntro: 'This email is shared by more than one member record. Select who you are to fill the profile with the right data.', thisIsMe: 'This is me', prefilledFrom: name => `Profile prefilled with member data: ${name}. You can change everything and save.`, sections: { ...registryCopyByLocale.en, name: 'Name', yourName: 'Your name', email: 'Email', phone: 'Phone', optional: 'Optional', city: 'City', state: 'State/Region', country: 'Country', avatar: 'Avatar', avatarUrl: 'Avatar URL', useGooglePhoto: 'Use Google photo', currentChurchRegistered: 'Current church (registered)', selectPlaceholder: '— Select —', currentChurchText: 'Current church (free text)', notRegisteredYet: 'If it is not registered yet', originChurchText: 'Origin church (free text)', originChurchPlaceholder: 'Lineage or church you came from', notes: 'General notes', iAmInitiated: 'I am initiated (fardado)', iAmSponsor: 'I am sponsor/godparent', initiationDate: 'Initiation date', initiationPlace: 'Initiation place', initiationPlacePlaceholder: 'City/state or church', whoInitiatedMe: 'Who initiated me', whoInitiatedMePlaceholder: 'Name of sponsor/godparent', initiationChurchRegistered: 'Church where I was initiated (registered)', initiationChurchText: 'Church where I was initiated (free text)', withWhomIWasInitiated: 'With whom I was initiated', withWhomIWasInitiatedPlaceholder: 'Other people initiated together', sponsorChurchesRegistered: 'Churches where I am sponsor/godparent (registered)', sponsorChurchesText: 'Churches where I am sponsor/godparent (free text)', sponsorChurchesPlaceholder: 'Example: churches not yet registered', roles: 'Roles in the doctrine (comma separated)', rolesPlaceholder: 'Example: treasurer, coordinator, official musician, cleaning', rolesHint: 'Use free terms such as treasurer, official cook, organization, setup, cleaning, musician, official musician.' }
+    title: 'Profile', intro: 'User details and initiation information.', sessionExpired: 'Session expired', saveError: 'Error while saving', saving: 'Saving...', save: 'Save profile', saved: 'Saved.', idUploadTitle: 'Identity document', idUploadIntro: 'Upload a PDF, JPG, or PNG of your ID so the administration can review your ICEFLU subscription.', idUploadCurrent: 'Uploaded document', idUploadChoose: 'Choose document', idUploadSelected: 'Selected', familyEmailTitle: 'We found more than one member with your email', familyEmailIntro: 'This email is shared by more than one member record. Select who you are to fill the profile with the right data.', thisIsMe: 'This is me', prefilledFrom: name => `Profile prefilled with member data: ${name}. You can change everything and save.`, sections: { ...registryCopyByLocale.en, name: 'Name', yourName: 'Your name', email: 'Email', phone: 'Phone', optional: 'Optional', city: 'City', state: 'State/Region', country: 'Country', avatar: 'Avatar', avatarUrl: 'Avatar URL', useGooglePhoto: 'Use Google photo', currentChurchRegistered: 'Current church (registered)', selectPlaceholder: '— Select —', currentChurchText: 'Current church (free text)', notRegisteredYet: 'If it is not registered yet', originChurchText: 'Origin church (free text)', originChurchPlaceholder: 'Lineage or church you came from', notes: 'General notes', iAmInitiated: 'I am initiated (fardado)', iAmSponsor: 'I am sponsor/godparent', initiationDate: 'Initiation date', initiationPlace: 'Initiation place', initiationPlacePlaceholder: 'City/state or church', whoInitiatedMe: 'Who initiated me', whoInitiatedMePlaceholder: 'Name of sponsor/godparent', initiationChurchRegistered: 'Church where I was initiated (registered)', initiationChurchText: 'Church where I was initiated (free text)', withWhomIWasInitiated: 'With whom I was initiated', withWhomIWasInitiatedPlaceholder: 'Other people initiated together', sponsorChurchesRegistered: 'Churches where I am sponsor/godparent (registered)', sponsorChurchesText: 'Churches where I am sponsor/godparent (free text)', sponsorChurchesPlaceholder: 'Example: churches not yet registered', roles: 'Roles in the doctrine (comma separated)', rolesPlaceholder: 'Example: treasurer, coordinator, official musician, cleaning', rolesHint: 'Use free terms such as treasurer, official cook, organization, setup, cleaning, musician, official musician.' }
   },
   es: {
-    title: 'Perfil', intro: 'Datos del usuario e información de fardamento.', sessionExpired: 'Sesión expirada', saveError: 'Error al guardar', saving: 'Guardando...', save: 'Guardar perfil', saved: 'Guardado.', familyEmailTitle: 'Encontramos más de un socio con su correo', familyEmailIntro: 'Este correo es compartido por más de un socio. Seleccione quién es usted para completar el perfil con los datos correctos.', thisIsMe: 'Soy yo', prefilledFrom: name => `Perfil precargado con los datos del socio: ${name}. Puede cambiar todo y guardar.`, sections: { ...registryCopyByLocale.es, name: 'Nombre', yourName: 'Su nombre', email: 'Correo electrónico', phone: 'Teléfono', optional: 'Opcional', city: 'Ciudad', state: 'Estado/Provincia', country: 'País', avatar: 'Avatar', avatarUrl: 'URL del avatar', useGooglePhoto: 'Usar foto de Google', currentChurchRegistered: 'Iglesia actual (registrada)', selectPlaceholder: '— Seleccionar —', currentChurchText: 'Iglesia actual (texto libre)', notRegisteredYet: 'Si todavía no está registrada', originChurchText: 'Iglesia de origen (texto libre)', originChurchPlaceholder: 'Línea o iglesia de procedencia', notes: 'Observaciones generales', iAmInitiated: 'Soy fardado(a)', iAmSponsor: 'Soy padrino/madrina', initiationDate: 'Fecha del fardamento', initiationPlace: 'Lugar del fardamento', initiationPlacePlaceholder: 'Ciudad/estado o iglesia', whoInitiatedMe: 'Quién me fardó', whoInitiatedMePlaceholder: 'Nombre del padrino/madrina', initiationChurchRegistered: 'Iglesia donde fui fardado (registrada)', initiationChurchText: 'Iglesia donde fui fardado (texto libre)', withWhomIWasInitiated: 'Con quién me fardé', withWhomIWasInitiatedPlaceholder: 'Otras personas fardadas conmigo', sponsorChurchesRegistered: 'Iglesias donde soy padrino/madrina (registradas)', sponsorChurchesText: 'Iglesias donde soy padrino/madrina (texto libre)', sponsorChurchesPlaceholder: 'Ej.: iglesias no registradas', roles: 'Roles en la doctrina (separados por comas)', rolesPlaceholder: 'Ej.: tesorero, coordinador, músico oficial, limpieza', rolesHint: 'Use términos libres, por ejemplo tesorero, cocinera oficial, organización, arreglo, limpieza, músico, músico oficial.' }
+    title: 'Perfil', intro: 'Datos del usuario e información de fardamento.', sessionExpired: 'Sesión expirada', saveError: 'Error al guardar', saving: 'Guardando...', save: 'Guardar perfil', saved: 'Guardado.', idUploadTitle: 'Documento de identidad', idUploadIntro: 'Suba un PDF, JPG o PNG de su documento para que la administración pueda revisar su inscripción en ICEFLU.', idUploadCurrent: 'Documento enviado', idUploadChoose: 'Seleccionar documento', idUploadSelected: 'Seleccionado', familyEmailTitle: 'Encontramos más de un socio con su correo', familyEmailIntro: 'Este correo es compartido por más de un socio. Seleccione quién es usted para completar el perfil con los datos correctos.', thisIsMe: 'Soy yo', prefilledFrom: name => `Perfil precargado con los datos del socio: ${name}. Puede cambiar todo y guardar.`, sections: { ...registryCopyByLocale.es, name: 'Nombre', yourName: 'Su nombre', email: 'Correo electrónico', phone: 'Teléfono', optional: 'Opcional', city: 'Ciudad', state: 'Estado/Provincia', country: 'País', avatar: 'Avatar', avatarUrl: 'URL del avatar', useGooglePhoto: 'Usar foto de Google', currentChurchRegistered: 'Iglesia actual (registrada)', selectPlaceholder: '— Seleccionar —', currentChurchText: 'Iglesia actual (texto libre)', notRegisteredYet: 'Si todavía no está registrada', originChurchText: 'Iglesia de origen (texto libre)', originChurchPlaceholder: 'Línea o iglesia de procedencia', notes: 'Observaciones generales', iAmInitiated: 'Soy fardado(a)', iAmSponsor: 'Soy padrino/madrina', initiationDate: 'Fecha del fardamento', initiationPlace: 'Lugar del fardamento', initiationPlacePlaceholder: 'Ciudad/estado o iglesia', whoInitiatedMe: 'Quién me fardó', whoInitiatedMePlaceholder: 'Nombre del padrino/madrina', initiationChurchRegistered: 'Iglesia donde fui fardado (registrada)', initiationChurchText: 'Iglesia donde fui fardado (texto libre)', withWhomIWasInitiated: 'Con quién me fardé', withWhomIWasInitiatedPlaceholder: 'Otras personas fardadas conmigo', sponsorChurchesRegistered: 'Iglesias donde soy padrino/madrina (registradas)', sponsorChurchesText: 'Iglesias donde soy padrino/madrina (texto libre)', sponsorChurchesPlaceholder: 'Ej.: iglesias no registradas', roles: 'Roles en la doctrina (separados por comas)', rolesPlaceholder: 'Ej.: tesorero, coordinador, músico oficial, limpieza', rolesHint: 'Use términos libres, por ejemplo tesorero, cocinera oficial, organización, arreglo, limpieza, músico, músico oficial.' }
   },
   it: {
-    title: 'Profilo', intro: 'Dati utente e informazioni sul fardamento.', sessionExpired: 'Sessione scaduta', saveError: 'Errore durante il salvataggio', saving: 'Salvataggio...', save: 'Salva profilo', saved: 'Salvato.', familyEmailTitle: 'Abbiamo trovato più di un socio con la tua email', familyEmailIntro: 'Questa email è condivisa da più di un socio. Seleziona chi sei per compilare il profilo con i dati corretti.', thisIsMe: 'Sono io', prefilledFrom: name => `Profilo precompilato con i dati del socio: ${name}. Puoi modificare tutto e salvare.`, sections: { ...registryCopyByLocale.it, name: 'Nome', yourName: 'Il tuo nome', email: 'Email', phone: 'Telefono', optional: 'Facoltativo', city: 'Città', state: 'Stato/Provincia', country: 'Paese', avatar: 'Avatar', avatarUrl: 'URL avatar', useGooglePhoto: 'Usa foto Google', currentChurchRegistered: 'Chiesa attuale (registrata)', selectPlaceholder: '— Seleziona —', currentChurchText: 'Chiesa attuale (testo libero)', notRegisteredYet: 'Se non è ancora registrata', originChurchText: 'Chiesa di origine (testo libero)', originChurchPlaceholder: 'Linea o chiesa di provenienza', notes: 'Osservazioni generali', iAmInitiated: 'Sono fardado/a', iAmSponsor: 'Sono padrino/madrina', initiationDate: 'Data del fardamento', initiationPlace: 'Luogo del fardamento', initiationPlacePlaceholder: 'Città/stato o chiesa', whoInitiatedMe: 'Chi mi ha fardato', whoInitiatedMePlaceholder: 'Nome del padrino/madrina', initiationChurchRegistered: 'Chiesa dove ho ricevuto il fardamento (registrata)', initiationChurchText: 'Chiesa dove ho ricevuto il fardamento (testo libero)', withWhomIWasInitiated: 'Con chi mi sono fardato', withWhomIWasInitiatedPlaceholder: 'Altre persone fardate insieme a me', sponsorChurchesRegistered: 'Chiese dove sono padrino/madrina (registrate)', sponsorChurchesText: 'Chiese dove sono padrino/madrina (testo libero)', sponsorChurchesPlaceholder: 'Es.: chiese non registrate', roles: 'Ruoli nella dottrina (separati da virgola)', rolesPlaceholder: 'Es.: tesoriere, coordinatore, musicista ufficiale, pulizia', rolesHint: 'Usa termini liberi, ad esempio tesoriere, cuoca ufficiale, organizzazione, sistemazione, pulizia, musicista, musicista ufficiale.' }
+    title: 'Profilo', intro: 'Dati utente e informazioni sul fardamento.', sessionExpired: 'Sessione scaduta', saveError: 'Errore durante il salvataggio', saving: 'Salvataggio...', save: 'Salva profilo', saved: 'Salvato.', idUploadTitle: 'Documento di identità', idUploadIntro: 'Carica un PDF, JPG o PNG del tuo documento affinché l\'amministrazione possa valutare la tua iscrizione a ICEFLU.', idUploadCurrent: 'Documento caricato', idUploadChoose: 'Seleziona documento', idUploadSelected: 'Selezionato', familyEmailTitle: 'Abbiamo trovato più di un socio con la tua email', familyEmailIntro: 'Questa email è condivisa da più di un socio. Seleziona chi sei per compilare il profilo con i dati corretti.', thisIsMe: 'Sono io', prefilledFrom: name => `Profilo precompilato con i dati del socio: ${name}. Puoi modificare tutto e salvare.`, sections: { ...registryCopyByLocale.it, name: 'Nome', yourName: 'Il tuo nome', email: 'Email', phone: 'Telefono', optional: 'Facoltativo', city: 'Città', state: 'Stato/Provincia', country: 'Paese', avatar: 'Avatar', avatarUrl: 'URL avatar', useGooglePhoto: 'Usa foto Google', currentChurchRegistered: 'Chiesa attuale (registrata)', selectPlaceholder: '— Seleziona —', currentChurchText: 'Chiesa attuale (testo libero)', notRegisteredYet: 'Se non è ancora registrata', originChurchText: 'Chiesa di origine (testo libero)', originChurchPlaceholder: 'Linea o chiesa di provenienza', notes: 'Osservazioni generali', iAmInitiated: 'Sono fardado/a', iAmSponsor: 'Sono padrino/madrina', initiationDate: 'Data del fardamento', initiationPlace: 'Luogo del fardamento', initiationPlacePlaceholder: 'Città/stato o chiesa', whoInitiatedMe: 'Chi mi ha fardato', whoInitiatedMePlaceholder: 'Nome del padrino/madrina', initiationChurchRegistered: 'Chiesa dove ho ricevuto il fardamento (registrata)', initiationChurchText: 'Chiesa dove ho ricevuto il fardamento (testo libero)', withWhomIWasInitiated: 'Con chi mi sono fardato', withWhomIWasInitiatedPlaceholder: 'Altre persone fardate insieme a me', sponsorChurchesRegistered: 'Chiese dove sono padrino/madrina (registrate)', sponsorChurchesText: 'Chiese dove sono padrino/madrina (testo libero)', sponsorChurchesPlaceholder: 'Es.: chiese non registrate', roles: 'Ruoli nella dottrina (separati da virgola)', rolesPlaceholder: 'Es.: tesoriere, coordinatore, musicista ufficiale, pulizia', rolesHint: 'Usa termini liberi, ad esempio tesoriere, cuoca ufficiale, organizzazione, sistemazione, pulizia, musicista, musicista ufficiale.' }
   }
 };
 
@@ -287,9 +301,11 @@ export default function ProfilePage() {
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
   const copy = copyByLocale[locale];
+  const uploadLabels = getFileUploadLabels(locale);
 
   const [form, setForm] = useState<ProfileFormState>(initialProfileForm);
   const [errorMsg, setErrorMsg] = useState('');
+  const [identityDocumentFile, setIdentityDocumentFile] = useState<File | null>(null);
 
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
   const profileQuery = useQuery({
@@ -337,10 +353,30 @@ export default function ProfilePage() {
       if (!user) throw new Error(copy.sessionExpired);
       setErrorMsg('');
 
-      return upsertUser(user.uid, buildUserPayload(user, form));
+      let nextForm = form;
+      if (identityDocumentFile) {
+        const uploadedDocument = await uploadUserIdentityDocument(user.uid, identityDocumentFile);
+        nextForm = {
+          ...form,
+          identityDocumentPrimaryName: uploadedDocument.name,
+          identityDocumentPrimaryPath: uploadedDocument.path
+        };
+      }
+
+      const payload = buildUserPayload(user, nextForm);
+      const approvalStatus = nextUserApprovalStatus(payload, profileQuery.data?.approvalStatus);
+
+      return upsertUser(user.uid, {
+        ...payload,
+        approvalStatus,
+        approvalSubmittedAt: approvalStatus === 'pending' && profileQuery.data?.approvalStatus !== 'pending'
+          ? Timestamp.now()
+          : undefined
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user', user?.uid] });
+      setIdentityDocumentFile(null);
     },
     onError: err => {
       const msg = err instanceof Error ? err.message : copy.saveError;
@@ -426,6 +462,25 @@ export default function ProfilePage() {
         <ProfileResidenceSection copy={copy.sections} form={form} setField={setField} />
 
         <ProfileAssociationSection copy={copy.sections} form={form} setField={setField} />
+
+        <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">{copy.idUploadTitle}</h2>
+            <p className="mt-1 text-xs text-slate-600">{copy.idUploadIntro}</p>
+          </div>
+          {form.identityDocumentPrimaryName && !identityDocumentFile ? (
+            <p className="text-sm text-slate-700">
+              <span className="font-medium">{copy.idUploadCurrent}:</span> {form.identityDocumentPrimaryName}
+            </p>
+          ) : null}
+          <FileUploadField
+            accept={europeanGatheringUploadAccept}
+            file={identityDocumentFile}
+            label={copy.idUploadChoose}
+            onChange={setIdentityDocumentFile}
+            {...uploadLabels}
+          />
+        </section>
 
         <ProfileChurchesSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
 

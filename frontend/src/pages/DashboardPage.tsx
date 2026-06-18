@@ -1,9 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
-import { fetchMyEuropeanGatheringRegistration } from '../lib/europeanGathering';
 import { hasRequiredRole } from '../lib/systemRole';
-import { useAuth } from '../providers/useAuth';
 import { useDevMode } from '../providers/useDevMode';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
@@ -17,7 +14,7 @@ const copyByLocale = {
     devHint: 'PWA: funciona offline após o primeiro acesso; dados sincronizam quando a conexão volta.',
     stableHint: 'O modo estável mantém visíveis somente perfil, igrejas, inscrição do encontro e páginas administrativas já prontas.',
     enter: 'Entrar →',
-    startNew: 'Registrar participação →',
+    reviewProfile: 'Atualizar perfil →',
     devCards: {
       profile: { title: 'Perfil', desc: 'Atualize seus dados de acesso e referência pessoal.' },
       people: { title: 'Pessoas', desc: 'Daimistas, papéis e perfis.' },
@@ -29,21 +26,15 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Perfil', desc: 'Atualize seus dados de acesso e referência pessoal.' },
       churches: { title: 'Igrejas', desc: 'Cadastre e consulte as igrejas já disponíveis no sistema.' },
-      meeting: { title: 'Encontro Europeu 2026', desc: '' },
       registrations: { title: 'Inscrições do encontro', desc: 'Acompanhe os inscritos e faça a triagem administrativa.' }
     },
-    myRegistration: {
-      title: 'Encontro Europeu 2026',
-      edit: 'Ver / editar inscrição →',
-      statusLabel: 'Estado',
-      status: {
-        pending: 'Pendente',
-        'under-review': 'Em análise',
-        approved: 'Aprovada',
-        'payment-overdue': 'Pagamento em atraso',
-        rejected: 'Recusada',
-        archived: 'Arquivada'
-      }
+    portalAccess: {
+      needsProfileTitle: 'Complete sua inscrição no ICEFLU',
+      needsProfileDesc: 'Para liberar as funcionalidades do portal, atualize seu perfil e envie um documento de identidade.',
+      pendingTitle: 'Aguardando aprovação administrativa',
+      pendingDesc: 'Recebemos seus dados e seu documento. A administração irá revisar sua inscrição no ICEFLU.',
+      approvedTitle: 'Acesso ao portal aprovado',
+      approvedDesc: 'Sua inscrição no ICEFLU foi aprovada. Mantenha seu perfil atualizado.'
     }
   },
   en: {
@@ -54,7 +45,7 @@ const copyByLocale = {
     devHint: 'PWA: works offline after the first visit; data syncs when the connection returns.',
     stableHint: 'Stable mode keeps only profile, churches, meeting registration, and ready admin pages visible.',
     enter: 'Open →',
-    startNew: 'Register participation →',
+    reviewProfile: 'Update profile →',
     devCards: {
       profile: { title: 'Profile', desc: 'Update your access and personal reference data.' },
       people: { title: 'People', desc: 'Daimistas, roles, and profiles.' },
@@ -66,21 +57,15 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Profile', desc: 'Update your access and personal reference data.' },
       churches: { title: 'Churches', desc: 'Register and review the churches already available in the system.' },
-      meeting: { title: 'European Meeting 2026', desc: '' },
       registrations: { title: 'Meeting registrations', desc: 'Follow registrations and perform administrative triage.' }
     },
-    myRegistration: {
-      title: 'European Meeting 2026',
-      edit: 'View / edit registration →',
-      statusLabel: 'Status',
-      status: {
-        pending: 'Pending',
-        'under-review': 'Under review',
-        approved: 'Approved',
-        'payment-overdue': 'Payment overdue',
-        rejected: 'Rejected',
-        archived: 'Archived'
-      }
+    portalAccess: {
+      needsProfileTitle: 'Complete your ICEFLU registration',
+      needsProfileDesc: 'To unlock the portal features, update your profile and upload an identity document.',
+      pendingTitle: 'Waiting for administrative approval',
+      pendingDesc: 'We received your profile and identity document. The administration will review your ICEFLU subscription.',
+      approvedTitle: 'Portal access approved',
+      approvedDesc: 'Your ICEFLU subscription has been approved. Keep your profile up to date.'
     }
   },
   es: {
@@ -91,7 +76,7 @@ const copyByLocale = {
     devHint: 'PWA: funciona sin conexión después del primer acceso; los datos se sincronizan cuando vuelve la conexión.',
     stableHint: 'El modo estable mantiene visibles solo perfil, iglesias, inscripción al encuentro y páginas administrativas ya listas.',
     enter: 'Entrar →',
-    startNew: 'Registrar participación →',
+    reviewProfile: 'Actualizar perfil →',
     devCards: {
       profile: { title: 'Perfil', desc: 'Actualice sus datos de acceso y referencia personal.' },
       people: { title: 'Personas', desc: 'Daimistas, papeles y perfiles.' },
@@ -103,21 +88,15 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Perfil', desc: 'Actualice sus datos de acceso y referencia personal.' },
       churches: { title: 'Iglesias', desc: 'Registre y consulte las iglesias ya disponibles en el sistema.' },
-      meeting: { title: 'Encuentro Europeo 2026', desc: '' },
       registrations: { title: 'Inscripciones del encuentro', desc: 'Siga a los inscritos y haga la gestión administrativa.' }
     },
-    myRegistration: {
-      title: 'Encuentro Europeo 2026',
-      edit: 'Ver / editar inscripción →',
-      statusLabel: 'Estado',
-      status: {
-        pending: 'Pendiente',
-        'under-review': 'En revisión',
-        approved: 'Aprobada',
-        'payment-overdue': 'Pago pendiente',
-        rejected: 'Rechazada',
-        archived: 'Archivada'
-      }
+    portalAccess: {
+      needsProfileTitle: 'Complete su inscripción en ICEFLU',
+      needsProfileDesc: 'Para desbloquear las funciones del portal, actualice su perfil y suba un documento de identidad.',
+      pendingTitle: 'Esperando aprobación administrativa',
+      pendingDesc: 'Recibimos sus datos y su documento. La administración revisará su inscripción en ICEFLU.',
+      approvedTitle: 'Acceso al portal aprobado',
+      approvedDesc: 'Su inscripción en ICEFLU fue aprobada. Mantenga su perfil actualizado.'
     }
   },
   it: {
@@ -128,7 +107,7 @@ const copyByLocale = {
     devHint: 'PWA: funziona offline dopo il primo accesso; i dati si sincronizzano quando torna la connessione.',
     stableHint: 'La modalità stabile mantiene visibili solo profilo, chiese, iscrizione all\'incontro e pagine amministrative già pronte.',
     enter: 'Apri →',
-    startNew: 'Registra la partecipazione →',
+    reviewProfile: 'Aggiorna profilo →',
     devCards: {
       profile: { title: 'Profilo', desc: 'Aggiorna i tuoi dati di accesso e di riferimento personale.' },
       people: { title: 'Persone', desc: 'Daimisti, ruoli e profili.' },
@@ -140,49 +119,34 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Profilo', desc: 'Aggiorna i tuoi dati di accesso e di riferimento personale.' },
       churches: { title: 'Chiese', desc: 'Registra e consulta le chiese già disponibili nel sistema.' },
-      meeting: { title: 'Incontro Europeo 2026', desc: '' },
       registrations: { title: 'Iscrizioni all\'incontro', desc: 'Segui gli iscritti e svolgi la gestione amministrativa.' }
     },
-    myRegistration: {
-      title: 'Incontro Europeo 2026',
-      edit: 'Vedi / modifica iscrizione →',
-      statusLabel: 'Stato',
-      status: {
-        pending: 'In attesa',
-        'under-review': 'In revisione',
-        approved: 'Approvata',
-        'payment-overdue': 'Pagamento in ritardo',
-        rejected: 'Rifiutata',
-        archived: 'Archiviata'
-      }
+    portalAccess: {
+      needsProfileTitle: 'Completa la tua iscrizione a ICEFLU',
+      needsProfileDesc: 'Per sbloccare le funzionalità del portale, aggiorna il profilo e carica un documento di identità.',
+      pendingTitle: 'In attesa di approvazione amministrativa',
+      pendingDesc: 'Abbiamo ricevuto i tuoi dati e il documento. L\'amministrazione esaminerà la tua iscrizione a ICEFLU.',
+      approvedTitle: 'Accesso al portale approvato',
+      approvedDesc: 'La tua iscrizione a ICEFLU è stata approvata. Mantieni aggiornato il profilo.'
     }
   }
 } as const;
 
-const statusColor: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-800',
-  'under-review': 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  'payment-overdue': 'bg-red-100 text-red-800',
-  rejected: 'bg-slate-100 text-slate-600',
-  archived: 'bg-slate-100 text-slate-500'
-};
-
 export function DashboardPage() {
-  const { user } = useAuth();
   const { devModeEnabled } = useDevMode();
-  const { role } = useSystemRole();
+  const { profile, role } = useSystemRole();
   const { locale } = useSiteLocale();
   const copy = copyByLocale[locale];
 
-  const { data: myRegistration } = useQuery({
-    queryKey: ['myEuropeanGatheringRegistration', user?.uid],
-    queryFn: () => fetchMyEuropeanGatheringRegistration(user!.uid),
-    enabled: !!user?.uid && !devModeEnabled
-  });
+  const approvalStatus = profile?.approvalStatus ?? 'needs-profile';
+  const portalAccessCard = approvalStatus === 'approved'
+    ? { to: '/profile', title: copy.portalAccess.approvedTitle, desc: copy.portalAccess.approvedDesc }
+    : approvalStatus === 'pending'
+      ? { to: '/profile', title: copy.portalAccess.pendingTitle, desc: copy.portalAccess.pendingDesc }
+      : { to: '/profile', title: copy.portalAccess.needsProfileTitle, desc: copy.portalAccess.needsProfileDesc };
 
   const stableCards = [
-    { to: '/european-gathering', ...copy.stableCards.meeting },
+    portalAccessCard,
     ...(hasRequiredRole(role, 'admin')
       ? [{ to: '/admin/european-gathering', ...copy.stableCards.registrations }]
       : [])
@@ -225,21 +189,11 @@ export function DashboardPage() {
               ) : null}
             </div>
             {card.desc ? <p className="mt-1 text-sm text-slate-600">{card.desc}</p> : null}
-            {card.to === '/european-gathering' && myRegistration ? (
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-700">{myRegistration.firstName} {myRegistration.lastName}</span>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusColor[myRegistration.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                  {copy.myRegistration.statusLabel}: {copy.myRegistration.status[myRegistration.status]}
-                </span>
-              </div>
-            ) : null}
             <Link
               to={card.to}
               className="mt-3 block text-xs font-medium text-blue-700 hover:underline"
             >
-              {card.to === '/european-gathering'
-                ? (myRegistration ? copy.myRegistration.edit : copy.startNew)
-                : copy.enter}
+              {card.to === '/profile' ? copy.reviewProfile : copy.enter}
             </Link>
           </div>
         ))}
