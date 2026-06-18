@@ -23,6 +23,7 @@ import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import {
   buildEuropeanGatheringPayload,
+  calculateCautionDeposit,
   calculateContribution,
   consentDocumentPaths,
   directionsPaths,
@@ -63,6 +64,7 @@ type Copy = {
   church: string;
   centerLeader: string;
   centerLeaderEmail: string;
+  centerLeaderEmailInfo: string;
   statusTitle: string;
   initiated: string;
   icefluMember: string;
@@ -86,6 +88,7 @@ type Copy = {
   roomSelectPlaceholder: string;
   noRoomsAvailable: string;
   noRoomsAvailableDetail: string;
+  slotsAvailableLabel: string;
   bedNote: string;
   extraLinen: string;
   worksTitle: string;
@@ -125,6 +128,8 @@ type Copy = {
   spiritualWorks: string;
   extras: string;
   total: string;
+  cautionDeposit: string;
+  paymentTooltip: string;
   submit: string;
   update: string;
   deleteRegistration: string;
@@ -209,7 +214,8 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'País',
     church: 'Igreja ou centro de referência',
     centerLeader: 'Nome do dirigente do centro',
-    centerLeaderEmail: 'E-mail do dirigente do centro',
+    centerLeaderEmail: 'E-mail da igreja ou centro',
+    centerLeaderEmailInfo: 'Se não souber, pergunte a quem lhe enviou o link deste portal. Se ainda assim não souber ou não existir, informe "international.secretariat@stellazzurra.org".',
     statusTitle: 'Vínculo com a doutrina',
     initiated: 'Fardado',
     icefluMember: 'Membro ICEFLU em dia com as mensalidades',
@@ -233,6 +239,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Selecione um quarto',
     noRoomsAvailable: 'Sem vagas disponíveis no momento',
     noRoomsAvailableDetail: 'Todos os quartos estão ocupados no momento. Tente novamente mais tarde ou fale com a organização.',
+    slotsAvailableLabel: 'Vagas de participação disponíveis',
     bedNote: 'Nota: no leito está incluído apenas o lençol de baixo.',
     extraLinen: 'Quero lençol de cima e kit de toalhas (+20 euro por toda a estadia)',
     worksTitle: 'Lavori spirituali',
@@ -272,6 +279,8 @@ const copyByLocale: Record<Locale, Copy> = {
     spiritualWorks: 'Lavori spirituali',
     extras: 'Extras',
     total: 'Total',
+    cautionDeposit: 'Depósito de caução (30%)',
+    paymentTooltip: 'Faça a transferência no valor do depósito de caução (30%) ou do total para a conta indicada em "Dados bancários" e depois envie o comprovante em "Comprovante de pagamento".',
     submit: 'Enviar inscrição',
     update: 'Atualizar inscrição',
     deleteRegistration: 'Excluir inscrição',
@@ -298,7 +307,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Preencha o país.',
       church: 'Preencha a igreja ou centro de referência.',
       centerLeader: 'Preencha o nome do dirigente do centro.',
-      centerLeaderEmail: 'Informe o e-mail do dirigente do centro.',
+      centerLeaderEmail: 'Informe o e-mail da igreja ou centro.',
       selectedWorks: 'Selecione pelo menos um trabalho espiritual.',
       checkIn: 'Informe a data de check-in.',
       checkOut: 'Informe uma data de check-out válida.',
@@ -307,10 +316,10 @@ const copyByLocale: Record<Locale, Copy> = {
       consentDocument: 'Anexe o consentimento informado assinado.'
     },
     workLabels: {
-      'fri-11-19': 'Sexta-feira, 11 de setembro, 19:00',
-      'sat-12-19': 'Sábado, 12 de setembro, 19:00',
-      'mon-14-11': 'Segunda-feira, 14 de setembro, 11:00',
-      'tue-15-19': 'Terça-feira, 15 de setembro, 19:00'
+      'fri-25-19': 'Sexta-feira, 25 de setembro, 19:00',
+      'sat-26-19': 'Sábado, 26 de setembro, 19:00',
+      'mon-28-19': 'Segunda-feira, 28 de setembro, 19:00',
+      'wed-30-19': 'Quarta-feira, 30 de setembro, 19:00'
     }
   },
   en: {
@@ -338,7 +347,8 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'Country',
     church: 'Reference church or center',
     centerLeader: 'Leader name of the reference center',
-    centerLeaderEmail: 'Email of the center leader',
+    centerLeaderEmail: 'Email of the church or center',
+    centerLeaderEmailInfo: 'If you do not know it, ask whoever gave you the link to this portal. If still unknown or non-existent, enter "international.secretariat@stellazzurra.org".',
     statusTitle: 'Doctrinal status',
     initiated: 'Fardado',
     icefluMember: 'ICEFLU member up to date with monthly dues',
@@ -362,6 +372,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Select a room',
     noRoomsAvailable: 'No rooms currently available',
     noRoomsAvailableDetail: 'All rooms are currently occupied. Please try again later or contact the organizers.',
+    slotsAvailableLabel: 'Available participation slots',
     bedNote: 'Note: the bed includes only the bottom sheet.',
     extraLinen: 'I need a top sheet and towel kit (+20 euro for the entire stay)',
     worksTitle: 'Spiritual works',
@@ -401,6 +412,8 @@ const copyByLocale: Record<Locale, Copy> = {
     spiritualWorks: 'Spiritual works',
     extras: 'Extras',
     total: 'Total',
+    cautionDeposit: 'Caution deposit (30%)',
+    paymentTooltip: 'Make the bank transfer for either the caution deposit (30%) or the full total to the account shown in "Payment details", then upload the receipt to "Payment proof".',
     submit: 'Submit registration',
     update: 'Update registration',
     deleteRegistration: 'Delete registration',
@@ -427,7 +440,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Please fill in the country.',
       church: 'Please fill in the church or center.',
       centerLeader: 'Please fill in the center leader name.',
-      centerLeaderEmail: 'Please provide the center leader email.',
+      centerLeaderEmail: 'Please provide the church or center email.',
       selectedWorks: 'Select at least one spiritual work.',
       checkIn: 'Please provide the check-in date.',
       checkOut: 'Please provide a valid check-out date.',
@@ -436,10 +449,10 @@ const copyByLocale: Record<Locale, Copy> = {
       consentDocument: 'Please attach the signed informed consent.'
     },
     workLabels: {
-      'fri-11-19': 'Friday, September 11, 19:00',
-      'sat-12-19': 'Saturday, September 12, 19:00',
-      'mon-14-11': 'Monday, September 14, 11:00',
-      'tue-15-19': 'Tuesday, September 15, 19:00'
+      'fri-25-19': 'Friday, September 25, 19:00',
+      'sat-26-19': 'Saturday, September 26, 19:00',
+      'mon-28-19': 'Monday, September 28, 19:00',
+      'wed-30-19': 'Wednesday, September 30, 19:00'
     }
   },
   es: {
@@ -467,7 +480,8 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'País',
     church: 'Iglesia o centro de referencia',
     centerLeader: 'Nombre del dirigente del centro',
-    centerLeaderEmail: 'Correo electrónico del dirigente del centro',
+    centerLeaderEmail: 'Correo electrónico de la iglesia o centro',
+    centerLeaderEmailInfo: 'Si no lo conoces, pregunta a quien te dio el enlace de este portal. Si aún así no lo sabes o no existe, escribe "international.secretariat@stellazzurra.org".',
     statusTitle: 'Vínculo con la doctrina',
     initiated: 'Fardado',
     icefluMember: 'Miembro ICEFLU al día con las mensualidades',
@@ -491,6 +505,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Seleccione una habitación',
     noRoomsAvailable: 'No hay plazas disponibles por ahora',
     noRoomsAvailableDetail: 'Todas las habitaciones están ocupadas en este momento. Inténtelo más tarde o contacte a la organización.',
+    slotsAvailableLabel: 'Plazas de participación disponibles',
     bedNote: 'Nota: la cama incluye solo la sábana de abajo.',
     extraLinen: 'Quiero sábana de encima y kit de toallas (+20 euro por toda la estancia)',
     worksTitle: 'Lavori spirituali',
@@ -530,6 +545,8 @@ const copyByLocale: Record<Locale, Copy> = {
     spiritualWorks: 'Trabajos espirituales',
     extras: 'Extras',
     total: 'Total',
+    cautionDeposit: 'Depósito de garantía (30%)',
+    paymentTooltip: 'Realiza la transferencia por el importe del depósito de garantía (30%) o del total a la cuenta indicada en "Datos bancarios" y luego sube el comprobante en "Comprobante de pago".',
     submit: 'Enviar inscripción',
     update: 'Actualizar inscripción',
     deleteRegistration: 'Eliminar inscripción',
@@ -556,7 +573,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Complete el país.',
       church: 'Complete la iglesia o centro de referencia.',
       centerLeader: 'Complete el nombre del dirigente del centro.',
-      centerLeaderEmail: 'Indique el correo electrónico del dirigente del centro.',
+      centerLeaderEmail: 'Indique el correo electrónico de la iglesia o centro.',
       selectedWorks: 'Seleccione al menos un trabajo espiritual.',
       checkIn: 'Indique la fecha de check-in.',
       checkOut: 'Indique una fecha de check-out válida.',
@@ -565,10 +582,10 @@ const copyByLocale: Record<Locale, Copy> = {
       consentDocument: 'Adjunte el consentimiento informado firmado.'
     },
     workLabels: {
-      'fri-11-19': 'Viernes 11 de septiembre, 19:00',
-      'sat-12-19': 'Sábado 12 de septiembre, 19:00',
-      'mon-14-11': 'Lunes 14 de septiembre, 11:00',
-      'tue-15-19': 'Martes 15 de septiembre, 19:00'
+      'fri-25-19': 'Viernes 25 de septiembre, 19:00',
+      'sat-26-19': 'Sábado 26 de septiembre, 19:00',
+      'mon-28-19': 'Lunes 28 de septiembre, 19:00',
+      'wed-30-19': 'Miércoles 30 de septiembre, 19:00'
     }
   },
   it: {
@@ -596,7 +613,8 @@ const copyByLocale: Record<Locale, Copy> = {
     country: 'Paese',
     church: 'Chiesa o centro di riferimento',
     centerLeader: 'Nome del dirigente del centro',
-    centerLeaderEmail: 'Email del dirigente del centro',
+    centerLeaderEmail: 'Email della chiesa o centro',
+    centerLeaderEmailInfo: 'Se non lo conosci, chiedi a chi ti ha dato il link di questo portale. Se ancora non lo sai o non esiste, inserisci "international.secretariat@stellazzurra.org".',
     statusTitle: 'Rapporto con la dottrina',
     initiated: 'Fardado',
     icefluMember: 'Membro ICEFLU in pari con le mensilità',
@@ -620,6 +638,7 @@ const copyByLocale: Record<Locale, Copy> = {
     roomSelectPlaceholder: 'Seleziona una camera',
     noRoomsAvailable: 'Nessuna camera disponibile al momento',
     noRoomsAvailableDetail: 'Tutte le camere sono occupate al momento. Riprova più tardi o contatta l\'organizzazione.',
+    slotsAvailableLabel: 'Posti di partecipazione disponibili',
     bedNote: 'Nota: nel letto è incluso soltanto il lenzuolo di sotto.',
     extraLinen: 'Desidero lenzuolo di sopra e kit asciugamani (+20 euro per tutto il soggiorno)',
     worksTitle: 'Lavori spirituali',
@@ -659,6 +678,8 @@ const copyByLocale: Record<Locale, Copy> = {
     spiritualWorks: 'Lavori spirituali',
     extras: 'Extra',
     total: 'Totale',
+    cautionDeposit: 'Caparra (30%)',
+    paymentTooltip: 'Effettua il bonifico per l\'importo della caparra (30%) o del totale sul conto indicato in "Dati bancari" e poi carica la contabile in "Contabile bonifico pagamento".',
     submit: 'Invia iscrizione',
     update: 'Aggiorna iscrizione',
     deleteRegistration: 'Elimina iscrizione',
@@ -685,7 +706,7 @@ const copyByLocale: Record<Locale, Copy> = {
       country: 'Compila il paese.',
       church: 'Compila la chiesa o centro di riferimento.',
       centerLeader: 'Compila il nome del dirigente del centro.',
-      centerLeaderEmail: 'Indica l\'email del dirigente del centro.',
+      centerLeaderEmail: 'Indica l\'email della chiesa o centro.',
       selectedWorks: 'Seleziona almeno un lavoro spirituale.',
       checkIn: 'Indica la data di check-in.',
       checkOut: 'Indica una data di check-out valida.',
@@ -694,15 +715,15 @@ const copyByLocale: Record<Locale, Copy> = {
       consentDocument: 'Allega il consenso informato firmato.'
     },
     workLabels: {
-      'fri-11-19': 'Venerdì 11 settembre, ore 19:00',
-      'sat-12-19': 'Sabato 12 settembre, ore 19:00',
-      'mon-14-11': 'Lunedì 14 settembre, ore 11:00',
-      'tue-15-19': 'Martedì 15 settembre, ore 19:00'
+      'fri-25-19': 'Venerdì 25 settembre, ore 19:00',
+      'sat-26-19': 'Sabato 26 settembre, ore 19:00',
+      'mon-28-19': 'Lunedì 28 settembre, ore 19:00',
+      'wed-30-19': 'Mercoledì 30 settembre, ore 19:00'
     }
   }
 };
 
-const workIds: SpiritualWorkId[] = ['fri-11-19', 'sat-12-19', 'mon-14-11', 'tue-15-19'];
+const workIds: SpiritualWorkId[] = ['fri-25-19', 'sat-26-19', 'mon-28-19', 'wed-30-19'];
 
 function Field({
   children,
@@ -827,10 +848,12 @@ function LocalizedDateField({
 
 function InfoTooltip({
   body,
+  compact = false,
   title,
   triggerLabel
 }: {
   body: string;
+  compact?: boolean;
   title: string;
   triggerLabel: string;
 }) {
@@ -889,7 +912,7 @@ function InfoTooltip({
     <div ref={containerRef} className="group relative inline-flex shrink-0">
       <button
         type="button"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus:border-amber-300 focus:bg-amber-50 focus:text-amber-900 focus:outline-none"
+        className={`inline-flex items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus:border-amber-300 focus:bg-amber-50 focus:text-amber-900 focus:outline-none ${compact ? 'h-5 w-5' : 'h-8 w-8'}`}
         aria-label={title}
         aria-describedby={tooltipId}
         aria-expanded={!supportsHover ? isOpen : undefined}
@@ -961,7 +984,6 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
   const [submitError, setSubmitError] = useState<string>('');
   const [draftMessage, setDraftMessage] = useState('');
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
-  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [draftDateSelections, setDraftDateSelections] = useState<DraftDateSelections>(initialDraftDateSelections);
   const [existingDocUrls, setExistingDocUrls] = useState<{ identityDocument?: string; paymentProof?: string; consentDocument?: string }>({});
@@ -987,7 +1009,8 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
   });
 
   const roomAvailability = roomAvailabilityQuery.data ?? europeanGatheringRoomOptions.map(room => ({ ...room, reserved: 0, available: room.capacity }));
-  const availableRooms = roomAvailability.filter(room => room.available > 0);
+  const totalSlotCapacity = roomAvailability.reduce((sum, room) => sum + room.capacity, 0);
+  const totalSlotsAvailable = roomAvailability.reduce((sum, room) => sum + room.available, 0);
 
   useEffect(() => {
     if (existingRegistrationQuery.isFetching) return;
@@ -1080,18 +1103,6 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
       window.localStorage.removeItem(europeanGatheringDraftKey);
     }
   }, [setLocale, existingRegistrationQuery.isPending, existingRegistration]);
-
-  useEffect(() => {
-    if (values.attendanceMode !== 'lodging' || !values.roomNumber) {
-      return;
-    }
-
-    if (availableRooms.some(room => room.name === values.roomNumber)) {
-      return;
-    }
-
-    setValues(current => ({ ...current, roomNumber: '' }));
-  }, [availableRooms, values.attendanceMode, values.roomNumber]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -1190,7 +1201,6 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
     setSubmitError('');
     setDraftMessage('');
     setSuccessState(null);
-    setIsRoomModalOpen(false);
     setDraftDateSelections(initialDraftDateSelections);
     mutation.reset();
     if (typeof window !== 'undefined') {
@@ -1313,6 +1323,10 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     <dt className="text-slate-400">{copy.total}</dt>
                     <dd className="mt-1 text-xl font-semibold text-amber-300">{formatCurrency(successState.contributionTotal)}</dd>
                   </div>
+                  <div>
+                    <dt className="text-slate-400">{copy.cautionDeposit}</dt>
+                    <dd className="mt-1 font-medium text-amber-200">{formatCurrency(calculateCautionDeposit(successState.contributionTotal))}</dd>
+                  </div>
                 </dl>
                 <p className="mt-6 text-sm leading-6 text-slate-300">
                   {copy.sendProof.replace('XXX', paymentInfo.whatsapp).replace('YYY', paymentInfo.email)}
@@ -1359,7 +1373,14 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     <Field label={copy.centerLeader}>
                       <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.centerLeader} onChange={event => setField('centerLeader', event.target.value)} />
                     </Field>
-                    <Field label={copy.centerLeaderEmail}>
+                    <Field
+                      label={
+                        <span className="inline-flex items-center gap-2">
+                          <span>{copy.centerLeaderEmail}</span>
+                          <InfoTooltip compact body={copy.centerLeaderEmailInfo} title={copy.centerLeaderEmail} triggerLabel="i" />
+                        </span>
+                      }
+                    >
                       <input type="email" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm" value={values.centerLeaderEmail} onChange={event => setField('centerLeaderEmail', event.target.value)} />
                     </Field>
                   </div>
@@ -1415,6 +1436,11 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     </select>
                   </Field>
 
+                  <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm ${totalSlotsAvailable > 0 ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>
+                    <span className="font-medium">{copy.slotsAvailableLabel}</span>
+                    <span className="font-semibold">{totalSlotsAvailable} / {totalSlotCapacity}</span>
+                  </div>
+
                   {values.attendanceMode !== 'spiritual' ? (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <LocalizedDateField
@@ -1455,43 +1481,12 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                   ) : null}
 
                   {values.attendanceMode === 'lodging' ? (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field
-                        label={
-                          <span className="inline-flex items-center gap-2">
-                            <span>{copy.roomNumber}</span>
-                            <button
-                              type="button"
-                              className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white"
-                              aria-label={copy.roomHelpTitle}
-                              onClick={() => setIsRoomModalOpen(true)}
-                            >
-                              {copy.roomHelpTrigger}
-                            </button>
-                          </span>
-                        }
-                      >
-                        <select className={`w-full rounded-2xl bg-white px-4 py-3 text-sm shadow-sm ${availableRooms.length === 0 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border border-slate-200'}`} value={values.roomNumber} onChange={event => setField('roomNumber', event.target.value)} disabled={roomAvailabilityQuery.isLoading || availableRooms.length === 0}>
-                          <option value="">{availableRooms.length > 0 ? copy.roomSelectPlaceholder : copy.noRoomsAvailable}</option>
-                          {availableRooms.map(room => (
-                            <option key={room.name} value={room.name}>
-                              {room.name} — {room.available} {copy.roomHelpCapacity} {copy.roomRemaining}
-                            </option>
-                          ))}
-                        </select>
-                        {availableRooms.length === 0 ? (
-                          <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                            {copy.noRoomsAvailableDetail}
-                          </p>
-                        ) : null}
-                      </Field>
-                      <div className="flex flex-col gap-2 sm:mt-7">
-                        <p className="text-xs leading-5 text-slate-500">{copy.bedNote}</p>
-                        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                          <input type="checkbox" checked={values.needsExtraLinen} onChange={event => setField('needsExtraLinen', event.target.checked)} />
-                          {copy.extraLinen}
-                        </label>
-                      </div>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs leading-5 text-slate-500">{copy.bedNote}</p>
+                      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                        <input type="checkbox" checked={values.needsExtraLinen} onChange={event => setField('needsExtraLinen', event.target.checked)} />
+                        {copy.extraLinen}
+                      </label>
                     </div>
                   ) : null}
                 </div>
@@ -1522,9 +1517,12 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                   <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={directionsPaths[locale]} target="_blank" rel="noreferrer">
                     {copy.directions}
                   </a>
-                  <button type="button" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" onClick={() => setIsPaymentModalOpen(true)}>
-                    {copy.paymentInfoButton}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" onClick={() => setIsPaymentModalOpen(true)}>
+                      {copy.paymentInfoButton}
+                    </button>
+                    <InfoTooltip body={copy.paymentTooltip} title={copy.paymentInfoButton} triggerLabel="i" />
+                  </div>
                 </div>
               </section>
 
@@ -1579,7 +1577,12 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     onRemoveExisting={() => setRemovedExistingDocs(prev => new Set([...prev, 'paymentProof']))}
                     invalidTypeError={copy.fileInvalidType}
                     keepOriginalLabel={copy.fileKeepOriginal}
-                    label={copy.paymentProof}
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        <span>{copy.paymentProof}</span>
+                        <InfoTooltip compact body={copy.paymentTooltip} title={copy.paymentProof} triggerLabel="i" />
+                      </span>
+                    }
                     labelClassName="leading-5"
                     openInNewTabLabel={copy.fileOpenNewTab}
                     onChange={file => setDocuments(current => ({ ...current, paymentProof: file }))}
@@ -1702,6 +1705,13 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     <dt className="font-medium">{copy.total}</dt>
                     <dd className="text-xl font-semibold text-amber-300">{formatCurrency(contribution.total)}</dd>
                   </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <dt className="flex items-center gap-2 text-slate-600">
+                      <span>{copy.cautionDeposit}</span>
+                      <InfoTooltip compact body={copy.paymentTooltip} title={copy.cautionDeposit} triggerLabel="i" />
+                    </dt>
+                    <dd className="font-semibold text-slate-900">{formatCurrency(calculateCautionDeposit(contribution.total))}</dd>
+                  </div>
                 </dl>
               </section>
             </aside>
@@ -1710,36 +1720,6 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
           </div>
         )}
       </main>
-
-      {isRoomModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-label={copy.roomHelpTitle}>
-          <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{copy.roomHelpTitle}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{copy.roomHelpIntro}</p>
-              </div>
-              <button type="button" className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600" onClick={() => setIsRoomModalOpen(false)}>
-                {copy.close}
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              {roomAvailability.map(room => (
-                <div key={room.name} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  <div>
-                    <span className="font-medium text-slate-900">{room.name}</span>
-                    <p className="text-xs text-slate-500">{room.available} {copy.roomRemaining}</p>
-                  </div>
-                  <span>
-                    {room.available}/{room.capacity} {copy.roomHelpCapacity}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {isPaymentModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-label={copy.paymentInfoTitle}>

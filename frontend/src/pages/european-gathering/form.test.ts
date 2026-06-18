@@ -28,7 +28,7 @@ describe('european gathering helpers', () => {
         attendanceMode: 'lodging',
         checkIn: '2026-09-11',
         checkOut: '2026-09-14',
-        selectedWorks: ['fri-11-19', 'sat-12-19'],
+        selectedWorks: ['fri-25-19', 'sat-26-19'],
         isInitiated: true,
         isIcefluMember: true,
         needsExtraLinen: true
@@ -42,11 +42,11 @@ describe('european gathering helpers', () => {
     });
   });
 
-  it('starts with empty check-in and check-out values but keeps suggested september dates', () => {
+  it('starts with empty check-in and check-out values but keeps suggested event-window dates', () => {
     expect(initialEuropeanGatheringFormValues.checkIn).toBe('');
     expect(initialEuropeanGatheringFormValues.checkOut).toBe('');
-    expect(suggestedCheckInDate).toBe('2026-09-10');
-    expect(suggestedCheckOutDate).toBe('2026-09-16');
+    expect(suggestedCheckInDate).toBe('2026-09-24');
+    expect(suggestedCheckOutDate).toBe('2026-10-01');
   });
 
   it('builds normalized payload', () => {
@@ -59,7 +59,7 @@ describe('european gathering helpers', () => {
         church: ' Centro ',
         centerLeader: ' Dirigente ',
         isNovice: true,
-        selectedWorks: ['fri-11-19']
+        selectedWorks: ['fri-25-19']
       },
       locale: 'it',
       contribution: {
@@ -106,7 +106,7 @@ describe('european gathering helpers', () => {
         church: 'Centro',
         centerLeader: 'Dirigente',
         centerLeaderEmail: 'dirigente@example.com',
-        selectedWorks: ['fri-11-19'],
+        selectedWorks: ['fri-25-19'],
         checkIn: '2026-09-13',
         checkOut: '2026-09-12'
       }, noDocs, existingPaths)

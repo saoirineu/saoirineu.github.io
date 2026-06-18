@@ -2,7 +2,7 @@ export type Locale = 'pt' | 'en' | 'es' | 'it';
 
 export type AttendanceMode = 'lodging' | 'meals' | 'spiritual';
 
-export type SpiritualWorkId = 'fri-11-19' | 'sat-12-19' | 'mon-14-11' | 'tue-15-19';
+export type SpiritualWorkId = 'fri-25-19' | 'sat-26-19' | 'mon-28-19' | 'wed-30-19';
 
 export type EuropeanGatheringFormValues = {
   firstName: string;
@@ -42,8 +42,15 @@ export type RegistrationDocumentNames = {
   consentDocumentPath?: string;
 };
 
-export const suggestedCheckInDate = '2026-09-10';
-export const suggestedCheckOutDate = '2026-09-16';
+export const suggestedCheckInDate = '2026-09-24';
+export const suggestedCheckOutDate = '2026-10-01';
+
+// Caution deposit (down payment) required to secure participation: a share of the total.
+export const cautionDepositRate = 0.3;
+
+export function calculateCautionDeposit(total: number) {
+  return Math.round(total * cautionDepositRate);
+}
 
 export const initialEuropeanGatheringFormValues: EuropeanGatheringFormValues = {
   firstName: '',
