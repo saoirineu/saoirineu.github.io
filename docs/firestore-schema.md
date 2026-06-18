@@ -161,13 +161,19 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
   allow-lists `hasValidUserSystemRole`/`hasValidUserSystemRoles` (cap de tamanho = 6).
 - Atribuicao na UI admin de usuarios (somente superadmin altera privilegios).
 
-### `users/{uid}/consents/{id}` — ledger de consentimento informado (item A, §3)
+### `users/{uid}/consents/{id}` — ledger de consentimento informado (item A, §3) — Fase 2 entregue
 - status: `pending` | `approved` | `rejected`
-- uploadedAt, approvedAt, approvedBy, documentName, documentPath, eventId?
+- uploadedAt, approvedAt?, approvedBy?, documentName, documentPath, eventId?
 - Regra de validade: consentimento e exigido na inscricao quando nao ha consentimento `approved`
-  ou o ultimo `approvedAt` tem mais de 12 meses (`consentRequired`). Anchor de envelhecimento:
-  o `approvedAt` mais recente com status `approved`.
-- Regras: dono cria `pending`; transicao para `approved`/`rejected` via callable/admin.
+  ou o ultimo `approvedAt` tem mais de 12 meses (`consentRequired`, `CONSENT_VALIDITY_MONTHS = 12`;
+  exatamente 12 meses ainda vale). Anchor de envelhecimento: o `approvedAt` mais recente `approved`.
+- Regras: dono cria `pending` (payload validado, `uploadedAt == request.time`); transicao para
+  `approved`/`rejected` apenas por `isUserAdmin()`/`isEventAdmin()` (o fluxo do dirigente da Fase 3
+  e server-side via callable). Leitura: dono/admin/eventadmin.
+- Storage: o arquivo do consentimento continua em `europeanGatheringRegistrations/{id}/consentDocument-*`
+  (path da inscricao); o ledger apenas referencia esse `documentPath`/`documentName`.
+- Pendente da Fase 3: aprovacao terminal do dirigente carimba o consentimento como `approved`.
+  Ate la, `consentRequired` retorna `true` para todos (nenhum consentimento aprovado ainda).
 
 ### `events/{eventId}` — eventos genericos (item C, §2)
 - title: { pt, en, es, it }; slug; status: `draft|published|closed|archived`; kind: `single|multi`

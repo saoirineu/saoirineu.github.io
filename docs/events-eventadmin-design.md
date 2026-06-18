@@ -281,14 +281,30 @@ current touch points.
 - [ ] `NavBar.tsx` / `DashboardPage.tsx`: entry point — **deferred to Phase 4** (no page yet).
 - [x] `docs/firestore-schema.md`: role note flipped to live.
 
-### Phase 2 — consent ledger + aging (§3, item A)
-- [ ] `users.ts`: `ConsentRecord` type; create (status `pending`) / list; `consentRequired(consents, now)`.
-- [ ] unit test: `consentRequired` boundary at exactly 12 months (none / fresh / stale).
-- [ ] `firestore.rules`: `users/{uid}/consents/{id}` — owner create `pending`; `approved|rejected`
-      only via callable/admin.
-- [ ] `storage.rules`: consent document path under `users/{uid}/consents/...`.
-- [ ] EG registration form: replace the novice‑only consent gate with `isNovice || consentRequired(...)`.
-- [ ] `docs/firestore-schema.md`: add `users/{uid}/consents`.
+### Phase 2 — consent ledger + aging (§3, item A) — **DONE** (commit pending)
+- [x] `consents.ts` (new lib, not `users.ts`): `ConsentRecord`/`ConsentStatus`,
+      `CONSENT_VALIDITY_MONTHS = 12`, `consentRequired(consents, now)`, `fetchUserConsents`,
+      `createConsentRecord` (status `pending`).
+- [x] `consents.test.ts`: boundary at exactly 12 months + none/fresh/stale/most-recent (6/6 green).
+- [x] `firestore.rules`: `users/{uid}/consents/{id}` — owner creates `pending` (validated payload,
+      `uploadedAt == request.time`); `update` (approve/reject) only `isUserAdmin()`/`isEventAdmin()`
+      (Phase 3 leader path is server-side via callable); read owner/admin/eventadmin.
+- [x] **`storage.rules`: unchanged by design** — the consent file keeps uploading to the
+      registration path (`europeanGatheringRegistrations/{id}/consentDocument-*`, already allowed);
+      the ledger entry just **references** that path + name. Avoids touching the live upload flow.
+- [x] EG form: gate is now `isNovice || consentRequired(consents)`; non-novice aging case shows a
+      generic `consentRequiredNote` (4 langs). `createEuropeanGatheringRegistration`/`update…` create
+      a `pending` ledger entry whenever a consent file is uploaded (with `userId`).
+- [x] `validateEuropeanGatheringForm` takes a `requireConsent` flag; `buildEuropeanGatheringPayload`
+      stores consent whenever provided (no longer gated on `isNovice`).
+- [x] `docs/firestore-schema.md`: `users/{uid}/consents` marked delivered.
+
+> **Interim behaviour until Phase 3:** nothing approves consents yet, so `consentRequired`
+> returns `true` for everyone (no approved consent on file) → every EG registrant is asked to
+> upload a signed consent. This is spec-correct (item A asks unless a valid *approved* consent
+> exists) and resolves once Phase 3's terminal approval stamps consents `approved`. If we want a
+> softer interim (e.g. treat a <12-month membership approval as satisfying consent), that's a
+> deliberate bridge to add — flagged, not yet built.
 
 ### Phase 3 — richer leader decisions, two‑phase (§4, item B)
 - [ ] `europeanGathering.ts`: `LeaderApprovalDecision` → 4 values; add `interview` block to

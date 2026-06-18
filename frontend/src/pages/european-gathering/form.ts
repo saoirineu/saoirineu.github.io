@@ -180,8 +180,8 @@ export function buildEuropeanGatheringPayload(args: {
     identityDocumentPath: documents.identityDocumentPath,
     paymentProofName: documents.paymentProofName,
     paymentProofPath: documents.paymentProofPath,
-    consentDocumentName: values.isNovice ? documents.consentDocumentName : undefined,
-    consentDocumentPath: values.isNovice ? documents.consentDocumentPath : undefined,
+    consentDocumentName: documents.consentDocumentName,
+    consentDocumentPath: documents.consentDocumentPath,
     phone: values.phone.trim() || undefined,
     phoneCountryCode: values.phone.trim() ? values.phoneCountryCode : undefined,
     email: values.email.trim() || undefined,
@@ -193,7 +193,8 @@ export function buildEuropeanGatheringPayload(args: {
 export function validateEuropeanGatheringForm(
   values: EuropeanGatheringFormValues,
   docs: { identityDocument: File | null; paymentProof: File | null; consentDocument: File | null },
-  existingPaths: { identityDocumentPath?: string; paymentProofPath?: string; consentDocumentPath?: string }
+  existingPaths: { identityDocumentPath?: string; paymentProofPath?: string; consentDocumentPath?: string },
+  requireConsent = false
 ) {
   if (!values.firstName.trim()) return 'firstName';
   if (!values.lastName.trim()) return 'lastName';
@@ -213,7 +214,7 @@ export function validateEuropeanGatheringForm(
 
   if (!docs.identityDocument && !existingPaths.identityDocumentPath) return 'identityDocument';
   if (!docs.paymentProof && !existingPaths.paymentProofPath) return 'paymentProof';
-  if (values.isNovice && !docs.consentDocument && !existingPaths.consentDocumentPath) return 'consentDocument';
+  if ((values.isNovice || requireConsent) && !docs.consentDocument && !existingPaths.consentDocumentPath) return 'consentDocument';
 
   return null;
 }

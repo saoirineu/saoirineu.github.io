@@ -99,6 +99,14 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly(['adminNote', 'updatedAt']);
     }
 
+    function hasValidConsentCreatePayload() {
+      return request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['status', 'uploadedAt', 'documentName', 'documentPath', 'eventId'])
+        && request.resource.data.documentName is string
+        && request.resource.data.documentPath is string
+        && request.resource.data.uploadedAt == request.time;
+    }
+
     function hasValidEncontroEuropeuStatus() {
       return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue', 'rejected', 'archived'];
     }
@@ -320,6 +328,14 @@ service cloud.firestore {
         allow read: if isSignedIn() && (request.auth.uid == uid || isUserAdmin());
         allow create: if isUserAdmin();
         allow update, delete: if false;
+      }
+
+      // Item A: per-user signed informed consent ledger (aging anchor = latest approved).
+      match /consents/{consentId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isUserAdmin() || isEventAdmin());
+        allow create: if isSignedIn() && request.auth.uid == uid && hasValidConsentCreatePayload();
+        allow update: if isUserAdmin() || isEventAdmin();
+        allow delete: if false;
       }
     }
 

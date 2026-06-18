@@ -3,6 +3,7 @@ import { Timestamp, Transaction, collection, doc, getDocs, limit, query, runTran
 import { httpsCallable } from 'firebase/functions';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
+import { createConsentRecord } from './consents';
 import { db, functions, storage } from './firebase';
 import {
   asOptionalBoolean,
@@ -367,6 +368,15 @@ export async function createEuropeanGatheringRegistration(args: {
       transaction.set(registrationRef, payload);
     });
 
+    // Item A: record the uploaded signed consent in the user-level ledger (pending until approved).
+    if (args.userId && uploadedDocuments.consentDocument) {
+      await createConsentRecord(args.userId, {
+        documentName: uploadedDocuments.consentDocument.name,
+        documentPath: uploadedDocuments.consentDocument.path,
+        eventId: registrationId
+      }).catch(() => undefined);
+    }
+
     return registrationRef;
   } catch (error) {
     await Promise.all(
@@ -393,6 +403,7 @@ export async function updateMyEuropeanGatheringRegistration(args: {
   id: string;
   documents?: EuropeanGatheringUploadableDocuments;
   input: Omit<EuropeanGatheringRegistrationInput, 'status'>;
+  userId?: string;
 }) {
   const registrationRef = doc(registrationsRef, args.id);
   const uploadedDocuments = await uploadEuropeanGatheringDocuments({
@@ -416,6 +427,14 @@ export async function updateMyEuropeanGatheringRegistration(args: {
       if (!snap.exists()) throw new Error('Registration not found.');
       transaction.update(registrationRef, patch);
     });
+
+    if (args.userId && uploadedDocuments.consentDocument) {
+      await createConsentRecord(args.userId, {
+        documentName: uploadedDocuments.consentDocument.name,
+        documentPath: uploadedDocuments.consentDocument.path,
+        eventId: args.id
+      }).catch(() => undefined);
+    }
   } catch (error) {
     await Promise.all(
       Object.values(uploadedDocuments).map(d => deleteStoredDocumentIfPresent(d.path).catch(() => undefined))

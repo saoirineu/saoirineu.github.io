@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { FileUploadField } from '../components/FileUploadField';
+import { consentRequired, fetchUserConsents } from '../lib/consents';
 import { siteLocaleOptions } from '../lib/siteLocale';
 import {
   createEuropeanGatheringRegistration,
@@ -54,6 +55,7 @@ type Copy = {
   consentDownload: string;
   noviceApprovalNote: string;
   noviceApprovalLinkText: string;
+  consentRequiredNote: string;
   formTitle: string;
   personalTitle: string;
   firstName: string;
@@ -205,6 +207,7 @@ const copyByLocale: Record<Locale, Copy> = {
     consentDownload: 'Consentimento informado',
     noviceApprovalNote: '{link}, preencha-o (preferencialmente em letras de fôrma), assine-o e envie-o.\nEm seguida, você será contatado para uma entrevista de conhecimento.\nCaso a participação não seja aprovada, a contribuição será devolvida.',
     noviceApprovalLinkText: 'Baixe o termo de consentimento informado',
+    consentRequiredNote: 'É necessário um consentimento informado assinado (não há um registrado ou o último aprovado tem mais de 12 meses). {link}, assine-o e envie-o aqui.',
     formTitle: 'Formulário de inscrição',
     personalTitle: 'Dados pessoais',
     firstName: 'Nome',
@@ -338,6 +341,7 @@ const copyByLocale: Record<Locale, Copy> = {
     consentDownload: 'Informed consent',
     noviceApprovalNote: '{link}, fill it out (preferably in block letters), sign it, and upload it.\nYou will then be contacted for an introductory interview.\nIf participation is not approved, the contribution will be refunded.',
     noviceApprovalLinkText: 'Download the informed consent form',
+    consentRequiredNote: 'A signed informed consent is required (none on file, or the last approved one is older than 12 months). {link}, sign it, and upload it here.',
     formTitle: 'Registration form',
     personalTitle: 'Personal details',
     firstName: 'First name',
@@ -471,6 +475,7 @@ const copyByLocale: Record<Locale, Copy> = {
     consentDownload: 'Consentimiento informado',
     noviceApprovalNote: '{link}, complétalo (preferiblemente en letras de imprenta), fírmalo y cárgalo.\nDespués serás contactado para una entrevista de conocimiento.\nSi la participación no fuera aprobada, la contribución será devuelta.',
     noviceApprovalLinkText: 'Descarga el consentimiento informado',
+    consentRequiredNote: 'Se requiere un consentimiento informado firmado (no hay ninguno registrado o el último aprobado tiene más de 12 meses). {link}, fírmalo y súbelo aquí.',
     formTitle: 'Formulario de inscripción',
     personalTitle: 'Datos personales',
     firstName: 'Nombre',
@@ -604,6 +609,7 @@ const copyByLocale: Record<Locale, Copy> = {
     consentDownload: 'Consenso informato',
     noviceApprovalNote: '{link}, compilalo (preferibilmente in stampatello), firmalo e caricalo.\nDopodiché sarai contattato per un colloquio conoscitivo.\nSe la partecipazione non dovesse essere approvata, il contributo sarà restituito.',
     noviceApprovalLinkText: 'Scarica il consenso informato',
+    consentRequiredNote: 'È richiesto un consenso informato firmato (non presente o con l\'ultimo approvato più vecchio di 12 mesi). {link}, firmalo e caricalo qui.',
     formTitle: 'Modulo di iscrizione',
     personalTitle: 'Dati personali',
     firstName: 'Nome',
@@ -1012,6 +1018,14 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
   const totalSlotCapacity = roomAvailability.reduce((sum, room) => sum + room.capacity, 0);
   const totalSlotsAvailable = roomAvailability.reduce((sum, room) => sum + room.available, 0);
 
+  const consentsQuery = useQuery({
+    queryKey: ['userConsents', user?.uid],
+    queryFn: () => fetchUserConsents(user!.uid),
+    enabled: !!user?.uid
+  });
+  // Item A: ask for the signed consent for novices, or whenever there is no valid approved consent on file.
+  const consentNeeded = values.isNovice || consentRequired(consentsQuery.data ?? []);
+
   useEffect(() => {
     if (existingRegistrationQuery.isFetching) return;
     if (!existingRegistration) return;
@@ -1114,7 +1128,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         identityDocumentPath: keptIdentityPath,
         paymentProofPath: keptPaymentPath,
         consentDocumentPath: keptConsentPath
-      });
+      }, consentNeeded);
       if (validationKey) {
         throw new Error(copy.errors[validationKey] ?? 'Invalid form');
       }
@@ -1137,10 +1151,11 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         await updateMyEuropeanGatheringRegistration({
           id: existingRegistration.id,
           input: payload,
+          userId: user?.uid ?? undefined,
           documents: {
             identityDocument: documents.identityDocument,
             paymentProof: documents.paymentProof,
-            consentDocument: values.isNovice ? documents.consentDocument : null
+            consentDocument: documents.consentDocument
           }
         });
         return { id: existingRegistration.id };
@@ -1152,7 +1167,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         documents: {
           identityDocument: documents.identityDocument,
           paymentProof: documents.paymentProof,
-          consentDocument: values.isNovice ? documents.consentDocument : null
+          consentDocument: documents.consentDocument
         }
       });
     },
@@ -1161,6 +1176,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
         window.localStorage.removeItem(europeanGatheringDraftKey);
       }
       queryClient.invalidateQueries({ queryKey: ['myEuropeanGatheringRegistration', user?.uid] });
+      queryClient.invalidateQueries({ queryKey: ['userConsents', user?.uid] });
       navigate('/');
     },
     onError: error => {
@@ -1595,7 +1611,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                     tooLargeError={uploadTooLargeError}
                     useCompressedLabel={copy.fileApproveCompressed}
                   />
-                  {values.isNovice ? (
+                  {consentNeeded ? (
                     <div className="sm:col-span-2 space-y-3">
                       <FileUploadField
                         accept={europeanGatheringUploadAccept}
@@ -1628,7 +1644,7 @@ export default function EuropeanGatheringPage({ showPublicHero = true }: Europea
                       />
                       <p className="whitespace-pre-line text-xs leading-5 text-amber-800">
                         {(() => {
-                          const parts = copy.noviceApprovalNote.split('{link}');
+                          const parts = (values.isNovice ? copy.noviceApprovalNote : copy.consentRequiredNote).split('{link}');
                           return (
                             <>
                               {parts[0]}
