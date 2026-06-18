@@ -11,6 +11,7 @@ import {
 import {
   fetchUsers,
   resolveUserDocumentUrl,
+  updateUserAdminNote,
   updateUserApprovalStatus,
   updateUserSystemRoles,
   type UserApprovalStatus,
@@ -35,7 +36,6 @@ const copyByLocale = {
     approval: 'Aprovação',
     privileges: 'Privilégios',
     approve: 'Aprovar',
-    viewProfile: 'Ver perfil',
     noName: 'Sem nome',
     noEmail: 'Sem email',
     approvalStatus: {
@@ -67,12 +67,17 @@ const copyByLocale = {
       isInitiated: 'Iniciado',
       initiationDate: 'Data de iniciação',
       initiatorName: 'Nome do iniciador',
-      idDocPrimary: 'Documento de identidade (frente)',
-      idDocSecondary: 'Documento de identidade (verso)',
+      idDocPrimary: 'Documento de identidade',
       yes: 'Sim',
       no: 'Não',
       close: 'Fechar',
-      noDocument: 'Nenhum arquivo enviado'
+      noDocument: 'Nenhum arquivo enviado',
+      approve: 'Aprovar membro',
+      revokeApproval: 'Cancelar aprovação',
+      adminNote: 'Nota administrativa',
+      saveNote: 'Salvar nota',
+      noteSaved: 'Nota salva.',
+      actionError: 'Erro ao executar ação'
     }
   },
   en: {
@@ -89,7 +94,6 @@ const copyByLocale = {
     approval: 'Approval',
     privileges: 'Privileges',
     approve: 'Approve',
-    viewProfile: 'View profile',
     noName: 'No name',
     noEmail: 'No email',
     approvalStatus: {
@@ -121,12 +125,17 @@ const copyByLocale = {
       isInitiated: 'Initiated',
       initiationDate: 'Initiation date',
       initiatorName: 'Initiator name',
-      idDocPrimary: 'Identity document (front)',
-      idDocSecondary: 'Identity document (back)',
+      idDocPrimary: 'Identity document',
       yes: 'Yes',
       no: 'No',
       close: 'Close',
-      noDocument: 'No file submitted'
+      noDocument: 'No file submitted',
+      approve: 'Approve membership',
+      revokeApproval: 'Revoke approval',
+      adminNote: 'Admin note',
+      saveNote: 'Save note',
+      noteSaved: 'Note saved.',
+      actionError: 'Action failed'
     }
   },
   es: {
@@ -143,7 +152,6 @@ const copyByLocale = {
     approval: 'Aprobación',
     privileges: 'Privilegios',
     approve: 'Aprobar',
-    viewProfile: 'Ver perfil',
     noName: 'Sin nombre',
     noEmail: 'Sin correo',
     approvalStatus: {
@@ -175,12 +183,17 @@ const copyByLocale = {
       isInitiated: 'Iniciado',
       initiationDate: 'Fecha de iniciación',
       initiatorName: 'Nombre del iniciador',
-      idDocPrimary: 'Documento de identidad (frente)',
-      idDocSecondary: 'Documento de identidad (dorso)',
+      idDocPrimary: 'Documento de identidad',
       yes: 'Sí',
       no: 'No',
       close: 'Cerrar',
-      noDocument: 'Ningún archivo enviado'
+      noDocument: 'Ningún archivo enviado',
+      approve: 'Aprobar membresía',
+      revokeApproval: 'Revocar aprobación',
+      adminNote: 'Nota administrativa',
+      saveNote: 'Guardar nota',
+      noteSaved: 'Nota guardada.',
+      actionError: 'Error al ejecutar la acción'
     }
   },
   it: {
@@ -197,7 +210,6 @@ const copyByLocale = {
     approval: 'Approvazione',
     privileges: 'Privilegi',
     approve: 'Approva',
-    viewProfile: 'Vedi profilo',
     noName: 'Senza nome',
     noEmail: 'Senza email',
     approvalStatus: {
@@ -229,12 +241,17 @@ const copyByLocale = {
       isInitiated: 'Iniziato',
       initiationDate: 'Data di iniziazione',
       initiatorName: 'Nome dell\'iniziatore',
-      idDocPrimary: 'Documento d\'identità (fronte)',
-      idDocSecondary: 'Documento d\'identità (retro)',
+      idDocPrimary: 'Documento d\'identità',
       yes: 'Sì',
       no: 'No',
       close: 'Chiudi',
-      noDocument: 'Nessun file inviato'
+      noDocument: 'Nessun file inviato',
+      approve: 'Approva membro',
+      revokeApproval: 'Revoca approvazione',
+      adminNote: 'Nota admin',
+      saveNote: 'Salva nota',
+      noteSaved: 'Nota salvata.',
+      actionError: 'Errore nell\'eseguire l\'azione'
     }
   }
 } as const;
@@ -247,7 +264,7 @@ export default function AdminUsersPage() {
   const copy = copyByLocale[locale];
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [reviewUser, setReviewUser] = useState<UserProfile | null>(null);
+  const [reviewUid, setReviewUid] = useState<string | null>(null);
   const canManagePrivileges = hasRequiredRole(role, 'superadmin');
   const canApproveUsers = hasRequiredRole(role, 'useradmin');
 
@@ -279,7 +296,19 @@ export default function AdminUsersPage() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSuccessMessage(copy.approvalSuccess);
+    },
+    onError: error => {
+      setErrorMessage(error instanceof Error ? error.message : copy.updateError);
+    }
+  });
+
+  const noteMutation = useMutation({
+    mutationFn: async ({ uid, note }: { uid: string; note: string }) => {
+      setErrorMessage('');
+      return updateUserAdminNote(uid, note);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: error => {
       setErrorMessage(error instanceof Error ? error.message : copy.updateError);
@@ -334,30 +363,19 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 text-slate-900">{user.displayName ?? copy.noName}</td>
                   <td className="px-4 py-3 text-slate-600">{user.email ?? copy.noEmail}</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
+                    {canApproveUsers ? (
+                      <button
+                        type="button"
+                        className={approvalStatusButtonClass(approvalStatus)}
+                        onClick={() => setReviewUid(user.uid)}
+                      >
+                        {copy.approvalStatus[approvalStatus]}
+                      </button>
+                    ) : (
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
                         {copy.approvalStatus[approvalStatus]}
                       </span>
-                      {canApproveUsers ? (
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                          onClick={() => setReviewUser(user)}
-                        >
-                          {copy.viewProfile}
-                        </button>
-                      ) : null}
-                      {approvalStatus === 'pending' && canApproveUsers ? (
-                        <button
-                          type="button"
-                          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
-                          disabled={approvalMutation.isPending}
-                          onClick={() => approvalMutation.mutate({ uid: user.uid, status: 'approved' })}
-                        >
-                          {copy.approve}
-                        </button>
-                      ) : null}
-                    </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -382,18 +400,34 @@ export default function AdminUsersPage() {
         </table>
       </div>
 
-      {reviewUser ? (
-        <UserProfileReviewModal
-          user={reviewUser}
-          labels={copy.profileLabels}
-          onClose={() => setReviewUser(null)}
-        />
-      ) : null}
+      {reviewUid ? (() => {
+        const reviewUser = users.find(u => u.uid === reviewUid);
+        return reviewUser ? (
+          <UserProfileReviewModal
+            user={reviewUser}
+            labels={copy.profileLabels}
+            statusLabel={copy.approvalStatus[reviewUser.approvalStatus ?? 'needs-profile']}
+            isBusy={approvalMutation.isPending || noteMutation.isPending}
+            onApprove={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'approved' })}
+            onRevoke={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'needs-info' })}
+            onSaveNote={note => noteMutation.mutate({ uid: reviewUser.uid, note })}
+            onClose={() => setReviewUid(null)}
+          />
+        ) : null;
+      })() : null}
     </div>
   );
 }
 
 type ProfileLabels = Record<string, string>;
+
+function approvalStatusButtonClass(status: string) {
+  const base = 'rounded-full px-2 py-1 text-xs font-medium transition cursor-pointer ';
+  if (status === 'approved') return base + 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+  if (status === 'pending') return base + 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+  if (status === 'needs-info') return base + 'bg-orange-100 text-orange-800 hover:bg-orange-200';
+  return base + 'bg-slate-100 text-slate-700 hover:bg-slate-200';
+}
 
 function UserDocumentLink({ name, path, fallback }: { name?: string; path?: string; fallback: string }) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -437,12 +471,25 @@ function UserDocumentLink({ name, path, fallback }: { name?: string; path?: stri
 function UserProfileReviewModal({
   user,
   labels,
+  statusLabel,
+  isBusy,
+  onApprove,
+  onRevoke,
+  onSaveNote,
   onClose
 }: {
   user: UserProfile;
   labels: ProfileLabels;
+  statusLabel: string;
+  isBusy: boolean;
+  onApprove: () => void;
+  onRevoke: () => void;
+  onSaveNote: (note: string) => void;
   onClose: () => void;
 }) {
+  const [note, setNote] = useState(user.adminNote ?? '');
+  const [noteSaved, setNoteSaved] = useState(false);
+
   const displayName =
     user.fullName ?? user.displayName ?? ([user.firstName, user.surname].filter(Boolean).join(' ') || '—');
 
@@ -450,14 +497,28 @@ function UserProfileReviewModal({
     ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString()
     : '—';
 
+  const status = user.approvalStatus ?? 'needs-profile';
+
+  function handleSaveNote() {
+    setNoteSaved(false);
+    onSaveNote(note);
+    setNoteSaved(true);
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10"
       onClick={event => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-900">{labels.title}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-slate-900">{labels.title}</h2>
+            <span className={approvalStatusButtonClass(status) + ' pointer-events-none'}>
+              {statusLabel}
+            </span>
+          </div>
           <button
             type="button"
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
@@ -467,7 +528,8 @@ function UserProfileReviewModal({
           </button>
         </div>
 
-        <div className="divide-y divide-slate-100 px-6 py-4 text-sm">
+        {/* Profile fields */}
+        <div className="divide-y divide-slate-100 px-6 py-2 text-sm">
           <ProfileSection>
             <ProfileRow label={labels.submittedAt} value={submittedAt} />
             <ProfileRow label={labels.name} value={displayName} />
@@ -514,6 +576,54 @@ function UserProfileReviewModal({
               />
             </div>
           </ProfileSection>
+
+          {/* Admin note */}
+          <ProfileSection>
+            <div className="flex flex-col gap-2 py-2">
+              <label className="font-medium text-slate-600">{labels.adminNote}</label>
+              <textarea
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                rows={3}
+                value={note}
+                onChange={e => { setNote(e.target.value); setNoteSaved(false); }}
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  disabled={isBusy}
+                  onClick={handleSaveNote}
+                >
+                  {labels.saveNote}
+                </button>
+                {noteSaved ? <span className="text-xs text-emerald-700">{labels.noteSaved}</span> : null}
+              </div>
+            </div>
+          </ProfileSection>
+        </div>
+
+        {/* Action footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          {status === 'pending' ? (
+            <button
+              type="button"
+              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
+              disabled={isBusy}
+              onClick={onApprove}
+            >
+              {labels.approve}
+            </button>
+          ) : null}
+          {status === 'approved' ? (
+            <button
+              type="button"
+              className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+              disabled={isBusy}
+              onClick={onRevoke}
+            >
+              {labels.revokeApproval}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

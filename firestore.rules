@@ -91,6 +91,10 @@ service cloud.firestore {
         && request.resource.data.approvalStatus in ['approved', 'needs-info'];
     }
 
+    function useradminMayWriteAdminNote() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['adminNote', 'updatedAt']);
+    }
+
     function hasValidEncontroEuropeuStatus() {
       return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue', 'rejected', 'archived'];
     }
@@ -304,7 +308,7 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).changedKeys().hasAny(['systemRole', 'systemRoles', 'approvalApprovedAt', 'approvalApprovedBy'])
           && userSelfMayWriteApprovalStatus())
         || isSuperadmin()
-        || (isUserAdmin() && useradminMayWriteApprovalFields())
+        || (isUserAdmin() && (useradminMayWriteApprovalFields() || useradminMayWriteAdminNote()))
       );
       allow delete: if false;
     }

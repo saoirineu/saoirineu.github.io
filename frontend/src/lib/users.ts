@@ -86,6 +86,7 @@ export type UserProfile = {
   sponsorChurchNames?: string[];
   doctrineRoles?: string[];
   observations?: string;
+  adminNote?: string;
   updatedAt?: Timestamp;
   createdAt?: Timestamp;
 };
@@ -179,6 +180,7 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     sponsorChurchNames: asStringArray(data.sponsorChurchNames),
     doctrineRoles: asStringArray(data.doctrineRoles),
     observations: asOptionalString(data.observations),
+    adminNote: asOptionalString(data.adminNote),
     updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined
   };
@@ -277,6 +279,7 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     sponsorChurchNames: data.sponsorChurchNames,
     doctrineRoles: data.doctrineRoles,
     observations: data.observations,
+    adminNote: data.adminNote,
     updatedAt: Timestamp.now()
   };
 
@@ -308,6 +311,10 @@ export async function updateUserApprovalStatus(uid: string, status: UserApproval
     approvalApprovedAt: status === 'approved' ? Timestamp.now() : undefined,
     approvalApprovedBy: status === 'approved' ? reviewerUid : undefined
   });
+}
+
+export async function updateUserAdminNote(uid: string, note: string) {
+  return setDoc(doc(usersRef, uid), { adminNote: note, updatedAt: Timestamp.now() }, { merge: true });
 }
 
 export async function resolveUserDocumentUrl(path: string) {
