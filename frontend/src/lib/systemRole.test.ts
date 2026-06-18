@@ -16,6 +16,7 @@ describe('systemRole helpers', () => {
     expect(normalizeSystemRole('admin')).toBe('admin');
     expect(normalizeSystemRole('superadmin')).toBe('superadmin');
     expect(normalizeSystemRole('useradmin')).toBe('useradmin');
+    expect(normalizeSystemRole('eventadmin')).toBe('eventadmin');
     expect(normalizeSystemRole('anything-else')).toBe('user');
     expect(normalizeSystemRole(undefined)).toBe('user');
   });
@@ -29,6 +30,8 @@ describe('systemRole helpers', () => {
   it('computes primary role from a role set', () => {
     expect(primarySystemRole(['useradmin', 'custodian'])).toBe('custodian');
     expect(primarySystemRole(['useradmin', 'superadmin'])).toBe('superadmin');
+    expect(primarySystemRole(['useradmin', 'eventadmin'])).toBe('eventadmin');
+    expect(primarySystemRole(['eventadmin', 'admin'])).toBe('admin');
     expect(primarySystemRole(['user'])).toBe('user');
   });
 
@@ -54,5 +57,9 @@ describe('systemRole helpers', () => {
     expect(hasRequiredRole(['useradmin', 'custodian'], 'useradmin')).toBe(true);
     expect(hasRequiredRole(['useradmin', 'custodian'], 'custodian')).toBe(true);
     expect(hasRequiredRole(['useradmin', 'custodian'], 'admin')).toBe(false);
+    expect(hasRequiredRole('eventadmin', 'eventadmin')).toBe(true);
+    expect(hasRequiredRole('admin', 'eventadmin')).toBe(true);
+    expect(hasRequiredRole('eventadmin', 'admin')).toBe(false);
+    expect(hasRequiredRole(['useradmin'], 'eventadmin')).toBe(false);
   });
 });

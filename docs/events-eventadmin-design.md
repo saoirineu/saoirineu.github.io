@@ -266,16 +266,20 @@ Remaining nits to settle during implementation (not blockers):
 Each phase is independently shippable; check items off as they land. File references are the
 current touch points.
 
-### Phase 1 — `eventadmin` role (§1)
-- [ ] `systemRole.ts`: add `'eventadmin'` to `SystemRole`, `privilegedSystemRoleOptions`,
-      `normalizeSystemRole`, `primarySystemRole` (rank below `admin`), `hasRequiredRole`.
-- [ ] `systemRole.test.ts`: cases for `eventadmin` (assignment, `hasRequiredRole`, superadmin override).
-- [ ] `firestore.rules`: add `isEventAdmin()`; add `'eventadmin'` to `hasValidUserSystemRole`
-      and `hasValidUserSystemRoles` (raise `size()` cap to 6).
-- [ ] `AdminUsersPage.tsx`: expose `eventadmin` in role assignment UI + labels.
-- [ ] `App.tsx` + `RoleGate.tsx`: route guard (`requiredRole="eventadmin"`) for the events admin page.
-- [ ] `NavBar.tsx` / `DashboardPage.tsx`: entry point for event admins (optional this phase).
-- [ ] `docs/firestore-schema.md`: flip the role note from "planejado" to live.
+### Phase 1 — `eventadmin` role (§1) — **DONE** (commit pending)
+- [x] `systemRole.ts`: added `'eventadmin'` to `SystemRole`, `privilegedSystemRoleOptions`,
+      `normalizeSystemRole`, `primarySystemRole` (ranked below `admin`, above `custodian`),
+      `hasRequiredRole` (`admin` inherits `eventadmin`).
+- [x] `systemRole.test.ts`: cases for `eventadmin` (normalize, primary ranking, `hasRequiredRole`,
+      admin inheritance). 6/6 green.
+- [x] `firestore.rules`: added `isEventAdmin() = isAdmin() || hasStoredRole('eventadmin')`;
+      added `'eventadmin'` to `hasValidUserSystemRole` and `hasValidUserSystemRoles` (cap → 6).
+- [x] `AdminUsersPage.tsx`: appears automatically — the role checkboxes render from
+      `privilegedSystemRoleOptions` with the raw role string as label (no map to update).
+- [ ] `App.tsx` + `RoleGate.tsx`: route guard (`requiredRole="eventadmin"`) — **deferred to
+      Phase 4** (no events admin page/route exists yet; `RoleGate` is already generic).
+- [ ] `NavBar.tsx` / `DashboardPage.tsx`: entry point — **deferred to Phase 4** (no page yet).
+- [x] `docs/firestore-schema.md`: role note flipped to live.
 
 ### Phase 2 — consent ledger + aging (§3, item A)
 - [ ] `users.ts`: `ConsentRecord` type; create (status `pending`) / list; `consentRequired(consents, now)`.

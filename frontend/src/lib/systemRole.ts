@@ -1,15 +1,16 @@
-export type SystemRole = 'user' | 'useradmin' | 'admin' | 'superadmin' | 'custodian';
+export type SystemRole = 'user' | 'useradmin' | 'eventadmin' | 'admin' | 'superadmin' | 'custodian';
 export type PrivilegedSystemRole = Exclude<SystemRole, 'user'>;
 export type SystemRoleSet = SystemRole[];
 
 export const bootstrapSuperadminEmail = 'renato.fabbri@gmail.com';
 
-export const privilegedSystemRoleOptions: PrivilegedSystemRole[] = ['useradmin', 'custodian', 'admin', 'superadmin'];
+export const privilegedSystemRoleOptions: PrivilegedSystemRole[] = ['useradmin', 'custodian', 'eventadmin', 'admin', 'superadmin'];
 
 export function normalizeSystemRole(value: unknown): SystemRole {
   if (value === 'superadmin') return 'superadmin';
   if (value === 'admin') return 'admin';
   if (value === 'custodian') return 'custodian';
+  if (value === 'eventadmin') return 'eventadmin';
   if (value === 'useradmin') return 'useradmin';
   return 'user';
 }
@@ -32,6 +33,7 @@ export function normalizeSystemRoles(value: unknown, legacyRole?: unknown): Syst
 export function primarySystemRole(roles: readonly SystemRole[]): SystemRole {
   if (roles.includes('superadmin')) return 'superadmin';
   if (roles.includes('admin')) return 'admin';
+  if (roles.includes('eventadmin')) return 'eventadmin';
   if (roles.includes('custodian')) return 'custodian';
   if (roles.includes('useradmin')) return 'useradmin';
   return 'user';
@@ -65,6 +67,7 @@ export function hasRequiredRole(
 
   if (requiredRole === 'superadmin') return false;
   if (requiredRole === 'admin') return roles.includes('admin');
+  if (requiredRole === 'eventadmin') return roles.includes('eventadmin') || roles.includes('admin');
   if (requiredRole === 'custodian') return roles.includes('custodian') || roles.includes('admin');
   if (requiredRole === 'useradmin') return roles.includes('useradmin');
   return false;

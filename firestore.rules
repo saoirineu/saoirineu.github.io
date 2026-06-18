@@ -48,6 +48,10 @@ service cloud.firestore {
       return isAdmin() || hasStoredRole('custodian');
     }
 
+    function isEventAdmin() {
+      return isAdmin() || hasStoredRole('eventadmin');
+    }
+
     function isOwnMemberRecord() {
       return isSignedIn()
         && request.auth.token.email is string
@@ -59,15 +63,15 @@ service cloud.firestore {
 
     function hasValidUserSystemRole() {
       return !request.resource.data.keys().hasAny(['systemRole'])
-        || request.resource.data.systemRole in ['user', 'useradmin', 'admin', 'superadmin', 'custodian'];
+        || request.resource.data.systemRole in ['user', 'useradmin', 'eventadmin', 'admin', 'superadmin', 'custodian'];
     }
 
     function hasValidUserSystemRoles() {
       return !request.resource.data.keys().hasAny(['systemRoles'])
         || (
           request.resource.data.systemRoles is list
-          && request.resource.data.systemRoles.size() <= 5
-          && request.resource.data.systemRoles.hasOnly(['user', 'useradmin', 'admin', 'superadmin', 'custodian'])
+          && request.resource.data.systemRoles.size() <= 6
+          && request.resource.data.systemRoles.hasOnly(['user', 'useradmin', 'eventadmin', 'admin', 'superadmin', 'custodian'])
         );
     }
 

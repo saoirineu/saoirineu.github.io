@@ -4,7 +4,7 @@
 
 ### usuarios (perfil do auth)
 - uid (igual ao auth)
-- systemRole: `user` | `useradmin` | `custodian` | `admin` | `superadmin` (campo legado/primario para compatibilidade). Parte 2 (planejado): acrescenta `eventadmin` — ver `events-eventadmin-design.md` §1.
+- systemRole: `user` | `useradmin` | `eventadmin` | `custodian` | `admin` | `superadmin` (campo legado/primario para compatibilidade). `eventadmin` (Parte 2, Fase 1 — entregue) cria/gerencia eventos; `admin`/`superadmin` o herdam. Ver `events-eventadmin-design.md` §1.
 - systemRoles: array de privilegios, ex.: `["useradmin", "custodian"]`; ausencia ou `["user"]` significa usuario comum
 - consentimentos (Parte 2, planejado): subcolecao `users/{uid}/consents/{id}` — ver secao "Parte 2" abaixo
 - approvalStatus: `needs-profile` | `pending` | `approved` | `needs-info`
@@ -146,18 +146,20 @@ senao `email-<hash>` ou `name-<hash>`.
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
 - `encontroEuropeuInscricoes` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
 - `encontroEuropeuQuartos` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
-- Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia privilegios de usuarios.
+- Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `eventadmin` cria/gerencia eventos, `admin` visualiza dados operacionais (e herda `eventadmin`), enquanto `superadmin` tambem gerencia privilegios de usuarios.
 - Parte 1 (entregue) do encontro europeu: o formulario publico nao coleta mais `roomNumber`; mostra um agregado de "vagas de participacao" (soma de `europeanGatheringRooms`). A caucao (caution deposit) e derivada (30% do total) e exibida na UI, **nao** e armazenada em `contribution` (a regra de criacao fixa `contribution` em `{nights, lodging, spiritualWorks, extras, total}`). Trabalhos atuais: sex 25, sab 26, seg 28, qua 30 de setembro, 19:00.
 
 ## Parte 2 — planejado (ver `events-eventadmin-design.md`)
 
-Estas colecoes/campos ainda **nao existem**; sao a verdade de projeto acordada para implementar.
 Ordem: `eventadmin` -> ledger de consentimento -> decisoes do dirigente -> eventos genericos.
+Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de projeto a implementar).
 
-### Papel `eventadmin` (§1)
-- Novo `SystemRole` privilegiado, paralelo a `useradmin`/`custodian`. Cria/gerencia eventos.
-- Regras: `isEventAdmin() = isAdmin() || hasStoredRole('eventadmin')`; adicionar `eventadmin`
-  as allow-lists `hasValidUserSystemRole`/`hasValidUserSystemRoles` (cap de tamanho -> 6).
+### Papel `eventadmin` (§1) — entregue
+- `SystemRole` privilegiado, paralelo a `useradmin`/`custodian`. Cria/gerencia eventos;
+  `admin`/`superadmin` herdam (`hasRequiredRole`/`isEventAdmin`).
+- Regras: `isEventAdmin() = isAdmin() || hasStoredRole('eventadmin')`; `eventadmin` consta nas
+  allow-lists `hasValidUserSystemRole`/`hasValidUserSystemRoles` (cap de tamanho = 6).
+- Atribuicao na UI admin de usuarios (somente superadmin altera privilegios).
 
 ### `users/{uid}/consents/{id}` — ledger de consentimento informado (item A, §3)
 - status: `pending` | `approved` | `rejected`
