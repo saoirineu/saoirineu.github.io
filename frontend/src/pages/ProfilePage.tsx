@@ -258,6 +258,11 @@ const copyByLocale: Record<ProfileLocale, {
   submitForApproval: string;
   submittingForApproval: string;
   submittedForApproval: string;
+  pendingBannerTitle: string;
+  pendingBannerDesc: string;
+  reviewBannerTitle: string;
+  reviewBannerDesc: string;
+  adminNoteLabel: string;
   requiredFieldsMissing: string;
   idUploadTitle: string;
   idUploadIntro: string;
@@ -281,6 +286,11 @@ const copyByLocale: Record<ProfileLocale, {
     submitForApproval: 'Enviar para aprovação',
     submittingForApproval: 'Enviando...',
     submittedForApproval: 'Enviado para aprovação.',
+    pendingBannerTitle: 'Perfil em análise',
+    pendingBannerDesc: 'Seu perfil foi enviado e está aguardando revisão. A edição fica bloqueada enquanto a aprovação está pendente.',
+    reviewBannerTitle: 'Revisão solicitada pela administração',
+    reviewBannerDesc: 'A administração analisou seu perfil e deixou uma nota. Atualize seu perfil conforme indicado e reenvie para aprovação.',
+    adminNoteLabel: 'Nota da administração',
     requiredFieldsMissing: 'Preencha nome, e-mail e documento de identidade para enviar à aprovação.',
     idUploadTitle: 'Documento de identidade',
     idUploadIntro: 'Envie um PDF, JPG ou PNG do seu documento para que a administração possa avaliar sua inscrição no ICEFLU.',
@@ -296,13 +306,13 @@ const copyByLocale: Record<ProfileLocale, {
     }
   },
   en: {
-    title: 'Profile', intro: 'Required for approval: full name (or first and last name), email, and identity document. You can save the profile at any time and submit it for approval when those fields are complete.', sessionExpired: 'Session expired', saveError: 'Error while saving', saving: 'Saving...', save: 'Save profile', saved: 'Saved.', submitForApproval: 'Submit for approval', submittingForApproval: 'Submitting...', submittedForApproval: 'Submitted for approval.', requiredFieldsMissing: 'Complete name, email, and identity document before submitting for approval.', idUploadTitle: 'Identity document', idUploadIntro: 'Upload a PDF, JPG, or PNG of your ID so the administration can review your ICEFLU subscription.', idUploadCurrent: 'Uploaded document', idUploadChoose: 'Choose document', idUploadSelected: 'Selected', familyEmailTitle: 'We found more than one member with your email', familyEmailIntro: 'This email is shared by more than one member record. Select who you are to fill the profile with the right data.', thisIsMe: 'This is me', prefilledFrom: name => `Profile prefilled with member data: ${name}. You can change everything and save.`, sections: { ...registryCopyByLocale.en, name: 'Name', yourName: 'Your name', email: 'Email', phone: 'Phone', optional: 'Optional', city: 'City', state: 'State/Region', country: 'Country', avatar: 'Avatar', avatarUrl: 'Avatar URL', useGooglePhoto: 'Use Google photo', currentChurchRegistered: 'Current church (registered)', selectPlaceholder: '— Select —', currentChurchText: 'Current church (free text)', notRegisteredYet: 'If it is not registered yet', originChurchText: 'Origin church (free text)', originChurchPlaceholder: 'Lineage or church you came from', notes: 'General notes', iAmInitiated: 'I am initiated (fardado)', iAmSponsor: 'I am sponsor/godparent', initiationDate: 'Initiation date', initiationPlace: 'Initiation place', initiationPlacePlaceholder: 'City/state or church', whoInitiatedMe: 'Who initiated me', whoInitiatedMePlaceholder: 'Name of sponsor/godparent', initiationChurchRegistered: 'Church where I was initiated (registered)', initiationChurchText: 'Church where I was initiated (free text)', withWhomIWasInitiated: 'With whom I was initiated', withWhomIWasInitiatedPlaceholder: 'Other people initiated together', sponsorChurchesRegistered: 'Churches where I am sponsor/godparent (registered)', sponsorChurchesText: 'Churches where I am sponsor/godparent (free text)', sponsorChurchesPlaceholder: 'Example: churches not yet registered', roles: 'Roles in the doctrine (comma separated)', rolesPlaceholder: 'Example: treasurer, coordinator, official musician, cleaning', rolesHint: 'Use free terms such as treasurer, official cook, organization, setup, cleaning, musician, official musician.' }
+    title: 'Profile', intro: 'Required for approval: full name (or first and last name), email, and identity document. You can save the profile at any time and submit it for approval when those fields are complete.', sessionExpired: 'Session expired', saveError: 'Error while saving', saving: 'Saving...', save: 'Save profile', saved: 'Saved.', submitForApproval: 'Submit for approval', submittingForApproval: 'Submitting...', submittedForApproval: 'Submitted for approval.', pendingBannerTitle: 'Profile under review', pendingBannerDesc: 'Your profile has been submitted and is under review. Editing is locked while approval is pending.', reviewBannerTitle: 'Review requested by the administration', reviewBannerDesc: 'The administrator reviewed your profile and left a note. Please update your profile as indicated and resubmit for approval.', adminNoteLabel: 'Note from the administration', requiredFieldsMissing: 'Complete name, email, and identity document before submitting for approval.', idUploadTitle: 'Identity document', idUploadIntro: 'Upload a PDF, JPG, or PNG of your ID so the administration can review your ICEFLU subscription.', idUploadCurrent: 'Uploaded document', idUploadChoose: 'Choose document', idUploadSelected: 'Selected', familyEmailTitle: 'We found more than one member with your email', familyEmailIntro: 'This email is shared by more than one member record. Select who you are to fill the profile with the right data.', thisIsMe: 'This is me', prefilledFrom: name => `Profile prefilled with member data: ${name}. You can change everything and save.`, sections: { ...registryCopyByLocale.en, name: 'Name', yourName: 'Your name', email: 'Email', phone: 'Phone', optional: 'Optional', city: 'City', state: 'State/Region', country: 'Country', avatar: 'Avatar', avatarUrl: 'Avatar URL', useGooglePhoto: 'Use Google photo', currentChurchRegistered: 'Current church (registered)', selectPlaceholder: '— Select —', currentChurchText: 'Current church (free text)', notRegisteredYet: 'If it is not registered yet', originChurchText: 'Origin church (free text)', originChurchPlaceholder: 'Lineage or church you came from', notes: 'General notes', iAmInitiated: 'I am initiated (fardado)', iAmSponsor: 'I am sponsor/godparent', initiationDate: 'Initiation date', initiationPlace: 'Initiation place', initiationPlacePlaceholder: 'City/state or church', whoInitiatedMe: 'Who initiated me', whoInitiatedMePlaceholder: 'Name of sponsor/godparent', initiationChurchRegistered: 'Church where I was initiated (registered)', initiationChurchText: 'Church where I was initiated (free text)', withWhomIWasInitiated: 'With whom I was initiated', withWhomIWasInitiatedPlaceholder: 'Other people initiated together', sponsorChurchesRegistered: 'Churches where I am sponsor/godparent (registered)', sponsorChurchesText: 'Churches where I am sponsor/godparent (free text)', sponsorChurchesPlaceholder: 'Example: churches not yet registered', roles: 'Roles in the doctrine (comma separated)', rolesPlaceholder: 'Example: treasurer, coordinator, official musician, cleaning', rolesHint: 'Use free terms such as treasurer, official cook, organization, setup, cleaning, musician, official musician.' }
   },
   es: {
-    title: 'Perfil', intro: 'Obligatorio para enviar a aprobación: nombre completo (o nombre y apellido), correo electrónico y documento de identidad. Puede guardar el perfil en cualquier momento y enviarlo a aprobación cuando esos campos estén completos.', sessionExpired: 'Sesión expirada', saveError: 'Error al guardar', saving: 'Guardando...', save: 'Guardar perfil', saved: 'Guardado.', submitForApproval: 'Enviar a aprobación', submittingForApproval: 'Enviando...', submittedForApproval: 'Enviado a aprobación.', requiredFieldsMissing: 'Complete nombre, correo electrónico y documento de identidad antes de enviar a aprobación.', idUploadTitle: 'Documento de identidad', idUploadIntro: 'Suba un PDF, JPG o PNG de su documento para que la administración pueda revisar su inscripción en ICEFLU.', idUploadCurrent: 'Documento enviado', idUploadChoose: 'Seleccionar documento', idUploadSelected: 'Seleccionado', familyEmailTitle: 'Encontramos más de un socio con su correo', familyEmailIntro: 'Este correo es compartido por más de un socio. Seleccione quién es usted para completar el perfil con los datos correctos.', thisIsMe: 'Soy yo', prefilledFrom: name => `Perfil precargado con los datos del socio: ${name}. Puede cambiar todo y guardar.`, sections: { ...registryCopyByLocale.es, name: 'Nombre', yourName: 'Su nombre', email: 'Correo electrónico', phone: 'Teléfono', optional: 'Opcional', city: 'Ciudad', state: 'Estado/Provincia', country: 'País', avatar: 'Avatar', avatarUrl: 'URL del avatar', useGooglePhoto: 'Usar foto de Google', currentChurchRegistered: 'Iglesia actual (registrada)', selectPlaceholder: '— Seleccionar —', currentChurchText: 'Iglesia actual (texto libre)', notRegisteredYet: 'Si todavía no está registrada', originChurchText: 'Iglesia de origen (texto libre)', originChurchPlaceholder: 'Línea o iglesia de procedencia', notes: 'Observaciones generales', iAmInitiated: 'Soy fardado(a)', iAmSponsor: 'Soy padrino/madrina', initiationDate: 'Fecha del fardamento', initiationPlace: 'Lugar del fardamento', initiationPlacePlaceholder: 'Ciudad/estado o iglesia', whoInitiatedMe: 'Quién me fardó', whoInitiatedMePlaceholder: 'Nombre del padrino/madrina', initiationChurchRegistered: 'Iglesia donde fui fardado (registrada)', initiationChurchText: 'Iglesia donde fui fardado (texto libre)', withWhomIWasInitiated: 'Con quién me fardé', withWhomIWasInitiatedPlaceholder: 'Otras personas fardadas conmigo', sponsorChurchesRegistered: 'Iglesias donde soy padrino/madrina (registradas)', sponsorChurchesText: 'Iglesias donde soy padrino/madrina (texto libre)', sponsorChurchesPlaceholder: 'Ej.: iglesias no registradas', roles: 'Roles en la doctrina (separados por comas)', rolesPlaceholder: 'Ej.: tesorero, coordinador, músico oficial, limpieza', rolesHint: 'Use términos libres, por ejemplo tesorero, cocinera oficial, organización, arreglo, limpieza, músico, músico oficial.' }
+    title: 'Perfil', intro: 'Obligatorio para enviar a aprobación: nombre completo (o nombre y apellido), correo electrónico y documento de identidad. Puede guardar el perfil en cualquier momento y enviarlo a aprobación cuando esos campos estén completos.', sessionExpired: 'Sesión expirada', saveError: 'Error al guardar', saving: 'Guardando...', save: 'Guardar perfil', saved: 'Guardado.', submitForApproval: 'Enviar a aprobación', submittingForApproval: 'Enviando...', submittedForApproval: 'Enviado a aprobación.', pendingBannerTitle: 'Perfil en revisión', pendingBannerDesc: 'Su perfil fue enviado y está pendiente de revisión. La edición está bloqueada mientras la aprobación está pendiente.', reviewBannerTitle: 'Revisión solicitada por la administración', reviewBannerDesc: 'La administración revisó su perfil y dejó una nota. Actualice su perfil según lo indicado y vuelva a enviar para aprobación.', adminNoteLabel: 'Nota de la administración', requiredFieldsMissing: 'Complete nombre, correo electrónico y documento de identidad antes de enviar a aprobación.', idUploadTitle: 'Documento de identidad', idUploadIntro: 'Suba un PDF, JPG o PNG de su documento para que la administración pueda revisar su inscripción en ICEFLU.', idUploadCurrent: 'Documento enviado', idUploadChoose: 'Seleccionar documento', idUploadSelected: 'Seleccionado', familyEmailTitle: 'Encontramos más de un socio con su correo', familyEmailIntro: 'Este correo es compartido por más de un socio. Seleccione quién es usted para completar el perfil con los datos correctos.', thisIsMe: 'Soy yo', prefilledFrom: name => `Perfil precargado con los datos del socio: ${name}. Puede cambiar todo y guardar.`, sections: { ...registryCopyByLocale.es, name: 'Nombre', yourName: 'Su nombre', email: 'Correo electrónico', phone: 'Teléfono', optional: 'Opcional', city: 'Ciudad', state: 'Estado/Provincia', country: 'País', avatar: 'Avatar', avatarUrl: 'URL del avatar', useGooglePhoto: 'Usar foto de Google', currentChurchRegistered: 'Iglesia actual (registrada)', selectPlaceholder: '— Seleccionar —', currentChurchText: 'Iglesia actual (texto libre)', notRegisteredYet: 'Si todavía no está registrada', originChurchText: 'Iglesia de origen (texto libre)', originChurchPlaceholder: 'Línea o iglesia de procedencia', notes: 'Observaciones generales', iAmInitiated: 'Soy fardado(a)', iAmSponsor: 'Soy padrino/madrina', initiationDate: 'Fecha del fardamento', initiationPlace: 'Lugar del fardamento', initiationPlacePlaceholder: 'Ciudad/estado o iglesia', whoInitiatedMe: 'Quién me fardó', whoInitiatedMePlaceholder: 'Nombre del padrino/madrina', initiationChurchRegistered: 'Iglesia donde fui fardado (registrada)', initiationChurchText: 'Iglesia donde fui fardado (texto libre)', withWhomIWasInitiated: 'Con quién me fardé', withWhomIWasInitiatedPlaceholder: 'Otras personas fardadas conmigo', sponsorChurchesRegistered: 'Iglesias donde soy padrino/madrina (registradas)', sponsorChurchesText: 'Iglesias donde soy padrino/madrina (texto libre)', sponsorChurchesPlaceholder: 'Ej.: iglesias no registradas', roles: 'Roles en la doctrina (separados por comas)', rolesPlaceholder: 'Ej.: tesorero, coordinador, músico oficial, limpieza', rolesHint: 'Use términos libres, por ejemplo tesorero, cocinera oficial, organización, arreglo, limpieza, músico, músico oficial.' }
   },
   it: {
-    title: 'Profilo', intro: 'Obbligatorio per inviare all\'approvazione: nome completo (o nome e cognome), email e documento di identità. Puoi salvare il profilo in qualsiasi momento e inviarlo all\'approvazione quando questi campi sono completi.', sessionExpired: 'Sessione scaduta', saveError: 'Errore durante il salvataggio', saving: 'Salvataggio...', save: 'Salva profilo', saved: 'Salvato.', submitForApproval: 'Invia all\'approvazione', submittingForApproval: 'Invio...', submittedForApproval: 'Inviato all\'approvazione.', requiredFieldsMissing: 'Completa nome, email e documento di identità prima di inviare all\'approvazione.', idUploadTitle: 'Documento di identità', idUploadIntro: 'Carica un PDF, JPG o PNG del tuo documento affinché l\'amministrazione possa valutare la tua iscrizione a ICEFLU.', idUploadCurrent: 'Documento caricato', idUploadChoose: 'Seleziona documento', idUploadSelected: 'Selezionato', familyEmailTitle: 'Abbiamo trovato più di un socio con la tua email', familyEmailIntro: 'Questa email è condivisa da più di un socio. Seleziona chi sei per compilare il profilo con i dati corretti.', thisIsMe: 'Sono io', prefilledFrom: name => `Profilo precompilato con i dati del socio: ${name}. Puoi modificare tutto e salvare.`, sections: { ...registryCopyByLocale.it, name: 'Nome', yourName: 'Il tuo nome', email: 'Email', phone: 'Telefono', optional: 'Facoltativo', city: 'Città', state: 'Stato/Provincia', country: 'Paese', avatar: 'Avatar', avatarUrl: 'URL avatar', useGooglePhoto: 'Usa foto Google', currentChurchRegistered: 'Chiesa attuale (registrata)', selectPlaceholder: '— Seleziona —', currentChurchText: 'Chiesa attuale (testo libero)', notRegisteredYet: 'Se non è ancora registrata', originChurchText: 'Chiesa di origine (testo libero)', originChurchPlaceholder: 'Linea o chiesa di provenienza', notes: 'Osservazioni generali', iAmInitiated: 'Sono fardado/a', iAmSponsor: 'Sono padrino/madrina', initiationDate: 'Data del fardamento', initiationPlace: 'Luogo del fardamento', initiationPlacePlaceholder: 'Città/stato o chiesa', whoInitiatedMe: 'Chi mi ha fardato', whoInitiatedMePlaceholder: 'Nome del padrino/madrina', initiationChurchRegistered: 'Chiesa dove ho ricevuto il fardamento (registrata)', initiationChurchText: 'Chiesa dove ho ricevuto il fardamento (testo libero)', withWhomIWasInitiated: 'Con chi mi sono fardato', withWhomIWasInitiatedPlaceholder: 'Altre persone fardate insieme a me', sponsorChurchesRegistered: 'Chiese dove sono padrino/madrina (registrate)', sponsorChurchesText: 'Chiese dove sono padrino/madrina (testo libero)', sponsorChurchesPlaceholder: 'Es.: chiese non registrate', roles: 'Ruoli nella dottrina (separati da virgola)', rolesPlaceholder: 'Es.: tesoriere, coordinatore, musicista ufficiale, pulizia', rolesHint: 'Usa termini liberi, ad esempio tesoriere, cuoca ufficiale, organizzazione, sistemazione, pulizia, musicista, musicista ufficiale.' }
+    title: 'Profilo', intro: 'Obbligatorio per inviare all\'approvazione: nome completo (o nome e cognome), email e documento di identità. Puoi salvare il profilo in qualsiasi momento e inviarlo all\'approvazione quando questi campi sono completi.', sessionExpired: 'Sessione scaduta', saveError: 'Errore durante il salvataggio', saving: 'Salvataggio...', save: 'Salva profilo', saved: 'Salvato.', submitForApproval: 'Invia all\'approvazione', submittingForApproval: 'Invio...', submittedForApproval: 'Inviato all\'approvazione.', pendingBannerTitle: 'Profilo in revisione', pendingBannerDesc: 'Il tuo profilo è stato inviato ed è in attesa di revisione. La modifica è bloccata mentre l\'approvazione è in sospeso.', reviewBannerTitle: 'Revisione richiesta dall\'amministrazione', reviewBannerDesc: 'L\'amministrazione ha esaminato il tuo profilo e ha lasciato una nota. Aggiorna il profilo come indicato e invia nuovamente per l\'approvazione.', adminNoteLabel: 'Nota dell\'amministrazione', requiredFieldsMissing: 'Completa nome, email e documento di identità prima di inviare all\'approvazione.', idUploadTitle: 'Documento di identità', idUploadIntro: 'Carica un PDF, JPG o PNG del tuo documento affinché l\'amministrazione possa valutare la tua iscrizione a ICEFLU.', idUploadCurrent: 'Documento caricato', idUploadChoose: 'Seleziona documento', idUploadSelected: 'Selezionato', familyEmailTitle: 'Abbiamo trovato più di un socio con la tua email', familyEmailIntro: 'Questa email è condivisa da più di un socio. Seleziona chi sei per compilare il profilo con i dati corretti.', thisIsMe: 'Sono io', prefilledFrom: name => `Profilo precompilato con i dati del socio: ${name}. Puoi modificare tutto e salvare.`, sections: { ...registryCopyByLocale.it, name: 'Nome', yourName: 'Il tuo nome', email: 'Email', phone: 'Telefono', optional: 'Facoltativo', city: 'Città', state: 'Stato/Provincia', country: 'Paese', avatar: 'Avatar', avatarUrl: 'URL avatar', useGooglePhoto: 'Usa foto Google', currentChurchRegistered: 'Chiesa attuale (registrata)', selectPlaceholder: '— Seleziona —', currentChurchText: 'Chiesa attuale (testo libero)', notRegisteredYet: 'Se non è ancora registrata', originChurchText: 'Chiesa di origine (testo libero)', originChurchPlaceholder: 'Linea o chiesa di provenienza', notes: 'Osservazioni generali', iAmInitiated: 'Sono fardado/a', iAmSponsor: 'Sono padrino/madrina', initiationDate: 'Data del fardamento', initiationPlace: 'Luogo del fardamento', initiationPlacePlaceholder: 'Città/stato o chiesa', whoInitiatedMe: 'Chi mi ha fardato', whoInitiatedMePlaceholder: 'Nome del padrino/madrina', initiationChurchRegistered: 'Chiesa dove ho ricevuto il fardamento (registrata)', initiationChurchText: 'Chiesa dove ho ricevuto il fardamento (testo libero)', withWhomIWasInitiated: 'Con chi mi sono fardato', withWhomIWasInitiatedPlaceholder: 'Altre persone fardate insieme a me', sponsorChurchesRegistered: 'Chiese dove sono padrino/madrina (registrate)', sponsorChurchesText: 'Chiese dove sono padrino/madrina (testo libero)', sponsorChurchesPlaceholder: 'Es.: chiese non registrate', roles: 'Ruoli nella dottrina (separati da virgola)', rolesPlaceholder: 'Es.: tesoriere, coordinatore, musicista ufficiale, pulizia', rolesHint: 'Usa termini liberi, ad esempio tesoriere, cuoca ufficiale, organizzazione, sistemazione, pulizia, musicista, musicista ufficiale.' }
   }
 };
 
@@ -360,6 +370,9 @@ export default function ProfilePage() {
   };
 
   const canSubmitForApproval = isProfileFormReadyForApproval(form, !!identityDocumentFile);
+  const isPending = profileQuery.data?.approvalStatus === 'pending';
+  const isNeedsInfo = profileQuery.data?.approvalStatus === 'needs-info';
+  const adminNote = profileQuery.data?.adminNote;
 
   const mutation = useMutation({
     mutationFn: async (mode: ProfileSaveMode) => {
@@ -465,72 +478,96 @@ export default function ProfilePage() {
         </div>
       ) : null}
 
+      {isPending ? (
+        <section className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-sm font-semibold text-amber-900">{copy.pendingBannerTitle}</h2>
+          <p className="text-sm text-amber-800">{copy.pendingBannerDesc}</p>
+        </section>
+      ) : null}
+
+      {isNeedsInfo && adminNote ? (
+        <section className="space-y-2 rounded-xl border border-orange-200 bg-orange-50 p-4">
+          <h2 className="text-sm font-semibold text-orange-900">{copy.reviewBannerTitle}</h2>
+          <p className="text-sm text-orange-800">{copy.reviewBannerDesc}</p>
+          <blockquote className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm text-slate-800">
+            <span className="mb-1 block text-xs font-semibold text-orange-700">{copy.adminNoteLabel}</span>
+            {adminNote}
+          </blockquote>
+        </section>
+      ) : null}
+
       <form
-        className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
         onSubmit={e => {
           e.preventDefault();
-          mutation.mutate('save');
+          if (!isPending) mutation.mutate('save');
         }}
       >
-        <ProfilePersonalSection
-          avatarUrl={avatar}
-          copy={copy.sections}
-          form={form}
-          setField={setField}
-          userPhotoURL={user.photoURL}
-        />
-
-        <ProfileIdentitySection copy={copy.sections} form={form} setField={setField} />
-
-        <ProfileResidenceSection copy={copy.sections} form={form} setField={setField} />
-
-        <ProfileAssociationSection copy={copy.sections} form={form} setField={setField} />
-
-        <section className="space-y-3 rounded-lg bg-slate-100 p-3">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">{copy.idUploadTitle}</h2>
-            <p className="mt-1 text-xs text-slate-600">{copy.idUploadIntro}</p>
-          </div>
-          {form.identityDocumentPrimaryName && !identityDocumentFile ? (
-            <p className="text-sm text-slate-700">
-              <span className="font-medium">{copy.idUploadCurrent}:</span> {form.identityDocumentPrimaryName}
-            </p>
-          ) : null}
-          <FileUploadField
-            accept={europeanGatheringUploadAccept}
-            file={identityDocumentFile}
-            label={copy.idUploadChoose}
-            onChange={setIdentityDocumentFile}
-            {...uploadLabels}
+        <fieldset disabled={isPending} className="space-y-4 border-0 p-0 m-0 min-w-0">
+          <ProfilePersonalSection
+            avatarUrl={avatar}
+            copy={copy.sections}
+            form={form}
+            setField={setField}
+            userPhotoURL={user.photoURL}
           />
-        </section>
 
-        <ProfileChurchesSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
+          <ProfileIdentitySection copy={copy.sections} form={form} setField={setField} />
 
-        <ProfileInitiationSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
+          <ProfileResidenceSection copy={copy.sections} form={form} setField={setField} />
 
-        <ProfileRolesSection copy={copy.sections} form={form} setField={setField} />
+          <ProfileAssociationSection copy={copy.sections} form={form} setField={setField} />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
-          >
-            {mutation.isPending && mutation.variables === 'save' ? copy.saving : copy.save}
-          </button>
-          <button
-            type="button"
-            disabled={mutation.isPending || !canSubmitForApproval}
-            className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => mutation.mutate('submit')}
-          >
-            {mutation.isPending && mutation.variables === 'submit' ? copy.submittingForApproval : copy.submitForApproval}
-          </button>
-          {mutation.isError ? <span className="text-sm text-red-600">{copy.saveError}.</span> : null}
-          {successMessage ? <span className="text-sm text-green-700">{successMessage}</span> : null}
-          {errorMsg ? <span className="text-sm text-red-600">{errorMsg}</span> : null}
-        </div>
+          <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">{copy.idUploadTitle}</h2>
+              <p className="mt-1 text-xs text-slate-600">{copy.idUploadIntro}</p>
+            </div>
+            {form.identityDocumentPrimaryName && !identityDocumentFile ? (
+              <p className="text-sm text-slate-700">
+                <span className="font-medium">{copy.idUploadCurrent}:</span> {form.identityDocumentPrimaryName}
+              </p>
+            ) : null}
+            <FileUploadField
+              accept={europeanGatheringUploadAccept}
+              file={identityDocumentFile}
+              label={copy.idUploadChoose}
+              onChange={setIdentityDocumentFile}
+              {...uploadLabels}
+            />
+          </section>
+
+          <ProfileChurchesSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
+
+          <ProfileInitiationSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
+
+          <ProfileRolesSection copy={copy.sections} form={form} setField={setField} />
+        </fieldset>
+
+        {!isPending ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+            >
+              {mutation.isPending && mutation.variables === 'save' ? copy.saving : copy.save}
+            </button>
+            {profileQuery.data?.approvalStatus !== 'approved' ? (
+              <button
+                type="button"
+                disabled={mutation.isPending || !canSubmitForApproval}
+                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => mutation.mutate('submit')}
+              >
+                {mutation.isPending && mutation.variables === 'submit' ? copy.submittingForApproval : copy.submitForApproval}
+              </button>
+            ) : null}
+            {mutation.isError ? <span className="text-sm text-red-600">{copy.saveError}.</span> : null}
+            {successMessage ? <span className="text-sm text-green-700">{successMessage}</span> : null}
+            {errorMsg ? <span className="text-sm text-red-600">{errorMsg}</span> : null}
+          </div>
+        ) : null}
       </form>
     </div>
   );

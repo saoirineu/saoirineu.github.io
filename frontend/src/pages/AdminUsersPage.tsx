@@ -74,6 +74,8 @@ const copyByLocale = {
       noDocument: 'Nenhum arquivo enviado',
       approve: 'Aprovar membro',
       revokeApproval: 'Cancelar aprovação',
+      requestReview: 'Solicitar revisão',
+      noteRequired: 'Adicione uma nota antes de solicitar revisão.',
       adminNote: 'Nota administrativa',
       saveNote: 'Salvar nota',
       noteSaved: 'Nota salva.',
@@ -132,6 +134,8 @@ const copyByLocale = {
       noDocument: 'No file submitted',
       approve: 'Approve membership',
       revokeApproval: 'Revoke approval',
+      requestReview: 'Request review',
+      noteRequired: 'Please add a note before requesting a review.',
       adminNote: 'Admin note',
       saveNote: 'Save note',
       noteSaved: 'Note saved.',
@@ -190,6 +194,8 @@ const copyByLocale = {
       noDocument: 'Ningún archivo enviado',
       approve: 'Aprobar membresía',
       revokeApproval: 'Revocar aprobación',
+      requestReview: 'Solicitar revisión',
+      noteRequired: 'Añada una nota antes de solicitar la revisión.',
       adminNote: 'Nota administrativa',
       saveNote: 'Guardar nota',
       noteSaved: 'Nota guardada.',
@@ -248,6 +254,8 @@ const copyByLocale = {
       noDocument: 'Nessun file inviato',
       approve: 'Approva membro',
       revokeApproval: 'Revoca approvazione',
+      requestReview: 'Richiedi revisione',
+      noteRequired: 'Aggiungi una nota prima di richiedere la revisione.',
       adminNote: 'Nota admin',
       saveNote: 'Salva nota',
       noteSaved: 'Nota salvata.',
@@ -306,6 +314,22 @@ export default function AdminUsersPage() {
     mutationFn: async ({ uid, note }: { uid: string; note: string }) => {
       setErrorMessage('');
       return updateUserAdminNote(uid, note);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: error => {
+      setErrorMessage(error instanceof Error ? error.message : copy.updateError);
+    }
+  });
+
+  const requestReviewMutation = useMutation({
+    mutationFn: async ({ uid, note }: { uid: string; note: string }) => {
+      setErrorMessage('');
+      if (note.trim()) {
+        await updateUserAdminNote(uid, note.trim());
+      }
+      return updateUserApprovalStatus(uid, 'needs-info', currentUser?.uid ?? 'unknown');
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -407,9 +431,10 @@ export default function AdminUsersPage() {
             user={reviewUser}
             labels={copy.profileLabels}
             statusLabel={copy.approvalStatus[reviewUser.approvalStatus ?? 'needs-profile']}
-            isBusy={approvalMutation.isPending || noteMutation.isPending}
+            isBusy={approvalMutation.isPending || noteMutation.isPending || requestReviewMutation.isPending}
             onApprove={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'approved' })}
             onRevoke={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'needs-info' })}
+            onRequestReview={note => requestReviewMutation.mutate({ uid: reviewUser.uid, note })}
             onSaveNote={note => noteMutation.mutate({ uid: reviewUser.uid, note })}
             onClose={() => setReviewUid(null)}
           />
@@ -475,6 +500,7 @@ function UserProfileReviewModal({
   isBusy,
   onApprove,
   onRevoke,
+  onRequestReview,
   onSaveNote,
   onClose
 }: {
@@ -484,11 +510,13 @@ function UserProfileReviewModal({
   isBusy: boolean;
   onApprove: () => void;
   onRevoke: () => void;
+  onRequestReview: (note: string) => void;
   onSaveNote: (note: string) => void;
   onClose: () => void;
 }) {
   const [note, setNote] = useState(user.adminNote ?? '');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [noteRequiredError, setNoteRequiredError] = useState(false);
 
   const displayName =
     user.fullName ?? user.displayName ?? ([user.firstName, user.surname].filter(Boolean).join(' ') || '—');
@@ -503,6 +531,15 @@ function UserProfileReviewModal({
     setNoteSaved(false);
     onSaveNote(note);
     setNoteSaved(true);
+  }
+
+  function handleRequestReview() {
+    if (!note.trim()) {
+      setNoteRequiredError(true);
+      return;
+    }
+    setNoteRequiredError(false);
+    onRequestReview(note);
   }
 
   return (
@@ -585,7 +622,7 @@ function UserProfileReviewModal({
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 rows={3}
                 value={note}
-                onChange={e => { setNote(e.target.value); setNoteSaved(false); }}
+                onChange={e => { setNote(e.target.value); setNoteSaved(false); setNoteRequiredError(false); }}
               />
               <div className="flex items-center gap-3">
                 <button
@@ -597,6 +634,7 @@ function UserProfileReviewModal({
                   {labels.saveNote}
                 </button>
                 {noteSaved ? <span className="text-xs text-emerald-700">{labels.noteSaved}</span> : null}
+                {noteRequiredError ? <span className="text-xs text-red-600">{labels.noteRequired}</span> : null}
               </div>
             </div>
           </ProfileSection>
@@ -605,14 +643,24 @@ function UserProfileReviewModal({
         {/* Action footer */}
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
           {status === 'pending' ? (
-            <button
-              type="button"
-              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
-              disabled={isBusy}
-              onClick={onApprove}
-            >
-              {labels.approve}
-            </button>
+            <>
+              <button
+                type="button"
+                className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-50 disabled:opacity-60"
+                disabled={isBusy}
+                onClick={handleRequestReview}
+              >
+                {labels.requestReview}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
+                disabled={isBusy}
+                onClick={onApprove}
+              >
+                {labels.approve}
+              </button>
+            </>
           ) : null}
           {status === 'approved' ? (
             <button
