@@ -4,8 +4,9 @@
 
 ### usuarios (perfil do auth)
 - uid (igual ao auth)
-- systemRole: `user` | `useradmin` | `custodian` | `admin` | `superadmin` (campo legado/primario para compatibilidade)
+- systemRole: `user` | `useradmin` | `custodian` | `admin` | `superadmin` (campo legado/primario para compatibilidade). Parte 2 (planejado): acrescenta `eventadmin` — ver `events-eventadmin-design.md` §1.
 - systemRoles: array de privilegios, ex.: `["useradmin", "custodian"]`; ausencia ou `["user"]` significa usuario comum
+- consentimentos (Parte 2, planejado): subcolecao `users/{uid}/consents/{id}` — ver secao "Parte 2" abaixo
 - approvalStatus: `needs-profile` | `pending` | `approved` | `needs-info`
 - approvalSubmittedAt, approvalApprovedAt, approvalApprovedBy
 - displayName, email, email2, phone, mobile, avatarUrl
@@ -146,3 +147,48 @@ senao `email-<hash>` ou `name-<hash>`.
 - `encontroEuropeuInscricoes` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
 - `encontroEuropeuQuartos` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
 - Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `admin` visualiza dados operacionais, enquanto `superadmin` tambem gerencia privilegios de usuarios.
+- Parte 1 (entregue) do encontro europeu: o formulario publico nao coleta mais `roomNumber`; mostra um agregado de "vagas de participacao" (soma de `europeanGatheringRooms`). A caucao (caution deposit) e derivada (30% do total) e exibida na UI, **nao** e armazenada em `contribution` (a regra de criacao fixa `contribution` em `{nights, lodging, spiritualWorks, extras, total}`). Trabalhos atuais: sex 25, sab 26, seg 28, qua 30 de setembro, 19:00.
+
+## Parte 2 — planejado (ver `events-eventadmin-design.md`)
+
+Estas colecoes/campos ainda **nao existem**; sao a verdade de projeto acordada para implementar.
+Ordem: `eventadmin` -> ledger de consentimento -> decisoes do dirigente -> eventos genericos.
+
+### Papel `eventadmin` (§1)
+- Novo `SystemRole` privilegiado, paralelo a `useradmin`/`custodian`. Cria/gerencia eventos.
+- Regras: `isEventAdmin() = isAdmin() || hasStoredRole('eventadmin')`; adicionar `eventadmin`
+  as allow-lists `hasValidUserSystemRole`/`hasValidUserSystemRoles` (cap de tamanho -> 6).
+
+### `users/{uid}/consents/{id}` — ledger de consentimento informado (item A, §3)
+- status: `pending` | `approved` | `rejected`
+- uploadedAt, approvedAt, approvedBy, documentName, documentPath, eventId?
+- Regra de validade: consentimento e exigido na inscricao quando nao ha consentimento `approved`
+  ou o ultimo `approvedAt` tem mais de 12 meses (`consentRequired`). Anchor de envelhecimento:
+  o `approvedAt` mais recente com status `approved`.
+- Regras: dono cria `pending`; transicao para `approved`/`rejected` via callable/admin.
+
+### `events/{eventId}` — eventos genericos (item C, §2)
+- title: { pt, en, es, it }; slug; status: `draft|published|closed|archived`; kind: `single|multi`
+- capacityMode: `total|rooms`; totalSlots; rooms: [{ name, capacity }]
+- cautionDepositRate (0..1, default 0.30); payment: { beneficiary, iban, swift, causale }
+- works: [{ id, label{pt,en,es,it}, dateTime }]; pricing: { lodgingNightRate, mealsNightRate,
+  extraLinen, worksByCount: { anyone[], initiated[], iceflu[] } }
+- checkInSuggested, checkOutSuggested, registrationOpensAt, registrationClosesAt; createdBy
+- Subcolecoes:
+  - `events/{eventId}/registrations/{regId}`: mesmos campos de `europeanGatheringRegistrations`
+    hoje + `eventId`.
+  - `events/{eventId}/capacity/{bucket}`: espelha `europeanGatheringRooms`
+    (`capacity/reserved/available/updatedAt`); `capacityMode:'total'` usa bucket `total`.
+- Regras: `events/{id}` read se `published` ou `isEventAdmin()`, write se `isEventAdmin()`;
+  registrations como hoje (dono cria/edita enquanto `pending`, admin gerencia); capacity
+  transacional validado contra o doc do evento.
+- Migracao (strangler): `events/encontro-europeu-2026` seedado das constantes atuais; pagina
+  EG migra por ultimo. Encontro Europeu vira a primeira instancia de `events`.
+
+### Decisao do dirigente em duas fases (item B, §4)
+- `leaderApproval`: `approved` | `approved-interview` | `approved-psychologist` | `rejected`
+  (as duas de entrevista nao sao terminais).
+- `interview`: { required: `none|standard|psychologist`, status: `awaiting|approved|rejected`,
+  resolvedAt, resolvedBy }. A igreja de referencia registra a fase 2 na mesma pagina tokenizada;
+  o `eventadmin` acompanha a fila "aguardando confirmacao de entrevista". Consentimento vira
+  `approved` apenas em aprovacao terminal.

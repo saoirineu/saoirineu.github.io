@@ -26,6 +26,9 @@ Este documento descreve a especificacao funcional da pagina de inscricao para o 
 - Paese (Nazione)
 - Chiesa/Centro di riferimento
 - Nome dirigente del centro di riferimento
+- Email da igreja ou centro (Parte 1: rotulo "email of the church or center"). Tem um icone
+  "i" com a orientacao: se nao souber, perguntar a quem enviou o link do portal; se ainda
+  assim nao souber ou nao existir, informar `international.secretariat@stellazzurra.org`.
 - fardado: SI/NO
 - membro ICEFLU, solo se em dia com as mensalidades: SI/NO
 - Novizio (prima volta): SI/NO
@@ -62,12 +65,13 @@ Se a modalidade for `vitto e alloggio` ou `solo vitto`, mostrar:
 
 Em qualquer modalidade, o visitante pode selecionar um ou mais trabalhos espirituais:
 
-- venerdi 11 settembre ore 19:00
-- sabato 12 settembre ore 19:00
-- lunedi 14 settembre ore 11:00
-- martedi 15 settembre ore 19:00
+- venerdi 25 settembre ore 19:00
+- sabato 26 settembre ore 19:00
+- lunedi 28 settembre ore 19:00
+- mercoledi 30 settembre ore 19:00
 
-Observacao: mais adiante ainda sera descrito quais trabalhos sao esses.
+Observacao: mais adiante ainda sera descrito quais trabalhos sao esses. (Datas atualizadas na
+Parte 1; check-in/out sugeridos passaram para 24/set -> 01/out para abranger a janela.)
 
 ## Calcolo contributo
 
@@ -81,6 +85,14 @@ Lavori spirituali:
 - 2 lavori: 180 euro, ou 150 euro para membro ICEFLU
 - 3 lavori: 240 euro, ou 210 euro para membro ICEFLU
 - 4 lavori: 300 euro, ou 260 euro para membro ICEFLU
+
+Caucao (caution deposit / down payment) — Parte 1:
+
+- Abaixo do total, exibir uma caucao igual a 30% do total.
+- A caucao e derivada na UI (nao e armazenada em `contribution`).
+- Um icone "i" junto ao Comprovante de pagamento, a caucao e aos Dados bancarios explica:
+  transferir o valor da caucao (30%) ou do total para a conta dos Dados bancarios e enviar o
+  comprovante em "Comprovante de pagamento".
 
 ## Documenti da caricare
 
@@ -96,7 +108,10 @@ Lavori spirituali:
 
 ## Campo facoltativo
 
-- Deixar um campo opcional para indicar numero di camera, em funcao da mapa.
+- ~~Deixar um campo opcional para indicar numero di camera, em funcao da mapa.~~
+- Parte 1: o campo de quarto (numero di camera) e o modal de quartos foram **removidos**. Em
+  vez disso a pagina mostra um agregado "Vagas de participacao disponiveis: X / Y" (soma de
+  `europeanGatheringRooms`).
 
 ## PDFs placeholder adicionais
 
@@ -133,3 +148,18 @@ Depois do envio bem-sucedido, mostrar uma mensagem com pelo menos estas informac
 - Inserir o email real.
 - Adicionar o programa geral do evento.
 - Adicionar informacoes uteis sobre como chegar ao local.
+
+## Parte 2 — generalizacao em eventos (planejado)
+
+Detalhe completo em [`events-eventadmin-design.md`](./events-eventadmin-design.md) e no schema
+em [`firestore-schema.md`](./firestore-schema.md) (secao "Parte 2"). Resumo:
+
+- O Encontro Europeu deixa de ser uma pagina dedicada e vira a primeira instancia de uma
+  colecao generica `events`, criavel por um novo papel `eventadmin` (slots/quartos, % de
+  caucao, evento de trabalho unico ou multiplos dias). Migracao por estrangulamento (a pagina
+  EG migra por ultimo).
+- Consentimento informado passa a ter um ledger por usuario e e exigido quando nao ha
+  consentimento aprovado ou o ultimo aprovado tem mais de 12 meses.
+- A decisao do dirigente passa a ter 4 resultados; "aprovar com entrevista" e "aprovar apos
+  entrevista com psicologo" abrem uma thread que a igreja de referencia resolve depois da
+  entrevista e que o `eventadmin` acompanha.
