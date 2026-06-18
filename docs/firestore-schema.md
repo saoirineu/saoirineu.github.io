@@ -185,11 +185,13 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
 - works: [{ id, label{pt,en,es,it}, dateTime }]; pricing: { lodgingNightRate, mealsNightRate,
   extraLinen, worksByCount: { anyone[], initiated[], iceflu[] } }
 - checkInSuggested, checkOutSuggested, registrationOpensAt, registrationClosesAt; createdBy
-- Subcolecoes:
+- Subcolecoes (Fase 4c.2 — regras + CRUD entregues; falta o renderer 4c.3):
   - `events/{eventId}/registrations/{regId}`: mesmos campos de `europeanGatheringRegistrations`
-    hoje + `eventId`.
+    hoje + `eventId` + `capacityBucket`. Regra: dono enquanto `pending` + eventadmin.
   - `events/{eventId}/capacity/{bucket}`: espelha `europeanGatheringRooms`
-    (`capacity/reserved/available/updatedAt`); `capacityMode:'total'` usa bucket `total`.
+    (`capacity/reserved/available/updatedAt`); `capacityMode:'total'` usa bucket `total`, `rooms`
+    usa um bucket por quarto. Leitura publica; escrita com invariante (ver hardening em
+    `events-eventadmin-design.md` §7.3).
 - Regras: `events/{id}` read se `published` ou `isEventAdmin()`, write se `isEventAdmin()`;
   registrations como hoje (dono cria/edita enquanto `pending`, admin gerencia); capacity
   transacional validado contra o doc do evento.

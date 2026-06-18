@@ -411,7 +411,33 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if isEventAdmin() || (resource != null && resource.data.status == 'published');
       allow create, update, delete: if isEventAdmin();
-      // Phase 4c: events/{eventId}/registrations and /capacity rules land with the generic flow.
+
+      // Phase 4c: a signed-in user owns their own registration while it is pending; eventadmins manage all.
+      match /registrations/{registrationId} {
+        allow read: if isEventAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+        allow create: if isSignedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'pending';
+        allow update: if isEventAdmin()
+          || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+        allow delete: if isEventAdmin()
+          || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+      }
+
+      // Aggregate capacity counters; public-readable so the form can show availability.
+      match /capacity/{bucket} {
+        allow read: if true;
+        allow create, update: if isSignedIn()
+          && request.resource.data.keys().hasOnly(['capacity', 'reserved', 'available', 'updatedAt'])
+          && request.resource.data.capacity is number
+          && request.resource.data.reserved is number
+          && request.resource.data.available is number
+          && request.resource.data.reserved >= 0
+          && request.resource.data.reserved <= request.resource.data.capacity
+          && request.resource.data.available == request.resource.data.capacity - request.resource.data.reserved
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
     }
 
     match /sacramentStocks/{id} {

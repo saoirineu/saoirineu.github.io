@@ -360,13 +360,19 @@ _4c.1 — pure logic — DONE (commit pending)_
 - [x] `eventRegistrations.test.ts`: 10 cases (EG-parity contribution, meals/spiritual, deposit,
       capacity total/rooms/clamp, validation + consent).
 
-_4c.2 — Firestore + renderer (pending)_
-- [ ] `events/{id}/registrations/{rid}` + `events/{id}/capacity/{bucket}` rules (mirror EG;
-      capacity transactional).
-- [ ] `storage.rules`: `events/{eventId}/registrations/...` paths.
-- [ ] registration CRUD + capacity reserve/release transactions + consent-ledger creation
-      (generalized from `europeanGathering.ts`; ships with its writer so rules aren't speculative).
-- [ ] Generic registration renderer (reuse `FileUploadField`, `InfoTooltip`, contribution UI).
+_4c.2 — Firestore persistence — DONE (commit pending)_
+- [x] `firestore.rules`: `events/{id}/registrations/{rid}` (owner-while-pending + eventadmin) and
+      `events/{id}/capacity/{bucket}` (public read; invariant-checked writes).
+- [x] `storage.rules`: `events/{eventId}/registrations/...` (+ `ownsPendingEventRegistration` helper).
+- [x] `eventRegistrations.ts` CRUD: uploads, `createEventRegistration`/`fetchMyEventRegistration`/
+      `updateMyEventRegistration`/`fetchEventRegistrations`/`fetchEventCapacity`/
+      `updateEventRegistrationStatus`/`deleteEventRegistration`; capacity reserve/release
+      transactions (`adjustEventCapacity`, total bucket vs per-room); consent-ledger creation on
+      upload (generalized from `europeanGathering.ts`).
+
+_4c.3 — generic registration renderer (pending)_
+- [ ] Config-driven registration page reusing `FileUploadField`, `InfoTooltip`, the contribution
+      UI, the consent gate (Phase 2) and the slots indicator (Part 1), driven by the event doc.
 
 **4d — seed + dashboard**
 - [ ] Seed `events/encontro-europeu-2026` from current constants (Sep 25/26/28/30, 30% deposit, rooms→capacity).
@@ -386,6 +392,13 @@ It must be localized into the four site languages like the registration page, in
 four phase-1 decision buttons, the phase-2 outcome buttons, the interview banner, status badges,
 and feedback/error strings. (The registration leader link could also carry the registrant's
 `locale` so the page opens in the right language.)
+
+### 7.3 Harden `events/{id}/capacity` bucket integrity
+The capacity write rule enforces the invariant (`reserved` in range, `available == capacity -
+reserved`) but does **not** validate `capacity` against the event doc, so a signed-in user could
+create a bucket with an arbitrary `capacity` and over-book. Low severity (counter integrity, not
+data exposure). Tighten by cross-reading the event doc in the rule (straightforward for `total`
+mode; per-room needs array lookup) or by moving capacity writes server-side.
 
 ### 7.2 Unit tests for the two-phase leader state-machine
 No automated tests cover the Phase 3 transitions yet. Add tests for: phase-1 `approved` →
