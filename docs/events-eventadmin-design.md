@@ -306,16 +306,26 @@ current touch points.
 > softer interim (e.g. treat a <12-month membership approval as satisfying consent), that's a
 > deliberate bridge to add — flagged, not yet built.
 
-### Phase 3 — richer leader decisions, two‑phase (§4, item B)
-- [ ] `europeanGathering.ts`: `LeaderApprovalDecision` → 4 values; add `interview` block to
-      record + leader view; normalize/map.
-- [ ] `functions/src/index.ts`: accept 4 phase‑1 values + phase‑2 `interviewOutcome`; set
-      `interview.required/status`; stamp consent on terminal approval; return `interview` from
-      the view/sanitize.
-- [ ] `firestore.rules`: allow `interview.*` on the registration (phase‑2 written server‑side).
-- [ ] `LeaderReviewPage.tsx`: two‑stage rendering (phase‑1 four buttons / phase‑2 outcome) + badges.
-- [ ] `EuropeanGatheringAdminPage.tsx`: label/badge maps + "Awaiting interview confirmation" queue.
-- [ ] localized strings (pt/en/es/it); test the state‑machine transitions.
+### Phase 3 — richer leader decisions, two‑phase (§4, item B) — **DONE** (commit pending)
+- [x] `europeanGathering.ts`: `LeaderApprovalDecision` → 4 values; `InterviewRequirement`/
+      `InterviewStatus`/`InterviewOutcome`/`RegistrationInterview` types; `interview` on the
+      record + leader view; `mapInterview` + normalize; callable + `submit…` take `interviewOutcome`.
+- [x] `functions/src/index.ts`: accept the 4 phase‑1 decisions + phase‑2 `interviewOutcome`
+      (guarded by `failed-precondition` when no interview is pending); set `interview.required/
+      status/resolvedAt/resolvedBy`; `sanitizeInterview` returns the block from view/respond;
+      `approveUserConsentForRegistration` stamps the user's consent ledger (`eventId == regId`)
+      on terminal approval (direct `approved` or phase‑2 `approved`) — **closes Phase 2's interim**.
+- [x] **`firestore.rules`: no change needed** — the respond callable writes via Admin SDK
+      (bypasses rules); `interview` is not owner‑editable nor part of the create payload.
+- [x] `LeaderReviewPage.tsx`: two‑stage rendering — phase‑1 four buttons (approve / approve+
+      interview / approve+psychologist / reject); phase‑2 outcome buttons when
+      `interview.status == 'awaiting'`; interview banner + badges.
+- [x] `EuropeanGatheringAdminPage.tsx`: 4‑decision label/badge maps + `interviewBadge`
+      ("Aguardando entrevista/psicólogo" / "Pós‑…: aprovado/rejeitado") on all three views.
+- [~] Localized strings: the leader review page is **English‑only by existing design** (kept so);
+      the admin page is Portuguese (kept so). No i18n added.
+- [~] State‑machine: exercised via build/typecheck; the transition logic lives server‑side in the
+      callable (no frontend unit test added — would need a functions test harness).
 
 ### Phase 4 — generic events (§2, item C) — strangler
 - [ ] `events.ts` lib: event/registration/capacity types; CRUD; event‑parameterized

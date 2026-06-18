@@ -5,6 +5,7 @@ import {
   fetchEuropeanGatheringLeaderView,
   submitEuropeanGatheringLeaderResponse,
   type EuropeanGatheringLeaderView,
+  type InterviewOutcome,
   type LeaderApprovalDecision
 } from '../lib/europeanGathering';
 
@@ -16,6 +17,8 @@ const attendanceModeLabels: Record<NonNullable<EuropeanGatheringLeaderView['atte
 
 function formatDecision(decision: LeaderApprovalDecision | null) {
   if (decision === 'approved') return 'Approved';
+  if (decision === 'approved-interview') return 'Approved — interview to follow';
+  if (decision === 'approved-psychologist') return 'Approved — psychologist interview to follow';
   if (decision === 'rejected') return 'Rejected';
   return 'Pending';
 }
@@ -31,6 +34,7 @@ function formatCurrency(value: number) {
 
 function decisionBadgeClasses(decision: LeaderApprovalDecision | null) {
   if (decision === 'approved') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+  if (decision === 'approved-interview' || decision === 'approved-psychologist') return 'bg-amber-50 text-amber-800 border-amber-200';
   if (decision === 'rejected') return 'bg-rose-50 text-rose-800 border-rose-200';
   return 'bg-slate-50 text-slate-700 border-slate-200';
 }
@@ -45,7 +49,7 @@ export default function LeaderReviewPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState<'comment' | 'approved' | 'rejected' | null>(null);
+  const [submitting, setSubmitting] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [feedback, setFeedback] = useState('');
 
@@ -75,17 +79,24 @@ export default function LeaderReviewPage() {
     return `${data.firstName} ${data.lastName}`.trim();
   }, [data]);
 
-  async function handleSubmit(args: { comment?: string; decision?: LeaderApprovalDecision }) {
+  async function handleSubmit(
+    key: string,
+    args: { comment?: string; decision?: LeaderApprovalDecision; interviewOutcome?: InterviewOutcome }
+  ) {
     setSubmitError('');
     setFeedback('');
-    setSubmitting(args.decision ?? 'comment');
+    setSubmitting(key);
     try {
       const next = await submitEuropeanGatheringLeaderResponse({ id, token, ...args });
       setData(next);
       if (args.comment) setComment('');
-      setFeedback(args.decision
-        ? `Response recorded: ${formatDecision(args.decision)}.`
-        : 'Comment recorded.');
+      setFeedback(
+        args.decision
+          ? `Response recorded: ${formatDecision(args.decision)}.`
+          : args.interviewOutcome
+            ? `Post-interview outcome recorded: ${args.interviewOutcome === 'approved' ? 'Approved' : 'Rejected'}.`
+            : 'Comment recorded.'
+      );
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to submit response.');
     } finally {
@@ -159,24 +170,78 @@ export default function LeaderReviewPage() {
         {data.leaderApprovalRespondedAt ? (
           <p className="text-xs text-slate-500">Last decision recorded {formatDateTime(data.leaderApprovalRespondedAt)}.</p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
-            disabled={submitting !== null}
-            onClick={() => handleSubmit({ decision: 'approved' })}
-          >
-            {submitting === 'approved' ? 'Approving…' : 'Approve'}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-800 hover:bg-rose-100 disabled:opacity-60"
-            disabled={submitting !== null}
-            onClick={() => handleSubmit({ decision: 'rejected' })}
-          >
-            {submitting === 'rejected' ? 'Rejecting…' : 'Reject'}
-          </button>
-        </div>
+
+        {data.interview ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="font-medium">
+              {data.interview.required === 'psychologist' ? 'Interview with a psychologist' : 'Interview'}
+              {' — '}
+              {data.interview.status === 'awaiting' ? 'awaiting confirmation' : `confirmed: ${data.interview.status}`}
+            </div>
+            {data.interview.resolvedAt ? (
+              <div className="text-xs text-amber-700">Resolved {formatDateTime(data.interview.resolvedAt)}.</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {data.interview?.status === 'awaiting' ? (
+          <div className="space-y-2">
+            <p className="text-sm text-slate-600">Record the membership outcome after the interview:</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                disabled={submitting !== null}
+                onClick={() => handleSubmit('interview-approved', { interviewOutcome: 'approved' })}
+              >
+                {submitting === 'interview-approved' ? 'Confirming…' : 'Confirm approval'}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                disabled={submitting !== null}
+                onClick={() => handleSubmit('interview-rejected', { interviewOutcome: 'rejected' })}
+              >
+                {submitting === 'interview-rejected' ? 'Rejecting…' : 'Reject after interview'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+              disabled={submitting !== null}
+              onClick={() => handleSubmit('approved', { decision: 'approved' })}
+            >
+              {submitting === 'approved' ? 'Approving…' : 'Approve'}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+              disabled={submitting !== null}
+              onClick={() => handleSubmit('approved-interview', { decision: 'approved-interview' })}
+            >
+              {submitting === 'approved-interview' ? 'Saving…' : 'Approve, interview after'}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+              disabled={submitting !== null}
+              onClick={() => handleSubmit('approved-psychologist', { decision: 'approved-psychologist' })}
+            >
+              {submitting === 'approved-psychologist' ? 'Saving…' : 'Approve, psychologist interview'}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+              disabled={submitting !== null}
+              onClick={() => handleSubmit('rejected', { decision: 'rejected' })}
+            >
+              {submitting === 'rejected' ? 'Rejecting…' : 'Reject'}
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
@@ -206,7 +271,7 @@ export default function LeaderReviewPage() {
             type="button"
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60"
             disabled={submitting !== null || !comment.trim()}
-            onClick={() => handleSubmit({ comment: comment.trim() })}
+            onClick={() => handleSubmit('comment', { comment: comment.trim() })}
           >
             {submitting === 'comment' ? 'Saving…' : 'Add comment'}
           </button>

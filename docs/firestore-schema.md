@@ -193,10 +193,15 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
 - Migracao (strangler): `events/encontro-europeu-2026` seedado das constantes atuais; pagina
   EG migra por ultimo. Encontro Europeu vira a primeira instancia de `events`.
 
-### Decisao do dirigente em duas fases (item B, §4)
+### Decisao do dirigente em duas fases (item B, §4) — Fase 3 entregue
 - `leaderApproval`: `approved` | `approved-interview` | `approved-psychologist` | `rejected`
   (as duas de entrevista nao sao terminais).
-- `interview`: { required: `none|standard|psychologist`, status: `awaiting|approved|rejected`,
-  resolvedAt, resolvedBy }. A igreja de referencia registra a fase 2 na mesma pagina tokenizada;
-  o `eventadmin` acompanha a fila "aguardando confirmacao de entrevista". Consentimento vira
-  `approved` apenas em aprovacao terminal.
+- `interview` (no doc da inscricao): { required: `none|standard|psychologist`,
+  status: `awaiting|approved|rejected`, resolvedAt?, resolvedBy? }. Gravado server-side pela
+  callable `europeanGatheringLeaderRespond` (Admin SDK — sem regra de cliente nova).
+- Fase 2: a igreja de referencia envia `interviewOutcome` (`approved|rejected`) na mesma pagina
+  tokenizada quando `interview.status == 'awaiting'`. O `eventadmin` ve o badge
+  "Aguardando entrevista/psicólogo" no admin.
+- Aprovacao terminal (direta `approved` ou fase 2 `approved`) carimba o consentimento do usuario
+  (`users/{uid}/consents` com `eventId == registrationId`) como `approved` — fecha o
+  comportamento interino da Fase 2.

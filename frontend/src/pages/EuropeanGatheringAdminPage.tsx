@@ -10,19 +10,43 @@ import {
   type EuropeanGatheringRegistrationRecord,
   type EuropeanGatheringRegistrationStatus,
   type LeaderApprovalDecision,
-  type LeaderComment
+  type LeaderComment,
+  type RegistrationInterview
 } from '../lib/europeanGathering';
 
 function leaderApprovalLabel(decision?: LeaderApprovalDecision) {
   if (decision === 'approved') return 'Líder: aprovado';
+  if (decision === 'approved-interview') return 'Líder: aprovado (entrevista)';
+  if (decision === 'approved-psychologist') return 'Líder: aprovado (psicólogo)';
   if (decision === 'rejected') return 'Líder: rejeitado';
   return 'Líder: pendente';
 }
 
 function leaderApprovalBadgeClasses(decision?: LeaderApprovalDecision) {
   if (decision === 'approved') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+  if (decision === 'approved-interview' || decision === 'approved-psychologist') return 'bg-amber-50 text-amber-800 border-amber-200';
   if (decision === 'rejected') return 'bg-rose-50 text-rose-800 border-rose-200';
   return 'bg-slate-50 text-slate-700 border-slate-200';
+}
+
+function interviewBadge(interview?: RegistrationInterview) {
+  if (!interview) return null;
+  const kind = interview.required === 'psychologist' ? 'psicólogo' : 'entrevista';
+  if (interview.status === 'awaiting') {
+    return (
+      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+        Aguardando {kind}
+      </span>
+    );
+  }
+  const cls = interview.status === 'approved'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : 'border-rose-200 bg-rose-50 text-rose-800';
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${cls}`}>
+      Pós-{kind}: {interview.status === 'approved' ? 'aprovado' : 'rejeitado'}
+    </span>
+  );
 }
 
 function formatLeaderCommentTimestamp(value?: Date | null) {
@@ -373,6 +397,7 @@ export default function EuropeanGatheringAdminPage() {
                       <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${leaderApprovalBadgeClasses(registration.leaderApproval)}`}>
                         {leaderApprovalLabel(registration.leaderApproval)}
                       </span>
+                      {interviewBadge(registration.interview)}
                       <button
                         type="button"
                         className="text-xs font-medium text-blue-700 underline decoration-blue-300 underline-offset-2"
@@ -445,10 +470,11 @@ function LeaderCommentsModal({
           </button>
         </div>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto px-5 py-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${leaderApprovalBadgeClasses(registration.leaderApproval)}`}>
               {leaderApprovalLabel(registration.leaderApproval)}
             </span>
+            {interviewBadge(registration.interview)}
             {registration.leaderApprovalRespondedAt ? (
               <span className="text-xs text-slate-500">
                 {formatLeaderCommentTimestamp(registration.leaderApprovalRespondedAt)}
@@ -509,6 +535,7 @@ function RegistrationCard({
             <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${leaderApprovalBadgeClasses(registration.leaderApproval)}`}>
               {leaderApprovalLabel(registration.leaderApproval)}
             </span>
+            {interviewBadge(registration.interview)}
             <button
               type="button"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"

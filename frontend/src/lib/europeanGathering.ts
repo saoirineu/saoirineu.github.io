@@ -18,7 +18,18 @@ import { getEuropeanGatheringUploadContentType, validateEuropeanGatheringUploadF
 
 export type EuropeanGatheringRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
 
-export type LeaderApprovalDecision = 'approved' | 'rejected';
+export type LeaderApprovalDecision = 'approved' | 'approved-interview' | 'approved-psychologist' | 'rejected';
+
+export type InterviewRequirement = 'standard' | 'psychologist';
+export type InterviewStatus = 'awaiting' | 'approved' | 'rejected';
+export type InterviewOutcome = 'approved' | 'rejected';
+
+export type RegistrationInterview = {
+  required: InterviewRequirement;
+  status: InterviewStatus;
+  resolvedAt?: Date | null;
+  resolvedBy?: string;
+};
 
 export type LeaderComment = {
   text: string;
@@ -120,6 +131,7 @@ export type EuropeanGatheringRegistrationRecord = {
   userId?: string;
   leaderApproval?: LeaderApprovalDecision;
   leaderApprovalRespondedAt?: Date | null;
+  interview?: RegistrationInterview;
   leaderComments?: LeaderComment[];
 };
 
@@ -282,7 +294,26 @@ function mapLeaderComments(value: unknown): LeaderComment[] | undefined {
 }
 
 function normalizeLeaderApproval(value: unknown): LeaderApprovalDecision | undefined {
-  return value === 'approved' || value === 'rejected' ? value : undefined;
+  return value === 'approved' || value === 'approved-interview' || value === 'approved-psychologist' || value === 'rejected'
+    ? value
+    : undefined;
+}
+
+function mapInterview(value: unknown): RegistrationInterview | undefined {
+  const data = asRecord(value);
+  const required = asOptionalString(data.required);
+  if (required !== 'standard' && required !== 'psychologist') {
+    return undefined;
+  }
+
+  const status = asOptionalString(data.status);
+  const resolvedAt = asOptionalTimestamp(data.resolvedAt);
+  return {
+    required,
+    status: status === 'approved' || status === 'rejected' ? status : 'awaiting',
+    resolvedAt: resolvedAt instanceof Timestamp ? resolvedAt.toDate() : null,
+    resolvedBy: asOptionalString(data.resolvedBy)
+  };
 }
 
 function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrationRecord {
@@ -330,6 +361,7 @@ function mapRegistration(id: string, value: unknown): EuropeanGatheringRegistrat
     userId: asOptionalString(data.userId),
     leaderApproval: normalizeLeaderApproval(data.leaderApproval),
     leaderApprovalRespondedAt: leaderApprovalRespondedAt instanceof Timestamp ? leaderApprovalRespondedAt.toDate() : null,
+    interview: mapInterview(data.interview),
     leaderComments: mapLeaderComments(data.leaderComments)
   };
 }
@@ -558,6 +590,11 @@ export type EuropeanGatheringLeaderView = {
   };
   leaderApproval: LeaderApprovalDecision | null;
   leaderApprovalRespondedAt: number | null;
+  interview: {
+    required: InterviewRequirement;
+    status: InterviewStatus;
+    resolvedAt: number | null;
+  } | null;
   leaderComments: Array<{ text: string; at: number | null }>;
 };
 
@@ -567,7 +604,7 @@ const leaderViewCallable = httpsCallable<{ id: string; token: string }, European
 );
 
 const leaderRespondCallable = httpsCallable<
-  { id: string; token: string; comment?: string; decision?: LeaderApprovalDecision },
+  { id: string; token: string; comment?: string; decision?: LeaderApprovalDecision; interviewOutcome?: InterviewOutcome },
   EuropeanGatheringLeaderView
 >(functions, 'europeanGatheringLeaderRespond');
 
@@ -581,6 +618,7 @@ export async function submitEuropeanGatheringLeaderResponse(args: {
   token: string;
   comment?: string;
   decision?: LeaderApprovalDecision;
+  interviewOutcome?: InterviewOutcome;
 }) {
   const result = await leaderRespondCallable(args);
   return result.data;

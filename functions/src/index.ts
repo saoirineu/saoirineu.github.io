@@ -21,7 +21,21 @@ type LeaderComment = {
   at: admin.firestore.Timestamp;
 };
 
-type LeaderDecision = 'approved' | 'rejected';
+type LeaderDecision = 'approved' | 'approved-interview' | 'approved-psychologist' | 'rejected';
+type InterviewOutcome = 'approved' | 'rejected';
+
+const LEADER_DECISIONS: LeaderDecision[] = ['approved', 'approved-interview', 'approved-psychologist', 'rejected'];
+
+// Phase-1 decisions that are terminal approvals (stamp the consent ledger immediately).
+function isTerminalApproval(decision: LeaderDecision) {
+  return decision === 'approved';
+}
+
+function interviewRequirementFor(decision: LeaderDecision): 'none' | 'standard' | 'psychologist' {
+  if (decision === 'approved-interview') return 'standard';
+  if (decision === 'approved-psychologist') return 'psychologist';
+  return 'none';
+}
 
 const LEADER_TOKEN_HEX_LENGTH = 32;
 
@@ -202,6 +216,22 @@ export const onEuropeanGatheringRegistration = onDocumentCreated(
   }
 );
 
+function sanitizeInterview(value: unknown) {
+  const interview = (value ?? null) as { required?: unknown; status?: unknown; resolvedAt?: unknown } | null;
+  if (!interview || !interview.required || interview.required === 'none') {
+    return null;
+  }
+
+  return {
+    required: (interview.required === 'psychologist' ? 'psychologist' : 'standard') as 'standard' | 'psychologist',
+    status: (interview.status === 'approved' || interview.status === 'rejected' ? interview.status : 'awaiting') as
+      | 'awaiting'
+      | 'approved'
+      | 'rejected',
+    resolvedAt: interview.resolvedAt instanceof admin.firestore.Timestamp ? interview.resolvedAt.toMillis() : null
+  };
+}
+
 function sanitizeRegistrationForLeader(id: string, data: FirebaseFirestore.DocumentData) {
   const contribution = data.contribution ?? {};
   const comments = Array.isArray(data.leaderComments) ? (data.leaderComments as LeaderComment[]) : [];
@@ -231,6 +261,7 @@ function sanitizeRegistrationForLeader(id: string, data: FirebaseFirestore.Docum
     leaderApprovalRespondedAt: data.leaderApprovalRespondedAt instanceof admin.firestore.Timestamp
       ? data.leaderApprovalRespondedAt.toMillis()
       : null,
+    interview: sanitizeInterview(data.interview),
     leaderComments: comments.map(comment => ({
       text: comment.text,
       at: comment.at instanceof admin.firestore.Timestamp ? comment.at.toMillis() : null
@@ -275,6 +306,26 @@ export const europeanGatheringLeaderView = onCall(
   }
 );
 
+async function approveUserConsentForRegistration(userId: unknown, registrationId: string, approvedBy: string) {
+  if (typeof userId !== 'string' || !userId) {
+    return;
+  }
+
+  const consentsRef = admin.firestore().collection('users').doc(userId).collection('consents');
+  const snapshot = await consentsRef.where('eventId', '==', registrationId).get();
+  await Promise.all(
+    snapshot.docs
+      .filter(docSnap => docSnap.data().status !== 'approved')
+      .map(docSnap =>
+        docSnap.ref.update({
+          status: 'approved',
+          approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+          approvedBy
+        })
+      )
+  );
+}
+
 export const europeanGatheringLeaderRespond = onCall(
   { secrets: [leaderTokenSecret] },
   async request => {
@@ -283,11 +334,15 @@ export const europeanGatheringLeaderRespond = onCall(
       token?: unknown;
       comment?: unknown;
       decision?: unknown;
+      interviewOutcome?: unknown;
     };
 
-    const { ref } = await loadRegistrationForLeader({ id: payload.id, token: payload.token });
+    const { ref, data } = await loadRegistrationForLeader({ id: payload.id, token: payload.token });
+    const leaderEmail = typeof data.centerLeaderEmail === 'string' ? data.centerLeaderEmail.trim() : '';
 
     const updates: Record<string, unknown> = {};
+    let terminalApproval = false;
+
     const trimmedComment = typeof payload.comment === 'string' ? payload.comment.trim() : '';
     if (trimmedComment) {
       updates.leaderComments = admin.firestore.FieldValue.arrayUnion({
@@ -296,18 +351,54 @@ export const europeanGatheringLeaderRespond = onCall(
       });
     }
 
-    if (payload.decision === 'approved' || payload.decision === 'rejected') {
-      updates.leaderApproval = payload.decision;
+    // Phase 1: the reference church's initial decision.
+    if (payload.decision != null && payload.decision !== '') {
+      if (!LEADER_DECISIONS.includes(payload.decision as LeaderDecision)) {
+        throw new HttpsError('invalid-argument', `decision must be one of: ${LEADER_DECISIONS.join(', ')}.`);
+      }
+
+      const decision = payload.decision as LeaderDecision;
+      const requirement = interviewRequirementFor(decision);
+      updates.leaderApproval = decision;
       updates.leaderApprovalRespondedAt = admin.firestore.FieldValue.serverTimestamp();
-    } else if (payload.decision != null && payload.decision !== '') {
-      throw new HttpsError('invalid-argument', 'decision must be "approved" or "rejected".');
+      updates.interview = requirement === 'none' ? { required: 'none' } : { required: requirement, status: 'awaiting' };
+      terminalApproval = isTerminalApproval(decision);
+    }
+
+    // Phase 2: the reference church confirms the membership after the interview.
+    if (payload.interviewOutcome != null && payload.interviewOutcome !== '') {
+      if (payload.interviewOutcome !== 'approved' && payload.interviewOutcome !== 'rejected') {
+        throw new HttpsError('invalid-argument', 'interviewOutcome must be "approved" or "rejected".');
+      }
+
+      const currentInterview = (data.interview ?? {}) as { required?: unknown };
+      if (!currentInterview.required || currentInterview.required === 'none') {
+        throw new HttpsError('failed-precondition', 'No interview is pending for this registration.');
+      }
+
+      const outcome = payload.interviewOutcome as InterviewOutcome;
+      updates.interview = {
+        required: currentInterview.required,
+        status: outcome,
+        resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        resolvedBy: leaderEmail
+      };
+      if (outcome === 'approved') {
+        terminalApproval = true;
+      }
     }
 
     if (Object.keys(updates).length === 0) {
-      throw new HttpsError('invalid-argument', 'Provide a comment or a decision.');
+      throw new HttpsError('invalid-argument', 'Provide a comment, a decision, or an interview outcome.');
     }
 
     await ref.update(updates);
+
+    // A terminal approval (direct, or post-interview) makes the signed consent valid (item A).
+    if (terminalApproval) {
+      await approveUserConsentForRegistration(data.userId, ref.id, leaderEmail);
+    }
+
     const refreshed = await ref.get();
     return sanitizeRegistrationForLeader(ref.id, refreshed.data() ?? {});
   }
