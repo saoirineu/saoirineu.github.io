@@ -13,6 +13,7 @@ const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
 const EuropeanGatheringPage = lazy(() => import('./pages/EuropeanGatheringPage'));
+const EventsAdminPage = lazy(() => import('./pages/EventsAdminPage'));
 const LeaderReviewPage = lazy(() => import('./pages/LeaderReviewPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -101,6 +102,9 @@ function App() {
             <Route element={<RoleGate requiredRole="admin" />}>
               <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />
               <Route path="/admin/members" element={<MembersPage />} />
+            </Route>
+            <Route element={<RoleGate requiredRole="eventadmin" />}>
+              <Route path="/admin/events" element={<EventsAdminPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="useradmin" />}>
               <Route path="/admin/users" element={<AdminUsersPage />} />

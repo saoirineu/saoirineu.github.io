@@ -276,9 +276,10 @@ current touch points.
       added `'eventadmin'` to `hasValidUserSystemRole` and `hasValidUserSystemRoles` (cap → 6).
 - [x] `AdminUsersPage.tsx`: appears automatically — the role checkboxes render from
       `privilegedSystemRoleOptions` with the raw role string as label (no map to update).
-- [ ] `App.tsx` + `RoleGate.tsx`: route guard (`requiredRole="eventadmin"`) — **deferred to
-      Phase 4** (no events admin page/route exists yet; `RoleGate` is already generic).
-- [ ] `NavBar.tsx` / `DashboardPage.tsx`: entry point — **deferred to Phase 4** (no page yet).
+- [x] `App.tsx` + `RoleGate.tsx`: route guard (`requiredRole="eventadmin"`) — **done in Phase 4b**
+      (`/admin/events`).
+- [x] `NavBar.tsx`: "Eventos/Events/Eventos/Eventi" link gated by `eventadmin` — **done in Phase 4b**.
+      (Dashboard entry not needed; the nav link covers it.)
 - [x] `docs/firestore-schema.md`: role note flipped to live.
 
 ### Phase 2 — consent ledger + aging (§3, item A) — **DONE** (commit pending)
@@ -339,11 +340,14 @@ current touch points.
 - [x] `firestore.rules`: `events/{id}` read (`isEventAdmin() || status=='published'`), write (`isEventAdmin()`).
 - [x] `docs/firestore-schema.md`: `events/{id}` doc + rules marked delivered.
 
-**4b — EventsAdminPage + role wiring**
-- [ ] `EventsAdminPage.tsx`: list/create/edit/publish (title 4-lang, kind, capacity mode +
-      slots/rooms, deposit %, payment, works rows, pricing).
-- [ ] `App.tsx` + route guard `requiredRole="eventadmin"`; NavBar/Dashboard entry (the deferred
-      Phase 1 items land here).
+**4b — EventsAdminPage + role wiring — DONE (commit pending)**
+- [x] `events/form.ts` + `form.test.ts`: `EventFormValues`, `parseNumberList`, `buildEventInput`,
+      `prefillEventForm` (percent↔rate, slug derivation, round-trip). 4/4.
+- [x] `EventsAdminPage.tsx`: list + create/edit/delete with the full config form (title 4-lang,
+      slug/status/kind, capacity mode + slots/rooms, deposit %, payment, dynamic works rows,
+      pricing incl. worksByCount tiers, suggested check-in/out). Portuguese (matches EG admin).
+- [x] `App.tsx`: `/admin/events` under `RoleGate requiredRole="eventadmin"`; `NavBar` link gated
+      by `eventadmin` (the deferred Phase 1 items — now done).
 
 **4c — generic registrations + capacity**
 - [ ] `events/{id}/registrations/{rid}` + `events/{id}/capacity/{bucket}` rules (mirror EG;
