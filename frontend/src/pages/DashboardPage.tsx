@@ -26,6 +26,7 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Perfil', desc: 'Atualize seus dados de acesso e referência pessoal.' },
       churches: { title: 'Igrejas', desc: 'Cadastre e consulte as igrejas já disponíveis no sistema.' },
+      gathering: { title: 'Encontro Europeu ICEFLU', desc: 'Inscreva-se e acompanhe o Encontro Europeu ICEFLU.' },
       registrations: { title: 'Inscrições do encontro', desc: 'Acompanhe os inscritos e faça a triagem administrativa.' }
     },
     portalAccess: {
@@ -57,6 +58,7 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Profile', desc: 'Update your access and personal reference data.' },
       churches: { title: 'Churches', desc: 'Register and review the churches already available in the system.' },
+      gathering: { title: 'ICEFLU Gathering', desc: 'Register and follow the ICEFLU European Gathering event.' },
       registrations: { title: 'Meeting registrations', desc: 'Follow registrations and perform administrative triage.' }
     },
     portalAccess: {
@@ -88,6 +90,7 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Perfil', desc: 'Actualice sus datos de acceso y referencia personal.' },
       churches: { title: 'Iglesias', desc: 'Registre y consulte las iglesias ya disponibles en el sistema.' },
+      gathering: { title: 'Encuentro Europeo ICEFLU', desc: 'Inscríbase y siga el Encuentro Europeo ICEFLU.' },
       registrations: { title: 'Inscripciones del encuentro', desc: 'Siga a los inscritos y haga la gestión administrativa.' }
     },
     portalAccess: {
@@ -119,6 +122,7 @@ const copyByLocale = {
     stableCards: {
       profile: { title: 'Profilo', desc: 'Aggiorna i tuoi dati di accesso e di riferimento personale.' },
       churches: { title: 'Chiese', desc: 'Registra e consulta le chiese già disponibili nel sistema.' },
+      gathering: { title: 'Incontro Europeo ICEFLU', desc: 'Iscriviti e segui l\'Incontro Europeo ICEFLU.' },
       registrations: { title: 'Iscrizioni all\'incontro', desc: 'Segui gli iscritti e svolgi la gestione amministrativa.' }
     },
     portalAccess: {
@@ -147,6 +151,9 @@ export function DashboardPage() {
 
   const stableCards = [
     portalAccessCard,
+    ...(approvalStatus === 'approved'
+      ? [{ to: '/european-gathering', ...copy.stableCards.gathering }]
+      : []),
     ...(hasRequiredRole(role, 'admin')
       ? [{ to: '/admin/european-gathering', ...copy.stableCards.registrations }]
       : [])
