@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 
+import { fetchPublishedEvents } from '../lib/events';
 import { hasRequiredRole } from '../lib/systemRole';
 import { useDevMode } from '../providers/useDevMode';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -29,6 +31,7 @@ const copyByLocale = {
       gathering: { title: 'Encontro Europeu ICEFLU', desc: 'Inscreva-se e acompanhe o Encontro Europeu ICEFLU.' },
       registrations: { title: 'Inscrições do encontro', desc: 'Acompanhe os inscritos e faça a triagem administrativa.' }
     },
+    eventRegisterDesc: 'Inscreva-se e acompanhe este evento.',
     portalAccess: {
       needsProfileTitle: 'Complete sua inscrição no ICEFLU',
       needsProfileDesc: 'Para liberar as funcionalidades do portal, atualize seu perfil e envie um documento de identidade.',
@@ -67,6 +70,7 @@ const copyByLocale = {
       gathering: { title: 'ICEFLU Gathering', desc: 'Register and follow the ICEFLU European Gathering event.' },
       registrations: { title: 'Meeting registrations', desc: 'Follow registrations and perform administrative triage.' }
     },
+    eventRegisterDesc: 'Register and follow this event.',
     portalAccess: {
       needsProfileTitle: 'Complete your ICEFLU registration',
       needsProfileDesc: 'To unlock the portal features, update your profile and upload an identity document.',
@@ -105,6 +109,7 @@ const copyByLocale = {
       gathering: { title: 'Encuentro Europeo ICEFLU', desc: 'Inscríbase y siga el Encuentro Europeo ICEFLU.' },
       registrations: { title: 'Inscripciones del encuentro', desc: 'Siga a los inscritos y haga la gestión administrativa.' }
     },
+    eventRegisterDesc: 'Inscríbase y siga este evento.',
     portalAccess: {
       needsProfileTitle: 'Complete su inscripción en ICEFLU',
       needsProfileDesc: 'Para desbloquear las funciones del portal, actualice su perfil y suba un documento de identidad.',
@@ -143,6 +148,7 @@ const copyByLocale = {
       gathering: { title: 'Incontro Europeo ICEFLU', desc: 'Iscriviti e segui l\'Incontro Europeo ICEFLU.' },
       registrations: { title: 'Iscrizioni all\'incontro', desc: 'Segui gli iscritti e svolgi la gestione amministrativa.' }
     },
+    eventRegisterDesc: 'Iscriviti e segui questo evento.',
     portalAccess: {
       needsProfileTitle: 'Completa la tua iscrizione a ICEFLU',
       needsProfileDesc: 'Per sbloccare le funzionalità del portale, aggiorna il profilo e carica un documento di identità.',
@@ -175,6 +181,18 @@ export function DashboardPage() {
   const copy = copyByLocale[locale];
 
   const approvalStatus = profile?.approvalStatus ?? 'needs-profile';
+
+  const publishedEventsQuery = useQuery({
+    queryKey: ['publishedEvents'],
+    queryFn: fetchPublishedEvents,
+    enabled: approvalStatus === 'approved'
+  });
+  const eventCards = (publishedEventsQuery.data ?? []).map(event => ({
+    to: `/events/${event.slug}`,
+    title: event.title[locale] || event.title.en || event.title.pt || event.slug,
+    desc: copy.eventRegisterDesc
+  }));
+
   const portalAccessCard = approvalStatus === 'pending'
     ? { to: '/profile', title: copy.portalAccess.pendingTitle, desc: copy.portalAccess.pendingDesc }
     : approvalStatus === 'needs-info' || approvalStatus === 'needs-profile'
@@ -186,6 +204,7 @@ export function DashboardPage() {
     ...(approvalStatus === 'approved'
       ? [{ to: '/european-gathering', ...copy.stableCards.gathering }]
       : []),
+    ...(approvalStatus === 'approved' ? eventCards : []),
     ...(hasRequiredRole(role, 'admin')
       ? [{ to: '/admin/european-gathering', ...copy.stableCards.registrations }]
       : [])

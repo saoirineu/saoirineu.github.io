@@ -385,9 +385,14 @@ _4c.3 — generic registration renderer — DONE (commit pending)_
 at `/events/:slug` (4c.3) → consent ledger + capacity tracked (4c.2/Phase 2). Remaining: seed the
 EG event + dashboard links (4d), then migrate the bespoke EG page onto this renderer (4e).
 
-**4d — seed + dashboard**
-- [ ] Seed `events/encontro-europeu-2026` from current constants (Sep 25/26/28/30, 30% deposit, rooms→capacity).
-- [ ] `DashboardPage.tsx`: list published events to approved members (generalize the gathering card).
+**4d — seed + dashboard — DONE (commit pending)**
+- [x] `scripts/events/seed-event.mjs`: seeds `events/encontro-europeu-2026` from the EG constants
+      (Sep 25/26/28/30 works, 30% deposit, 84 total slots, 70/30 rates, worksByCount tiers,
+      payment incl. real IBAN/SWIFT, suggested 24 Sep→1 Oct). firebase-admin, **dry-run by default**,
+      `--live` to write, idempotent. **Seeded as `draft`** so the leaner generic path is not exposed
+      to members before the 4e parity check.
+- [x] `DashboardPage.tsx`: approved members see a card per **published** event → `/events/:slug`
+      (dormant until an event is published; the bespoke EG card stays until 4e).
 
 **4e — strangler migration (last)**
 - [ ] Port `/european-gathering` onto the generic renderer, then redirect.
