@@ -322,23 +322,60 @@ current touch points.
       `interview.status == 'awaiting'`; interview banner + badges.
 - [x] `EuropeanGatheringAdminPage.tsx`: 4‑decision label/badge maps + `interviewBadge`
       ("Aguardando entrevista/psicólogo" / "Pós‑…: aprovado/rejeitado") on all three views.
-- [~] Localized strings: the leader review page is **English‑only by existing design** (kept so);
-      the admin page is Portuguese (kept so). No i18n added.
-- [~] State‑machine: exercised via build/typecheck; the transition logic lives server‑side in the
-      callable (no frontend unit test added — would need a functions test harness).
+- [~] Localized strings — **tracked debt, see §7.1**: the leader review page is currently
+      English‑only; it must be translated into pt/en/es/it.
+- [~] State‑machine tests — **tracked debt, see §7.2**: no unit tests yet for the two‑phase
+      transitions; to be added.
 
-### Phase 4 — generic events (§2, item C) — strangler
-- [ ] `events.ts` lib: event/registration/capacity types; CRUD; event‑parameterized
-      `calculateContribution`/`validate`/`buildPayload`; transactional capacity reserve/release
-      (generalized from `europeanGathering.ts`).
-- [ ] `firestore.rules`: `events/{id}` (read published or `isEventAdmin`; write `isEventAdmin`);
-      `events/{id}/registrations/{rid}` (owner/admin, mirror EG); `events/{id}/capacity/{bucket}`
-      (transactional, validated against the event doc).
-- [ ] `storage.rules`: `events/{eventId}/registrations/...` document paths.
-- [ ] `EventsAdminPage.tsx`: list/create/edit/publish (title, kind, capacity mode + slots/rooms,
-      deposit %, payment, works rows, pricing).
+### Phase 4 — generic events (§2, item C) — strangler, sub-stepped
+
+**4a — events data model + lib + rules (foundation) — DONE (commit pending)**
+- [x] `events.ts` lib: event types (`EventRecord`/`EventInput`, `LocalizedText`, `EventWork`,
+      `EventPricing`, `EventPayment`, `EventRoom`, `EventKind`, `CapacityMode`, `EventStatus`);
+      `slugify`; `validateEventInput` (pure); CRUD (`fetchEvents`/`fetchPublishedEvents`/`fetchEvent`/
+      `createEvent`/`updateEvent`/`deleteEvent`). **Slug is the doc id** → Firestore enforces
+      uniqueness (settles the §5 "slug uniqueness" nit).
+- [x] `events.test.ts`: `slugify` + `validateEventInput` (capacity mode, deposit range, works). 8/8.
+- [x] `firestore.rules`: `events/{id}` read (`isEventAdmin() || status=='published'`), write (`isEventAdmin()`).
+- [x] `docs/firestore-schema.md`: `events/{id}` doc + rules marked delivered.
+
+**4b — EventsAdminPage + role wiring**
+- [ ] `EventsAdminPage.tsx`: list/create/edit/publish (title 4-lang, kind, capacity mode +
+      slots/rooms, deposit %, payment, works rows, pricing).
+- [ ] `App.tsx` + route guard `requiredRole="eventadmin"`; NavBar/Dashboard entry (the deferred
+      Phase 1 items land here).
+
+**4c — generic registrations + capacity**
+- [ ] `events/{id}/registrations/{rid}` + `events/{id}/capacity/{bucket}` rules (mirror EG;
+      capacity transactional, validated against the event doc).
+- [ ] `storage.rules`: `events/{eventId}/registrations/...` paths.
+- [ ] event-parameterized `calculateContribution`/`validate`/`buildPayload` + reserve/release.
 - [ ] Generic registration renderer (reuse `FileUploadField`, `InfoTooltip`, contribution UI).
+
+**4d — seed + dashboard**
 - [ ] Seed `events/encontro-europeu-2026` from current constants (Sep 25/26/28/30, 30% deposit, rooms→capacity).
 - [ ] `DashboardPage.tsx`: list published events to approved members (generalize the gathering card).
-- [ ] **Migrate EG last**: port `/european-gathering` onto the generic renderer, then redirect.
+
+**4e — strangler migration (last)**
+- [ ] Port `/european-gathering` onto the generic renderer, then redirect.
 - [ ] `docs/firestore-schema.md` + `docs/encontroEuropeu.md`: mark EG as an `events` instance.
+
+---
+
+## 7. Deferred follow-ups (tracked debt — do not forget)
+
+### 7.1 Translate the leader review page (pt/en/es/it)
+[LeaderReviewPage.tsx](../frontend/src/pages/LeaderReviewPage.tsx) is currently English-only.
+It must be localized into the four site languages like the registration page, including the
+four phase-1 decision buttons, the phase-2 outcome buttons, the interview banner, status badges,
+and feedback/error strings. (The registration leader link could also carry the registrant's
+`locale` so the page opens in the right language.)
+
+### 7.2 Unit tests for the two-phase leader state-machine
+No automated tests cover the Phase 3 transitions yet. Add tests for: phase-1 `approved` →
+terminal + consent stamped; `rejected` → terminal, no consent; `approved-interview`/
+`approved-psychologist` → `interview.required` set + `status: awaiting`, **not** terminal;
+phase-2 `interviewOutcome` only allowed when awaiting (else `failed-precondition`); phase-2
+`approved` → consent stamped, `rejected` → not. Pure helpers (`interviewRequirementFor`,
+`isTerminalApproval`) are trivially unit-testable; the callable path needs a functions test
+harness (e.g. `firebase-functions-test` + Firestore emulator).

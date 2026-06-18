@@ -407,6 +407,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Item C (Phase 4a): generic events authored by eventadmins. Published events are public-readable.
+    match /events/{eventId} {
+      allow read: if isEventAdmin() || (resource != null && resource.data.status == 'published');
+      allow create, update, delete: if isEventAdmin();
+      // Phase 4c: events/{eventId}/registrations and /capacity rules land with the generic flow.
+    }
+
     match /sacramentStocks/{id} {
       allow read: if isSignedIn();
       allow create: if isAdmin();

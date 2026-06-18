@@ -175,7 +175,10 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
 - Pendente da Fase 3: aprovacao terminal do dirigente carimba o consentimento como `approved`.
   Ate la, `consentRequired` retorna `true` para todos (nenhum consentimento aprovado ainda).
 
-### `events/{eventId}` — eventos genericos (item C, §2)
+### `events/{eventId}` — eventos genericos (item C, §2) — Fase 4a: doc + regras entregues
+- **Doc id = slug** (Firestore garante unicidade). Lib `events.ts`: tipos, `slugify`,
+  `validateEventInput`, CRUD. Regras: `read` se `isEventAdmin()` ou `status=='published'`;
+  `write` se `isEventAdmin()`. Subcolecoes `registrations`/`capacity` ficam para a Fase 4c.
 - title: { pt, en, es, it }; slug; status: `draft|published|closed|archived`; kind: `single|multi`
 - capacityMode: `total|rooms`; totalSlots; rooms: [{ name, capacity }]
 - cautionDepositRate (0..1, default 0.30); payment: { beneficiary, iban, swift, causale }
