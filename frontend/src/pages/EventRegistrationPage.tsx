@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -78,6 +78,11 @@ export default function EventRegistrationPage() {
   const [existingDocUrls, setExistingDocUrls] = useState<{ identityDocument?: string; paymentProof?: string; consentDocument?: string }>({});
   const [removedDocs, setRemovedDocs] = useState<Set<string>>(new Set());
   const [submitError, setSubmitError] = useState('');
+  const [successState, setSuccessState] = useState<{ registrationId: string; total: number } | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [draftMessage, setDraftMessage] = useState('');
+  const draftLoadedRef = useRef(false);
+  const draftKey = `event-draft-${slug}`;
 
   const eventQuery = useQuery({ queryKey: ['event', slug], queryFn: () => fetchEvent(slug), enabled: !!slug });
   const event = eventQuery.data ?? null;
@@ -116,6 +121,27 @@ export default function EventRegistrationPage() {
       checkOut: prev.checkOut || event.checkOutSuggested || ''
     }));
   }, [event, existing]);
+
+  // Load a saved draft once, when there is no existing registration.
+  useEffect(() => {
+    if (typeof window === 'undefined' || draftLoadedRef.current || !event || existing || registrationQuery.isPending) return;
+    draftLoadedRef.current = true;
+    const raw = window.localStorage.getItem(draftKey);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as Partial<EventRegistrationFormValues>;
+      setValues(current => ({ ...current, ...draft }));
+      setDraftMessage(copy.draftLoaded);
+    } catch {
+      window.localStorage.removeItem(draftKey);
+    }
+  }, [event, existing, registrationQuery.isPending, draftKey, copy.draftLoaded]);
+
+  const saveDraft = () => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(draftKey, JSON.stringify(values));
+    setDraftMessage(copy.draftSaved);
+  };
 
   useEffect(() => {
     if (!existing) return;
@@ -200,15 +226,17 @@ export default function EventRegistrationPage() {
 
       if (existing) {
         await updateMyEventRegistration({ event, id: existing.id, input, userId: user?.uid, documents });
-      } else {
-        await createEventRegistration({ event, input: { ...input, status: 'pending' }, userId: user?.uid, documents });
+        return { registrationId: existing.id, total: contribution!.total };
       }
+      const ref = await createEventRegistration({ event, input: { ...input, status: 'pending' }, userId: user?.uid, documents });
+      return { registrationId: ref.id, total: contribution!.total };
     },
-    onSuccess: () => {
+    onSuccess: data => {
+      if (typeof window !== 'undefined') window.localStorage.removeItem(draftKey);
       queryClient.invalidateQueries({ queryKey: ['myEventRegistration', slug, user?.uid] });
       queryClient.invalidateQueries({ queryKey: ['eventCapacity', slug] });
       queryClient.invalidateQueries({ queryKey: ['userConsents', user?.uid] });
-      navigate('/');
+      setSuccessState(data);
     },
     onError: error => setSubmitError(error instanceof Error ? error.message : 'Error')
   });
@@ -222,6 +250,36 @@ export default function EventRegistrationPage() {
   if (eventQuery.isLoading) return <div className="text-sm text-slate-600">…</div>;
   if (!event) return <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{copy.notFound}</div>;
   if (event.status !== 'published') return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{copy.closed}</div>;
+
+  if (successState) {
+    const deposit = calculateEventCautionDeposit(event, successState.total);
+    return (
+      <div className="mx-auto max-w-2xl">
+        <section className="space-y-4 rounded-[28px] border border-emerald-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">OK</p>
+          <h2 className="text-2xl font-semibold text-slate-900">{copy.successTitle}</h2>
+          <p className="text-sm leading-6 text-slate-600">{copy.successIntro}</p>
+          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="font-medium text-slate-900">{copy.registrationId}</div>
+            <div className="mt-1 break-all">{successState.registrationId}</div>
+          </div>
+          <div className="rounded-[24px] bg-slate-950 p-6 text-slate-50">
+            <h3 className="text-lg font-semibold">{copy.paymentInfoButton}</h3>
+            <dl className="mt-4 space-y-3 text-sm">
+              {event.payment.beneficiary ? <div><dt className="text-slate-400">{copy.paymentBeneficiary}</dt><dd className="mt-1 font-medium text-white">{event.payment.beneficiary}</dd></div> : null}
+              {event.payment.iban ? <div><dt className="text-slate-400">IBAN</dt><dd className="mt-1 font-mono font-medium text-white">{event.payment.iban}</dd></div> : null}
+              {event.payment.swift ? <div><dt className="text-slate-400">SWIFT</dt><dd className="mt-1 font-mono font-medium text-white">{event.payment.swift}</dd></div> : null}
+              {event.payment.causale ? <div><dt className="text-slate-400">{copy.paymentCausale}</dt><dd className="mt-1 font-medium text-white">{event.payment.causale}</dd></div> : null}
+              <div><dt className="text-slate-400">{copy.total}</dt><dd className="mt-1 text-xl font-semibold text-amber-300">{formatCurrency(successState.total)}</dd></div>
+              <div><dt className="text-slate-400">{copy.cautionDeposit} ({Math.round(event.cautionDepositRate * 100)}%)</dt><dd className="mt-1 font-medium text-amber-200">{formatCurrency(deposit)}</dd></div>
+            </dl>
+            <p className="mt-4 text-xs leading-5 text-slate-300">{copy.paymentNote}</p>
+          </div>
+          <button type="button" onClick={() => navigate('/')} className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">{copy.backHome}</button>
+        </section>
+      </div>
+    );
+  }
 
   const fileProps = (key: keyof DocumentState, label: ReactNode) => ({
     accept: europeanGatheringUploadAccept,
@@ -349,6 +407,22 @@ export default function EventRegistrationPage() {
 
         <aside className="space-y-6">
           <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">{copy.resourcesTitle}</h2>
+            <div className="mt-4 grid gap-2">
+              {event.resources?.programUrl ? (
+                <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={localized(event.resources.programUrl, locale)} target="_blank" rel="noreferrer">{copy.generalProgram}</a>
+              ) : null}
+              {event.resources?.directionsUrl ? (
+                <a className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" href={localized(event.resources.directionsUrl, locale)} target="_blank" rel="noreferrer">{copy.directions}</a>
+              ) : null}
+              <div className="flex items-center gap-2">
+                <button type="button" className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50" onClick={() => setIsPaymentModalOpen(true)}>{copy.paymentInfoButton}</button>
+                <InfoTooltip body={copy.paymentTooltip} title={copy.paymentInfoButton} />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-900">{copy.documentsTitle}</h2>
               <InfoTooltip body={copy.fileInfoBody} title={copy.fileInfoTitle} />
@@ -359,7 +433,15 @@ export default function EventRegistrationPage() {
               {consentNeeded ? (
                 <div className="sm:col-span-2 space-y-2">
                   <FileUploadField {...fileProps('consentDocument', copy.consentDocument)} />
-                  <p className="text-xs leading-5 text-amber-800">{copy.consentNote}</p>
+                  <p className="text-xs leading-5 text-amber-800">
+                    {copy.consentNote}
+                    {event.resources?.consentFormUrl ? (
+                      <>
+                        {' '}
+                        <a className="font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800" href={localized(event.resources.consentFormUrl, locale)} target="_blank" rel="noreferrer">{copy.consentDownload}</a>
+                      </>
+                    ) : null}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -388,12 +470,40 @@ export default function EventRegistrationPage() {
             </dl>
           </section>
 
+          <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">{copy.privacyConsent}</p>
+          {draftMessage ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{draftMessage}</p> : null}
           {submitError ? <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
-          <button type="submit" disabled={mutation.isPending} className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
-            {mutation.isPending ? copy.submitting : existing ? copy.update : copy.submit}
-          </button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {!existing ? (
+              <button type="button" onClick={saveDraft} className="w-full rounded-2xl border border-slate-300 px-5 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">{copy.saveDraft}</button>
+            ) : (
+              <span className="hidden sm:block" />
+            )}
+            <button type="submit" disabled={mutation.isPending} className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+              {mutation.isPending ? copy.submitting : existing ? copy.update : copy.submit}
+            </button>
+          </div>
+          <p className="text-center text-xs text-slate-500">{copy.contactInfo}</p>
         </aside>
       </form>
+
+      {isPaymentModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-label={copy.paymentInfoButton}>
+          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-xl font-semibold text-slate-900">{copy.paymentInfoButton}</h2>
+              <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600">{copy.close}</button>
+            </div>
+            <dl className="mt-5 grid gap-3 text-sm">
+              {event.payment.beneficiary ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">{copy.paymentBeneficiary}</dt><dd className="mt-1 font-semibold text-slate-900">{event.payment.beneficiary}</dd></div> : null}
+              {event.payment.causale ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">{copy.paymentCausale}</dt><dd className="mt-1 font-semibold text-slate-900">{event.payment.causale}</dd></div> : null}
+              {event.payment.iban ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">IBAN</dt><dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">{event.payment.iban}</dd></div> : null}
+              {event.payment.swift ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">SWIFT</dt><dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">{event.payment.swift}</dd></div> : null}
+            </dl>
+            <p className="mt-4 text-xs leading-5 text-slate-500">{copy.paymentNote}</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

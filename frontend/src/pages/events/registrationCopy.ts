@@ -68,6 +68,23 @@ export type RegistrationCopy = {
   fileDownload: string;
   fileOpenNewTab: string;
   close: string;
+  resourcesTitle: string;
+  generalProgram: string;
+  directions: string;
+  paymentInfoButton: string;
+  paymentBeneficiary: string;
+  paymentCausale: string;
+  paymentNote: string;
+  privacyConsent: string;
+  contactInfo: string;
+  successTitle: string;
+  successIntro: string;
+  registrationId: string;
+  backHome: string;
+  saveDraft: string;
+  draftSaved: string;
+  draftLoaded: string;
+  consentDownload: string;
   errors: Record<EventRegistrationValidationError, string>;
 };
 
@@ -139,6 +156,23 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     fileDownload: 'Baixar',
     fileOpenNewTab: 'Abrir em nova aba',
     close: 'Fechar',
+    resourcesTitle: 'Informações',
+    generalProgram: 'Programa geral',
+    directions: 'Como chegar',
+    paymentInfoButton: 'Dados bancários',
+    paymentBeneficiary: 'Beneficiário',
+    paymentCausale: 'Causale',
+    paymentNote: 'Use estes dados para a transferência (caução ou total).',
+    privacyConsent: 'Autorizo o tratamento dos meus dados pessoais para as finalidades relativas à realização e participação neste evento e em outros eventos organizados pelo ICEFLU Santo Daime Europa e centros associados.',
+    contactInfo: 'Dúvidas? Escreva para international.secretariat@stellazzurra.org',
+    successTitle: 'Inscrição recebida',
+    successIntro: 'Sua inscrição foi registrada. A organização irá conferir o pagamento e o comprovante enviado.',
+    registrationId: 'Número da inscrição',
+    backHome: 'Voltar ao início',
+    saveDraft: 'Salvar rascunho',
+    draftSaved: 'Rascunho salvo neste navegador. Arquivos não armazenados.',
+    draftLoaded: 'Rascunho carregado automaticamente.',
+    consentDownload: 'Baixe o termo de consentimento informado',
     errors: {
       firstName: 'Preencha o nome.',
       lastName: 'Preencha o sobrenome.',
@@ -223,6 +257,23 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     fileDownload: 'Download',
     fileOpenNewTab: 'Open in new tab',
     close: 'Close',
+    resourcesTitle: 'Information',
+    generalProgram: 'General program',
+    directions: 'How to get there',
+    paymentInfoButton: 'Payment details',
+    paymentBeneficiary: 'Beneficiary',
+    paymentCausale: 'Payment reason',
+    paymentNote: 'Use these details for the transfer (caution deposit or full total).',
+    privacyConsent: 'I consent to the processing of my personal data for the purposes related to the organisation and participation in this event and other events organised by ICEFLU Santo Daime Europe and affiliated centres.',
+    contactInfo: 'Questions? Write to international.secretariat@stellazzurra.org',
+    successTitle: 'Registration received',
+    successIntro: 'Your registration has been recorded. The organization will review the payment and the uploaded proof.',
+    registrationId: 'Registration number',
+    backHome: 'Back to home',
+    saveDraft: 'Save draft',
+    draftSaved: 'Draft saved in this browser. Attached files not stored.',
+    draftLoaded: 'Draft loaded automatically.',
+    consentDownload: 'Download the informed consent form',
     errors: {
       firstName: 'Please fill in the first name.',
       lastName: 'Please fill in the last name.',
@@ -307,6 +358,23 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     fileDownload: 'Descargar',
     fileOpenNewTab: 'Abrir en una pestaña nueva',
     close: 'Cerrar',
+    resourcesTitle: 'Información',
+    generalProgram: 'Programa general',
+    directions: 'Cómo llegar',
+    paymentInfoButton: 'Datos bancarios',
+    paymentBeneficiary: 'Beneficiario',
+    paymentCausale: 'Concepto',
+    paymentNote: 'Use estos datos para la transferencia (depósito de garantía o total).',
+    privacyConsent: 'Autorizo el tratamiento de mis datos personales para las finalidades relativas a la realización y participación en este evento y en otros eventos organizados por ICEFLU Santo Daime Europa y centros asociados.',
+    contactInfo: '¿Preguntas? Escríbenos a international.secretariat@stellazzurra.org',
+    successTitle: 'Inscripción recibida',
+    successIntro: 'Su inscripción ha sido registrada. La organización revisará el pago y el comprobante subido.',
+    registrationId: 'Número de inscripción',
+    backHome: 'Volver al inicio',
+    saveDraft: 'Guardar borrador',
+    draftSaved: 'Borrador guardado en este navegador. Archivos adjuntos no almacenados.',
+    draftLoaded: 'Borrador cargado automáticamente.',
+    consentDownload: 'Descarga el consentimiento informado',
     errors: {
       firstName: 'Complete el nombre.',
       lastName: 'Complete el apellido.',
@@ -391,6 +459,23 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     fileDownload: 'Scarica',
     fileOpenNewTab: 'Apri in una nuova scheda',
     close: 'Chiudi',
+    resourcesTitle: 'Informazioni',
+    generalProgram: 'Programma generale',
+    directions: 'Come arrivare',
+    paymentInfoButton: 'Dati bancari',
+    paymentBeneficiary: 'Beneficiario',
+    paymentCausale: 'Causale',
+    paymentNote: 'Usa questi dati per il bonifico (caparra o totale).',
+    privacyConsent: 'Autorizzo al trattamento dei dati personali per le finalità relative alla realizzazione e partecipazione di questo evento e di altri eventi organizzati da ICEFLU Santo Daime Europa e centri collegati.',
+    contactInfo: 'Domande? Scrivi a international.secretariat@stellazzurra.org',
+    successTitle: 'Iscrizione ricevuta',
+    successIntro: "La tua iscrizione è stata registrata. L'organizzazione verificherà il pagamento e la contabile caricata.",
+    registrationId: 'Numero iscrizione',
+    backHome: "Torna all'inizio",
+    saveDraft: 'Salva bozza',
+    draftSaved: 'Bozza salvata in questo browser. File allegati non archiviati.',
+    draftLoaded: 'Bozza caricata automaticamente.',
+    consentDownload: 'Scarica il consenso informato',
     errors: {
       firstName: 'Compila il nome.',
       lastName: 'Compila il cognome.',
