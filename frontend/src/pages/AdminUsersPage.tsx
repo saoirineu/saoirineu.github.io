@@ -513,16 +513,6 @@ function UserProfileReviewModal({
                 fallback={labels.noDocument}
               />
             </div>
-            {user.identityDocumentSecondaryPath ? (
-              <div className="flex items-start gap-4 py-2">
-                <span className="w-48 shrink-0 font-medium text-slate-600">{labels.idDocSecondary}</span>
-                <UserDocumentLink
-                  name={user.identityDocumentSecondaryName}
-                  path={user.identityDocumentSecondaryPath}
-                  fallback={labels.noDocument}
-                />
-              </div>
-            ) : null}
           </ProfileSection>
         </div>
       </div>
