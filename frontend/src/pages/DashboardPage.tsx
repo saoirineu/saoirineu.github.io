@@ -36,6 +36,12 @@ const copyByLocale = {
       pendingDesc: 'Recebemos seus dados e seu documento. A administração irá revisar sua inscrição no ICEFLU.',
       approvedTitle: 'Acesso ao portal aprovado',
       approvedDesc: 'Sua inscrição no ICEFLU foi aprovada. Mantenha seu perfil atualizado.'
+    },
+    membershipStatus: {
+      'needs-profile': 'Formulário não enviado',
+      pending: 'Aguardando aprovação',
+      approved: 'Membro aprovado',
+      'needs-info': 'Atualização solicitada'
     }
   },
   en: {
@@ -68,6 +74,12 @@ const copyByLocale = {
       pendingDesc: 'We received your profile and identity document. The administration will review your ICEFLU subscription.',
       approvedTitle: 'Portal access approved',
       approvedDesc: 'Your ICEFLU subscription has been approved. Keep your profile up to date.'
+    },
+    membershipStatus: {
+      'needs-profile': 'Member form not submitted',
+      pending: 'Awaiting membership approval',
+      approved: 'Approved member',
+      'needs-info': 'Profile update requested'
     }
   },
   es: {
@@ -100,6 +112,12 @@ const copyByLocale = {
       pendingDesc: 'Recibimos sus datos y su documento. La administración revisará su inscripción en ICEFLU.',
       approvedTitle: 'Acceso al portal aprobado',
       approvedDesc: 'Su inscripción en ICEFLU fue aprobada. Mantenga su perfil actualizado.'
+    },
+    membershipStatus: {
+      'needs-profile': 'Formulario no enviado',
+      pending: 'Esperando aprobación',
+      approved: 'Miembro aprobado',
+      'needs-info': 'Actualización solicitada'
     }
   },
   it: {
@@ -132,9 +150,23 @@ const copyByLocale = {
       pendingDesc: 'Abbiamo ricevuto i tuoi dati e il documento. L\'amministrazione esaminerà la tua iscrizione a ICEFLU.',
       approvedTitle: 'Accesso al portale approvato',
       approvedDesc: 'La tua iscrizione a ICEFLU è stata approvata. Mantieni aggiornato il profilo.'
+    },
+    membershipStatus: {
+      'needs-profile': 'Modulo non inviato',
+      pending: 'In attesa di approvazione',
+      approved: 'Membro approvato',
+      'needs-info': 'Aggiornamento richiesto'
     }
   }
 } as const;
+
+function membershipStatusBadgeClass(status: string) {
+  const base = 'shrink-0 rounded-full px-3 py-1 text-xs font-medium ';
+  if (status === 'approved') return base + 'bg-emerald-100 text-emerald-800';
+  if (status === 'pending') return base + 'bg-amber-100 text-amber-800';
+  if (status === 'needs-info') return base + 'bg-orange-100 text-orange-800';
+  return base + 'bg-slate-100 text-slate-600';
+}
 
 export function DashboardPage() {
   const { devModeEnabled } = useDevMode();
@@ -143,14 +175,14 @@ export function DashboardPage() {
   const copy = copyByLocale[locale];
 
   const approvalStatus = profile?.approvalStatus ?? 'needs-profile';
-  const portalAccessCard = approvalStatus === 'approved'
-    ? { to: '/profile', title: copy.portalAccess.approvedTitle, desc: copy.portalAccess.approvedDesc }
-    : approvalStatus === 'pending'
-      ? { to: '/profile', title: copy.portalAccess.pendingTitle, desc: copy.portalAccess.pendingDesc }
-      : { to: '/profile', title: copy.portalAccess.needsProfileTitle, desc: copy.portalAccess.needsProfileDesc };
+  const portalAccessCard = approvalStatus === 'pending'
+    ? { to: '/profile', title: copy.portalAccess.pendingTitle, desc: copy.portalAccess.pendingDesc }
+    : approvalStatus === 'needs-info' || approvalStatus === 'needs-profile'
+      ? { to: '/profile', title: copy.portalAccess.needsProfileTitle, desc: copy.portalAccess.needsProfileDesc }
+      : null;
 
   const stableCards = [
-    portalAccessCard,
+    ...(portalAccessCard ? [portalAccessCard] : []),
     ...(approvalStatus === 'approved'
       ? [{ to: '/european-gathering', ...copy.stableCards.gathering }]
       : []),
@@ -174,15 +206,20 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">{devModeEnabled ? copy.panel : copy.home}</h1>
-        {devModeEnabled ? (
-          <>
-            <p className="text-sm text-slate-600">{copy.devIntro}</p>
-            <p className="mt-2 text-xs text-amber-700">{copy.devHint}</p>
-          </>
+        {!devModeEnabled ? (
+          <span className={membershipStatusBadgeClass(approvalStatus)}>
+            {copy.membershipStatus[approvalStatus]}
+          </span>
         ) : null}
       </div>
+      {devModeEnabled ? (
+        <div>
+          <p className="text-sm text-slate-600">{copy.devIntro}</p>
+          <p className="mt-2 text-xs text-amber-700">{copy.devHint}</p>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {cards.map(card => (
