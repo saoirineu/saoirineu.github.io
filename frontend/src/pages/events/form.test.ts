@@ -32,6 +32,28 @@ describe('events form helpers', () => {
     expect(input.slug).toBe('my-event-2026');
   });
 
+  it('includes resources only when present and round-trips them', () => {
+    expect(buildEventInput({ ...initialEventForm, titleEn: 'X', totalSlots: '10' }).resources).toBeUndefined();
+
+    const withResources = buildEventInput({
+      ...initialEventForm,
+      titleEn: 'X',
+      totalSlots: '10',
+      resources: {
+        programUrl: { pt: '', en: '/program-en.pdf', es: '', it: '' },
+        directionsUrl: { pt: '', en: '', es: '', it: '' },
+        consentFormUrl: { pt: '/consent-pt.pdf', en: '', es: '', it: '' }
+      }
+    });
+    expect(withResources.resources?.programUrl?.en).toBe('/program-en.pdf');
+    expect(withResources.resources?.directionsUrl).toBeUndefined();
+    expect(withResources.resources?.consentFormUrl?.pt).toBe('/consent-pt.pdf');
+
+    const values = prefillEventForm({ id: 'x', ...withResources });
+    expect(values.resources.programUrl.en).toBe('/program-en.pdf');
+    expect(values.resources.consentFormUrl.pt).toBe('/consent-pt.pdf');
+  });
+
   it('round-trips through prefill', () => {
     const input = buildEventInput({
       ...initialEventForm,

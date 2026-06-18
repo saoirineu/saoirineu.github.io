@@ -1,4 +1,15 @@
-import { slugify, type CapacityMode, type EventInput, type EventKind, type EventRecord, type EventStatus } from '../../lib/events';
+import {
+  slugify,
+  type CapacityMode,
+  type EventInput,
+  type EventKind,
+  type EventRecord,
+  type EventResources,
+  type EventStatus,
+  type LocalizedText
+} from '../../lib/events';
+
+const emptyLocalized = (): LocalizedText => ({ pt: '', en: '', es: '', it: '' });
 
 export type EventFormWork = {
   id: string;
@@ -32,6 +43,7 @@ export type EventFormValues = {
   worksAnyone: string;
   worksInitiated: string;
   worksIceflu: string;
+  resources: { programUrl: LocalizedText; directionsUrl: LocalizedText; consentFormUrl: LocalizedText };
   checkInSuggested: string;
   checkOutSuggested: string;
 };
@@ -59,9 +71,26 @@ export const initialEventForm: EventFormValues = {
   worksAnyone: '',
   worksInitiated: '',
   worksIceflu: '',
+  resources: { programUrl: emptyLocalized(), directionsUrl: emptyLocalized(), consentFormUrl: emptyLocalized() },
   checkInSuggested: '',
   checkOutSuggested: ''
 };
+
+function cleanLocalized(text: LocalizedText): LocalizedText | undefined {
+  const trimmed: LocalizedText = { pt: text.pt.trim(), en: text.en.trim(), es: text.es.trim(), it: text.it.trim() };
+  return trimmed.pt || trimmed.en || trimmed.es || trimmed.it ? trimmed : undefined;
+}
+
+function buildResources(values: EventFormValues['resources']): EventResources | undefined {
+  const out: EventResources = {};
+  const programUrl = cleanLocalized(values.programUrl);
+  const directionsUrl = cleanLocalized(values.directionsUrl);
+  const consentFormUrl = cleanLocalized(values.consentFormUrl);
+  if (programUrl) out.programUrl = programUrl;
+  if (directionsUrl) out.directionsUrl = directionsUrl;
+  if (consentFormUrl) out.consentFormUrl = consentFormUrl;
+  return Object.keys(out).length ? out : undefined;
+}
 
 export function parseNumberList(value: string): number[] {
   return value
@@ -118,6 +147,7 @@ export function buildEventInput(values: EventFormValues): EventInput {
         iceflu: parseNumberList(values.worksIceflu)
       }
     },
+    resources: buildResources(values.resources),
     checkInSuggested: values.checkInSuggested.trim() || undefined,
     checkOutSuggested: values.checkOutSuggested.trim() || undefined
   };
@@ -156,6 +186,11 @@ export function prefillEventForm(record: EventRecord): EventFormValues {
     worksAnyone: record.pricing.worksByCount.anyone.join(', '),
     worksInitiated: record.pricing.worksByCount.initiated.join(', '),
     worksIceflu: record.pricing.worksByCount.iceflu.join(', '),
+    resources: {
+      programUrl: record.resources?.programUrl ?? emptyLocalized(),
+      directionsUrl: record.resources?.directionsUrl ?? emptyLocalized(),
+      consentFormUrl: record.resources?.consentFormUrl ?? emptyLocalized()
+    },
     checkInSuggested: record.checkInSuggested ?? '',
     checkOutSuggested: record.checkOutSuggested ?? ''
   };

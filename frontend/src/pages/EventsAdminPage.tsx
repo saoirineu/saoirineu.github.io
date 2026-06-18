@@ -7,6 +7,7 @@ import {
   fetchEvents,
   updateEvent,
   validateEventInput,
+  type EventLocale,
   type EventRecord,
   type EventStatus
 } from '../lib/events';
@@ -125,6 +126,12 @@ export default function EventsAdminPage() {
   const addRoom = () => setForm(current => ({ ...current, rooms: [...current.rooms, { name: '', capacity: '' }] }));
   const removeRoom = (index: number) =>
     setForm(current => ({ ...current, rooms: current.rooms.filter((_, i) => i !== index) }));
+
+  const updateResource = (kind: keyof EventFormValues['resources'], locale: EventLocale, value: string) =>
+    setForm(current => ({
+      ...current,
+      resources: { ...current.resources, [kind]: { ...current.resources[kind], [locale]: value } }
+    }));
 
   if (isLoading) return <div className="text-sm text-slate-600">Carregando eventos...</div>;
   if (error) return <div className="text-sm text-red-600">Erro ao carregar eventos.</div>;
@@ -271,6 +278,26 @@ export default function EventsAdminPage() {
           <label className="text-sm text-slate-700">Check-out sugerido
             <input type="date" className={inputClass} value={form.checkOutSuggested} onChange={e => set('checkOutSuggested', e.target.value)} />
           </label>
+        </div>
+
+        <div className="space-y-2 rounded-lg bg-slate-100 p-3">
+          <span className="text-sm font-medium text-slate-700">Recursos (links por idioma — opcional)</span>
+          {([['programUrl', 'Programa'], ['directionsUrl', 'Como chegar'], ['consentFormUrl', 'Consentimento informado']] as const).map(([kind, label]) => (
+            <div key={kind} className="grid gap-1">
+              <span className="text-xs text-slate-600">{label}</span>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(['pt', 'en', 'es', 'it'] as EventLocale[]).map(loc => (
+                  <input
+                    key={loc}
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                    placeholder={loc.toUpperCase()}
+                    value={form.resources[kind][loc]}
+                    onChange={e => updateResource(kind, loc, e.target.value)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

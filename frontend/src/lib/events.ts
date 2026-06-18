@@ -32,6 +32,13 @@ export type EventPricing = {
   worksByCount: { anyone: number[]; initiated: number[]; iceflu: number[] };
 };
 
+// Per-locale downloadable resource links (program, how-to-arrive, consent form to sign).
+export type EventResources = {
+  programUrl?: LocalizedText;
+  directionsUrl?: LocalizedText;
+  consentFormUrl?: LocalizedText;
+};
+
 export type EventInput = {
   title: LocalizedText;
   slug: string;
@@ -44,6 +51,7 @@ export type EventInput = {
   payment: EventPayment;
   works: EventWork[];
   pricing: EventPricing;
+  resources?: EventResources;
   checkInSuggested?: string;
   checkOutSuggested?: string;
 };
@@ -102,6 +110,23 @@ function mapLocalizedText(value: unknown): LocalizedText {
   };
 }
 
+function mapResourceUrls(value: unknown): LocalizedText | undefined {
+  const text = mapLocalizedText(value);
+  return EVENT_LOCALES.some(locale => text[locale]) ? text : undefined;
+}
+
+function mapResources(value: unknown): EventResources | undefined {
+  const data = asRecord(value);
+  const resources: EventResources = {};
+  const program = mapResourceUrls(data.programUrl);
+  const directions = mapResourceUrls(data.directionsUrl);
+  const consentForm = mapResourceUrls(data.consentFormUrl);
+  if (program) resources.programUrl = program;
+  if (directions) resources.directionsUrl = directions;
+  if (consentForm) resources.consentFormUrl = consentForm;
+  return Object.keys(resources).length ? resources : undefined;
+}
+
 function mapNumberArray(value: unknown): number[] {
   return Array.isArray(value) ? value.map(item => asOptionalNumber(item) ?? 0) : [];
 }
@@ -158,6 +183,7 @@ function mapEvent(id: string, value: unknown): EventRecord {
         iceflu: mapNumberArray(worksByCount.iceflu)
       }
     },
+    resources: mapResources(data.resources),
     checkInSuggested: asOptionalString(data.checkInSuggested),
     checkOutSuggested: asOptionalString(data.checkOutSuggested),
     createdBy: asOptionalString(data.createdBy),

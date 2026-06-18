@@ -395,7 +395,27 @@ EG event + dashboard links (4d), then migrate the bespoke EG page onto this rend
       (dormant until an event is published; the bespoke EG card stays until 4e).
 
 **4e — strangler migration (last)**
-- [ ] Port `/european-gathering` onto the generic renderer, then redirect.
+
+Decided:
+- **Public hero / anonymous registration is a dead remnant — drop it.** The `/european-gathering`
+  route already requires login (`EuropeanGatheringRoute` redirects anonymous → `/login`) and renders
+  with `showPublicHero={false}`, so the hero branch never shows. It is leftover from the old
+  "register without an account" design, which we no longer want. 4e removes the `showPublicHero`
+  prop + hero branch when retiring the bespoke page; the generic renderer is already login-gated. No
+  parity work for this item.
+
+Parity gaps still to settle (keep in the renderer vs drop) before cutover:
+- payment-details display (IBAN/SWIFT/beneficiary/causale — drive from `event.payment`)
+- success screen with payment instructions + registration number
+- privacy-consent (GDPR) text
+- program/directions resource PDFs (currently blank placeholders)
+- draft saving (localStorage)
+- novice consent-form download link (would need an event-level consent-form URL)
+
+Steps:
+- [ ] Close the chosen parity gaps in `EventRegistrationPage`.
+- [ ] Publish the seeded event; point `/european-gathering` → `/events/encontro-europeu-2026`;
+      swap the dashboard card; retire the bespoke EG page; unify the duplicated `InfoTooltip`.
 - [ ] `docs/firestore-schema.md` + `docs/encontroEuropeu.md`: mark EG as an `events` instance.
 
 ---
