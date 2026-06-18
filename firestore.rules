@@ -311,6 +311,12 @@ service cloud.firestore {
         || (isUserAdmin() && (useradminMayWriteApprovalFields() || useradminMayWriteAdminNote()))
       );
       allow delete: if false;
+
+      match /approvedSnapshots/{snapshotId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isUserAdmin());
+        allow create: if isUserAdmin();
+        allow update, delete: if false;
+      }
     }
 
     match /pessoas/{id} {

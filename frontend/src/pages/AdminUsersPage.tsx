@@ -9,11 +9,14 @@ import {
   type SystemRole
 } from '../lib/systemRole';
 import {
+  createApprovedSnapshot,
+  fetchApprovedSnapshots,
   fetchUsers,
   resolveUserDocumentUrl,
   updateUserAdminNote,
   updateUserApprovalStatus,
   updateUserSystemRoles,
+  type ApprovedProfileSnapshot,
   type UserApprovalStatus,
   type UserProfile
 } from '../lib/users';
@@ -79,7 +82,10 @@ const copyByLocale = {
       adminNote: 'Nota administrativa',
       saveNote: 'Salvar nota',
       noteSaved: 'Nota salva.',
-      actionError: 'Erro ao executar ação'
+      actionError: 'Erro ao executar ação',
+      snapshotHistory: 'Histórico de perfis aprovados',
+      snapshotApprovedOn: 'Aprovado em',
+      snapshotNone: 'Nenhum perfil aprovado registrado.'
     }
   },
   en: {
@@ -139,7 +145,10 @@ const copyByLocale = {
       adminNote: 'Admin note',
       saveNote: 'Save note',
       noteSaved: 'Note saved.',
-      actionError: 'Action failed'
+      actionError: 'Action failed',
+      snapshotHistory: 'Approved membership history',
+      snapshotApprovedOn: 'Approved on',
+      snapshotNone: 'No approved snapshots recorded.'
     }
   },
   es: {
@@ -199,7 +208,10 @@ const copyByLocale = {
       adminNote: 'Nota administrativa',
       saveNote: 'Guardar nota',
       noteSaved: 'Nota guardada.',
-      actionError: 'Error al ejecutar la acción'
+      actionError: 'Error al ejecutar la acción',
+      snapshotHistory: 'Historial de perfiles aprobados',
+      snapshotApprovedOn: 'Aprobado el',
+      snapshotNone: 'Ningún perfil aprobado registrado.'
     }
   },
   it: {
@@ -259,7 +271,10 @@ const copyByLocale = {
       adminNote: 'Nota admin',
       saveNote: 'Salva nota',
       noteSaved: 'Nota salvata.',
-      actionError: 'Errore nell\'eseguire l\'azione'
+      actionError: 'Errore nell\'eseguire l\'azione',
+      snapshotHistory: 'Storico profili approvati',
+      snapshotApprovedOn: 'Approvato il',
+      snapshotNone: 'Nessun profilo approvato registrato.'
     }
   }
 } as const;
@@ -297,9 +312,12 @@ export default function AdminUsersPage() {
   });
 
   const approvalMutation = useMutation({
-    mutationFn: async ({ status, uid }: { uid: string; status: UserApprovalStatus }) => {
+    mutationFn: async ({ status, uid, profile }: { uid: string; status: UserApprovalStatus; profile?: UserProfile }) => {
       setErrorMessage('');
       setSuccessMessage('');
+      if (status === 'approved' && profile) {
+        await createApprovedSnapshot(uid, profile, currentUser?.uid ?? 'unknown');
+      }
       return updateUserApprovalStatus(uid, status, currentUser?.uid ?? 'unknown');
     },
     onSuccess: () => {
@@ -432,7 +450,7 @@ export default function AdminUsersPage() {
             labels={copy.profileLabels}
             statusLabel={copy.approvalStatus[reviewUser.approvalStatus ?? 'needs-profile']}
             isBusy={approvalMutation.isPending || noteMutation.isPending || requestReviewMutation.isPending}
-            onApprove={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'approved' })}
+            onApprove={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'approved', profile: reviewUser })}
             onRevoke={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'needs-info' })}
             onRequestReview={note => requestReviewMutation.mutate({ uid: reviewUser.uid, note })}
             onSaveNote={note => noteMutation.mutate({ uid: reviewUser.uid, note })}
@@ -517,6 +535,11 @@ function UserProfileReviewModal({
   const [note, setNote] = useState(user.adminNote ?? '');
   const [noteSaved, setNoteSaved] = useState(false);
   const [noteRequiredError, setNoteRequiredError] = useState(false);
+
+  const snapshotsQuery = useQuery({
+    queryKey: ['approvedSnapshots', user.uid],
+    queryFn: () => fetchApprovedSnapshots(user.uid),
+  });
 
   const displayName =
     user.fullName ?? user.displayName ?? ([user.firstName, user.surname].filter(Boolean).join(' ') || '—');
@@ -640,6 +663,22 @@ function UserProfileReviewModal({
           </ProfileSection>
         </div>
 
+        {/* Approved snapshot history */}
+        <div className="border-t border-slate-100 px-6 py-4">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{labels.snapshotHistory}</h3>
+          {snapshotsQuery.isLoading ? (
+            <p className="text-xs text-slate-400">...</p>
+          ) : snapshotsQuery.data && snapshotsQuery.data.length > 0 ? (
+            <div className="space-y-4">
+              {snapshotsQuery.data.map(snap => (
+                <SnapshotCard key={snap.snapshotId} snapshot={snap} approvedOnLabel={labels.snapshotApprovedOn} noDocumentLabel={labels.noDocument} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">{labels.snapshotNone}</p>
+          )}
+        </div>
+
         {/* Action footer */}
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
           {status === 'pending' ? (
@@ -673,6 +712,33 @@ function UserProfileReviewModal({
             </button>
           ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SnapshotCard({ snapshot, approvedOnLabel, noDocumentLabel }: {
+  snapshot: ApprovedProfileSnapshot;
+  approvedOnLabel: string;
+  noDocumentLabel: string;
+}) {
+  const approvedAt = new Date(snapshot.approvedAt.toMillis()).toLocaleString();
+  const displayName = snapshot.fullName ?? snapshot.displayName ?? ([snapshot.firstName, snapshot.surname].filter(Boolean).join(' ') || '—');
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium text-slate-800">{displayName}</span>
+        <span className="text-xs text-slate-500">{approvedOnLabel}: {approvedAt}</span>
+      </div>
+      {snapshot.email ? <div className="text-xs text-slate-600">{snapshot.email}</div> : null}
+      {snapshot.birthDate ? <div className="text-xs text-slate-600">{snapshot.birthDate}</div> : null}
+      {snapshot.currentChurchName ? <div className="text-xs text-slate-600">{snapshot.currentChurchName}</div> : null}
+      <div className="pt-1">
+        <UserDocumentLink
+          name={snapshot.identityDocumentPrimaryName}
+          path={snapshot.identityDocumentPrimaryPath}
+          fallback={noDocumentLabel}
+        />
       </div>
     </div>
   );

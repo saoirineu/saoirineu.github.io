@@ -1,4 +1,4 @@
-import { Timestamp, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { addDoc, Timestamp, collection, doc, getDoc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
@@ -311,6 +311,123 @@ export async function updateUserApprovalStatus(uid: string, status: UserApproval
     approvalApprovedAt: status === 'approved' ? Timestamp.now() : undefined,
     approvalApprovedBy: status === 'approved' ? reviewerUid : undefined
   });
+}
+
+export type ApprovedProfileSnapshot = {
+  snapshotId: string;
+  uid: string;
+  approvedAt: Timestamp;
+  approvedBy: string;
+  displayName?: string;
+  email?: string;
+  email2?: string;
+  phone?: string;
+  mobile?: string;
+  firstName?: string;
+  surname?: string;
+  fullName?: string;
+  fiscalCode?: string;
+  sex?: string;
+  birthDate?: string;
+  birthPlace?: string;
+  birthCountry?: string;
+  citizenship?: string;
+  nationality?: string;
+  address?: string;
+  postalCode?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  currentChurchName?: string;
+  originChurchName?: string;
+  isInitiated?: boolean;
+  initiationDate?: string;
+  initiatorName?: string;
+  identityDocumentPrimaryName?: string;
+  identityDocumentPrimaryPath?: string;
+};
+
+function approvedSnapshotsRef(uid: string) {
+  return collection(db, 'users', uid, 'approvedSnapshots');
+}
+
+function mapApprovedSnapshot(id: string, value: unknown): ApprovedProfileSnapshot {
+  const data = asRecord(value);
+  return {
+    snapshotId: id,
+    uid: asOptionalString(data.uid) ?? '',
+    approvedAt: asOptionalTimestamp(data.approvedAt) ?? Timestamp.now(),
+    approvedBy: asOptionalString(data.approvedBy) ?? '',
+    displayName: asOptionalString(data.displayName),
+    email: asOptionalString(data.email),
+    email2: asOptionalString(data.email2),
+    phone: asOptionalString(data.phone),
+    mobile: asOptionalString(data.mobile),
+    firstName: asOptionalString(data.firstName),
+    surname: asOptionalString(data.surname),
+    fullName: asOptionalString(data.fullName),
+    fiscalCode: asOptionalString(data.fiscalCode),
+    sex: asOptionalString(data.sex),
+    birthDate: asOptionalString(data.birthDate),
+    birthPlace: asOptionalString(data.birthPlace),
+    birthCountry: asOptionalString(data.birthCountry),
+    citizenship: asOptionalString(data.citizenship),
+    nationality: asOptionalString(data.nationality),
+    address: asOptionalString(data.address),
+    postalCode: asOptionalString(data.postalCode),
+    city: asOptionalString(data.city),
+    state: asOptionalString(data.state),
+    country: asOptionalString(data.country),
+    currentChurchName: asOptionalString(data.currentChurchName),
+    originChurchName: asOptionalString(data.originChurchName),
+    isInitiated: asOptionalBoolean(data.isInitiated),
+    initiationDate: asOptionalString(data.initiationDate),
+    initiatorName: asOptionalString(data.initiatorName),
+    identityDocumentPrimaryName: asOptionalString(data.identityDocumentPrimaryName),
+    identityDocumentPrimaryPath: asOptionalString(data.identityDocumentPrimaryPath),
+  };
+}
+
+export async function createApprovedSnapshot(uid: string, profile: UserProfile, approverUid: string): Promise<void> {
+  const data = removeUndefinedDeep({
+    uid,
+    approvedAt: Timestamp.now(),
+    approvedBy: approverUid,
+    displayName: profile.displayName,
+    email: profile.email,
+    email2: profile.email2,
+    phone: profile.phone,
+    mobile: profile.mobile,
+    firstName: profile.firstName,
+    surname: profile.surname,
+    fullName: profile.fullName,
+    fiscalCode: profile.fiscalCode,
+    sex: profile.sex,
+    birthDate: profile.birthDate,
+    birthPlace: profile.birthPlace,
+    birthCountry: profile.birthCountry,
+    citizenship: profile.citizenship,
+    nationality: profile.nationality,
+    address: profile.address,
+    postalCode: profile.postalCode,
+    city: profile.city,
+    state: profile.state,
+    country: profile.country,
+    currentChurchName: profile.currentChurchName,
+    originChurchName: profile.originChurchName,
+    isInitiated: profile.isInitiated,
+    initiationDate: profile.initiationDate,
+    initiatorName: profile.initiatorName,
+    identityDocumentPrimaryName: profile.identityDocumentPrimaryName,
+    identityDocumentPrimaryPath: profile.identityDocumentPrimaryPath,
+  });
+  await addDoc(approvedSnapshotsRef(uid), data);
+}
+
+export async function fetchApprovedSnapshots(uid: string): Promise<ApprovedProfileSnapshot[]> {
+  const q = query(approvedSnapshotsRef(uid), orderBy('approvedAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docSnap => mapApprovedSnapshot(docSnap.id, docSnap.data()));
 }
 
 export async function updateUserAdminNote(uid: string, note: string) {
