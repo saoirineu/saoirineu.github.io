@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -7,7 +8,14 @@ import {
   privilegedSystemRoleOptions,
   type SystemRole
 } from '../lib/systemRole';
-import { fetchUsers, updateUserApprovalStatus, updateUserSystemRoles, type UserApprovalStatus } from '../lib/users';
+import {
+  fetchUsers,
+  resolveUserDocumentUrl,
+  updateUserApprovalStatus,
+  updateUserSystemRoles,
+  type UserApprovalStatus,
+  type UserProfile
+} from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
@@ -27,6 +35,7 @@ const copyByLocale = {
     approval: 'Aprovação',
     privileges: 'Privilégios',
     approve: 'Aprovar',
+    viewProfile: 'Ver perfil',
     noName: 'Sem nome',
     noEmail: 'Sem email',
     approvalStatus: {
@@ -34,6 +43,36 @@ const copyByLocale = {
       pending: 'Pendente',
       approved: 'Aprovado',
       'needs-info': 'Precisa de ajuste'
+    },
+    profileLabels: {
+      title: 'Perfil do candidato',
+      submittedAt: 'Enviado em',
+      name: 'Nome completo',
+      email: 'Email',
+      email2: 'Email alternativo',
+      phone: 'Telefone',
+      mobile: 'Celular',
+      fiscalCode: 'Código fiscal',
+      sex: 'Sexo',
+      birthDate: 'Data de nascimento',
+      birthPlace: 'Local de nascimento',
+      birthCountry: 'País de nascimento',
+      citizenship: 'Cidadania',
+      nationality: 'Nacionalidade',
+      address: 'Endereço',
+      city: 'Cidade',
+      country: 'País',
+      currentChurch: 'Igreja atual',
+      originChurch: 'Igreja de origem',
+      isInitiated: 'Iniciado',
+      initiationDate: 'Data de iniciação',
+      initiatorName: 'Nome do iniciador',
+      idDocPrimary: 'Documento de identidade (frente)',
+      idDocSecondary: 'Documento de identidade (verso)',
+      yes: 'Sim',
+      no: 'Não',
+      close: 'Fechar',
+      noDocument: 'Nenhum arquivo enviado'
     }
   },
   en: {
@@ -50,6 +89,7 @@ const copyByLocale = {
     approval: 'Approval',
     privileges: 'Privileges',
     approve: 'Approve',
+    viewProfile: 'View profile',
     noName: 'No name',
     noEmail: 'No email',
     approvalStatus: {
@@ -57,6 +97,36 @@ const copyByLocale = {
       pending: 'Pending',
       approved: 'Approved',
       'needs-info': 'Needs update'
+    },
+    profileLabels: {
+      title: 'Applicant profile',
+      submittedAt: 'Submitted at',
+      name: 'Full name',
+      email: 'Email',
+      email2: 'Alternative email',
+      phone: 'Phone',
+      mobile: 'Mobile',
+      fiscalCode: 'Fiscal code',
+      sex: 'Sex',
+      birthDate: 'Date of birth',
+      birthPlace: 'Place of birth',
+      birthCountry: 'Country of birth',
+      citizenship: 'Citizenship',
+      nationality: 'Nationality',
+      address: 'Address',
+      city: 'City',
+      country: 'Country',
+      currentChurch: 'Current church',
+      originChurch: 'Church of origin',
+      isInitiated: 'Initiated',
+      initiationDate: 'Initiation date',
+      initiatorName: 'Initiator name',
+      idDocPrimary: 'Identity document (front)',
+      idDocSecondary: 'Identity document (back)',
+      yes: 'Yes',
+      no: 'No',
+      close: 'Close',
+      noDocument: 'No file submitted'
     }
   },
   es: {
@@ -73,6 +143,7 @@ const copyByLocale = {
     approval: 'Aprobación',
     privileges: 'Privilegios',
     approve: 'Aprobar',
+    viewProfile: 'Ver perfil',
     noName: 'Sin nombre',
     noEmail: 'Sin correo',
     approvalStatus: {
@@ -80,6 +151,36 @@ const copyByLocale = {
       pending: 'Pendiente',
       approved: 'Aprobado',
       'needs-info': 'Necesita ajuste'
+    },
+    profileLabels: {
+      title: 'Perfil del candidato',
+      submittedAt: 'Enviado el',
+      name: 'Nombre completo',
+      email: 'Correo electrónico',
+      email2: 'Correo alternativo',
+      phone: 'Teléfono',
+      mobile: 'Móvil',
+      fiscalCode: 'Código fiscal',
+      sex: 'Sexo',
+      birthDate: 'Fecha de nacimiento',
+      birthPlace: 'Lugar de nacimiento',
+      birthCountry: 'País de nacimiento',
+      citizenship: 'Ciudadanía',
+      nationality: 'Nacionalidad',
+      address: 'Dirección',
+      city: 'Ciudad',
+      country: 'País',
+      currentChurch: 'Iglesia actual',
+      originChurch: 'Iglesia de origen',
+      isInitiated: 'Iniciado',
+      initiationDate: 'Fecha de iniciación',
+      initiatorName: 'Nombre del iniciador',
+      idDocPrimary: 'Documento de identidad (frente)',
+      idDocSecondary: 'Documento de identidad (dorso)',
+      yes: 'Sí',
+      no: 'No',
+      close: 'Cerrar',
+      noDocument: 'Ningún archivo enviado'
     }
   },
   it: {
@@ -96,6 +197,7 @@ const copyByLocale = {
     approval: 'Approvazione',
     privileges: 'Privilegi',
     approve: 'Approva',
+    viewProfile: 'Vedi profilo',
     noName: 'Senza nome',
     noEmail: 'Senza email',
     approvalStatus: {
@@ -103,6 +205,36 @@ const copyByLocale = {
       pending: 'In attesa',
       approved: 'Approvato',
       'needs-info': 'Da aggiornare'
+    },
+    profileLabels: {
+      title: 'Profilo del candidato',
+      submittedAt: 'Inviato il',
+      name: 'Nome completo',
+      email: 'Email',
+      email2: 'Email alternativa',
+      phone: 'Telefono',
+      mobile: 'Cellulare',
+      fiscalCode: 'Codice fiscale',
+      sex: 'Sesso',
+      birthDate: 'Data di nascita',
+      birthPlace: 'Luogo di nascita',
+      birthCountry: 'Paese di nascita',
+      citizenship: 'Cittadinanza',
+      nationality: 'Nazionalità',
+      address: 'Indirizzo',
+      city: 'Città',
+      country: 'Paese',
+      currentChurch: 'Chiesa attuale',
+      originChurch: 'Chiesa di origine',
+      isInitiated: 'Iniziato',
+      initiationDate: 'Data di iniziazione',
+      initiatorName: 'Nome dell\'iniziatore',
+      idDocPrimary: 'Documento d\'identità (fronte)',
+      idDocSecondary: 'Documento d\'identità (retro)',
+      yes: 'Sì',
+      no: 'No',
+      close: 'Chiudi',
+      noDocument: 'Nessun file inviato'
     }
   }
 } as const;
@@ -115,6 +247,7 @@ export default function AdminUsersPage() {
   const copy = copyByLocale[locale];
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [reviewUser, setReviewUser] = useState<UserProfile | null>(null);
   const canManagePrivileges = hasRequiredRole(role, 'superadmin');
   const canApproveUsers = hasRequiredRole(role, 'useradmin');
 
@@ -205,6 +338,15 @@ export default function AdminUsersPage() {
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
                         {copy.approvalStatus[approvalStatus]}
                       </span>
+                      {canApproveUsers ? (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                          onClick={() => setReviewUser(user)}
+                        >
+                          {copy.viewProfile}
+                        </button>
+                      ) : null}
                       {approvalStatus === 'pending' && canApproveUsers ? (
                         <button
                           type="button"
@@ -239,6 +381,165 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+
+      {reviewUser ? (
+        <UserProfileReviewModal
+          user={reviewUser}
+          labels={copy.profileLabels}
+          onClose={() => setReviewUser(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+type ProfileLabels = Record<string, string>;
+
+function UserDocumentLink({ name, path, fallback }: { name?: string; path?: string; fallback: string }) {
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!path) {
+    return <span className="text-slate-400 italic">{fallback}</span>;
+  }
+
+  return (
+    <span>
+      <a
+        href={downloadUrl ?? '#'}
+        target="_blank"
+        rel="noreferrer"
+        className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2"
+        onClick={async event => {
+          if (downloadUrl || loading) return;
+          event.preventDefault();
+          setLoading(true);
+          setError('');
+          try {
+            const url = await resolveUserDocumentUrl(path);
+            setDownloadUrl(url);
+            window.open(url, '_blank', 'noopener,noreferrer');
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erro ao carregar arquivo');
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        {loading ? '...' : (name ?? path.split('/').pop())}
+      </a>
+      {error ? <span className="ml-2 text-xs text-red-600">{error}</span> : null}
+    </span>
+  );
+}
+
+function UserProfileReviewModal({
+  user,
+  labels,
+  onClose
+}: {
+  user: UserProfile;
+  labels: ProfileLabels;
+  onClose: () => void;
+}) {
+  const displayName =
+    user.fullName ?? user.displayName ?? ([user.firstName, user.surname].filter(Boolean).join(' ') || '—');
+
+  const submittedAt = user.approvalSubmittedAt
+    ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString()
+    : '—';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10"
+      onClick={event => { if (event.target === event.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <h2 className="text-base font-semibold text-slate-900">{labels.title}</h2>
+          <button
+            type="button"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+            onClick={onClose}
+          >
+            {labels.close}
+          </button>
+        </div>
+
+        <div className="divide-y divide-slate-100 px-6 py-4 text-sm">
+          <ProfileSection>
+            <ProfileRow label={labels.submittedAt} value={submittedAt} />
+            <ProfileRow label={labels.name} value={displayName} />
+            <ProfileRow label={labels.email} value={user.email} />
+            {user.email2 ? <ProfileRow label={labels.email2} value={user.email2} /> : null}
+            {user.phone ? <ProfileRow label={labels.phone} value={user.phone} /> : null}
+            {user.mobile ? <ProfileRow label={labels.mobile} value={user.mobile} /> : null}
+          </ProfileSection>
+
+          <ProfileSection>
+            {user.fiscalCode ? <ProfileRow label={labels.fiscalCode} value={user.fiscalCode} /> : null}
+            {user.sex ? <ProfileRow label={labels.sex} value={user.sex} /> : null}
+            {user.birthDate ? <ProfileRow label={labels.birthDate} value={user.birthDate} /> : null}
+            {user.birthPlace ? <ProfileRow label={labels.birthPlace} value={user.birthPlace} /> : null}
+            {user.birthCountry ? <ProfileRow label={labels.birthCountry} value={user.birthCountry} /> : null}
+            {user.citizenship ? <ProfileRow label={labels.citizenship} value={user.citizenship} /> : null}
+            {user.nationality ? <ProfileRow label={labels.nationality} value={user.nationality} /> : null}
+          </ProfileSection>
+
+          <ProfileSection>
+            {user.address ? <ProfileRow label={labels.address} value={user.address} /> : null}
+            {user.city ? <ProfileRow label={labels.city} value={user.city} /> : null}
+            {user.country ? <ProfileRow label={labels.country} value={user.country} /> : null}
+          </ProfileSection>
+
+          <ProfileSection>
+            {user.currentChurchName ? <ProfileRow label={labels.currentChurch} value={user.currentChurchName} /> : null}
+            {user.originChurchName ? <ProfileRow label={labels.originChurch} value={user.originChurchName} /> : null}
+            <ProfileRow
+              label={labels.isInitiated}
+              value={user.isInitiated === true ? labels.yes : user.isInitiated === false ? labels.no : '—'}
+            />
+            {user.initiationDate ? <ProfileRow label={labels.initiationDate} value={user.initiationDate} /> : null}
+            {user.initiatorName ? <ProfileRow label={labels.initiatorName} value={user.initiatorName} /> : null}
+          </ProfileSection>
+
+          <ProfileSection>
+            <div className="flex items-start gap-4 py-2">
+              <span className="w-48 shrink-0 font-medium text-slate-600">{labels.idDocPrimary}</span>
+              <UserDocumentLink
+                name={user.identityDocumentPrimaryName}
+                path={user.identityDocumentPrimaryPath}
+                fallback={labels.noDocument}
+              />
+            </div>
+            {user.identityDocumentSecondaryPath ? (
+              <div className="flex items-start gap-4 py-2">
+                <span className="w-48 shrink-0 font-medium text-slate-600">{labels.idDocSecondary}</span>
+                <UserDocumentLink
+                  name={user.identityDocumentSecondaryName}
+                  path={user.identityDocumentSecondaryPath}
+                  fallback={labels.noDocument}
+                />
+              </div>
+            ) : null}
+          </ProfileSection>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileSection({ children }: { children: ReactNode }) {
+  return <div className="py-3 space-y-0.5">{children}</div>;
+}
+
+function ProfileRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-start gap-4 py-1">
+      <span className="w-48 shrink-0 font-medium text-slate-600">{label}</span>
+      <span className="text-slate-900">{value}</span>
     </div>
   );
 }

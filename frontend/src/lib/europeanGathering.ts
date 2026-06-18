@@ -13,7 +13,7 @@ import {
   asStringArray,
   removeUndefinedDeep
 } from './firestoreData';
-import { validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
+import { getEuropeanGatheringUploadContentType, validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
 
 export type EuropeanGatheringRegistrationStatus = 'pending' | 'approved' | 'under-review' | 'payment-overdue' | 'rejected' | 'archived';
 
@@ -253,7 +253,7 @@ export async function uploadEuropeanGatheringDocuments(args: { documents: Europe
         const storagePath = buildDocumentPath(args.registrationId, key as EuropeanGatheringDocumentKey, file.name);
         const storageRef = ref(storage, storagePath);
 
-        await uploadBytes(storageRef, file, { contentType: file.type || undefined });
+        await uploadBytes(storageRef, file, { contentType: getEuropeanGatheringUploadContentType(file) });
         const storedDocument = { name: file.name, path: storagePath };
         uploadedFiles.push(storedDocument);
         return [key, storedDocument] as const;

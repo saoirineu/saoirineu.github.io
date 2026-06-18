@@ -35,6 +35,18 @@ export function isEuropeanGatheringUploadTypeAllowed(file: Pick<File, 'name' | '
   return allowedMimeTypes.has(normalizedType) || (!normalizedType && hasAllowedExtension(file.name));
 }
 
+export function getEuropeanGatheringUploadContentType(file: Pick<File, 'name' | 'type'>) {
+  const normalizedType = file.type.toLowerCase();
+  if (allowedMimeTypes.has(normalizedType)) return normalizedType;
+
+  const normalizedName = file.name.toLowerCase();
+  if (normalizedName.endsWith('.pdf')) return 'application/pdf';
+  if (normalizedName.endsWith('.jpg') || normalizedName.endsWith('.jpeg')) return 'image/jpeg';
+  if (normalizedName.endsWith('.png')) return 'image/png';
+
+  return undefined;
+}
+
 export function isEuropeanGatheringCompressibleImage(file: Pick<File, 'type'>) {
   return file.type === 'image/jpeg' || file.type === 'image/png';
 }

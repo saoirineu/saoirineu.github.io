@@ -22,6 +22,10 @@ Agents working here should optimize for small, verified changes and preserve use
 - `cd frontend && npm run test` runs the Vitest helper suite.
 - `cd frontend && npm run lint` must stay clean; it runs with `--max-warnings 0`.
 - `make firestore-rules` deploys Firestore rules.
+- `make storage-rules` deploys Firebase Storage rules.
+- `make firebase-rules` deploys both Firestore and Storage rules.
+- `make deploy-functions` builds and deploys Cloud Functions.
+- `make deploy-backend` deploys Firestore rules, Storage rules, and Cloud Functions.
 
 ## Conventions
 

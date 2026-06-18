@@ -1,8 +1,8 @@
 import { Timestamp, collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
-import { validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
+import { getEuropeanGatheringUploadContentType, validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
 import {
   asOptionalBoolean,
   asOptionalString,
@@ -310,6 +310,10 @@ export async function updateUserApprovalStatus(uid: string, status: UserApproval
   });
 }
 
+export async function resolveUserDocumentUrl(path: string) {
+  return getDownloadURL(ref(storage, path));
+}
+
 export async function uploadUserIdentityDocument(uid: string, file: File) {
   const validationError = validateEuropeanGatheringUploadFile(file);
   if (validationError === 'invalid-type') {
@@ -321,7 +325,7 @@ export async function uploadUserIdentityDocument(uid: string, file: File) {
   }
 
   const storagePath = `users/${uid}/identityDocument-${Date.now()}-${sanitizeFileName(file.name)}`;
-  await uploadBytes(ref(storage, storagePath), file, { contentType: file.type || undefined });
+  await uploadBytes(ref(storage, storagePath), file, { contentType: getEuropeanGatheringUploadContentType(file) });
   return { name: file.name, path: storagePath };
 }
 

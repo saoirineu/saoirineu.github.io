@@ -8,7 +8,8 @@ import {
   avatarFallback,
   buildProfileForm,
   buildUserPayload,
-  initialProfileForm
+  initialProfileForm,
+  isProfileFormReadyForApproval
 } from './form';
 
 const user = {
@@ -118,6 +119,22 @@ describe('profile form helpers', () => {
   it('creates avatar fallback url from name or email', () => {
     expect(avatarFallback('Maria Silva')).toContain('Maria%20Silva');
     expect(avatarFallback(undefined, 'mail@example.com')).toContain('mail%40example.com');
+  });
+
+  it('requires name, email, and identity document before approval submission', () => {
+    const readyBase = {
+      ...initialProfileForm,
+      email: 'auth@example.com',
+      fullName: 'Maria Rossi',
+      identityDocumentPrimaryPath: 'users/user-1/id.pdf'
+    };
+
+    expect(isProfileFormReadyForApproval(readyBase)).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...readyBase, fullName: '', firstName: 'Maria', surname: 'Rossi' })).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...readyBase, identityDocumentPrimaryPath: '' }, true)).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...readyBase, fullName: '', displayName: '', firstName: 'Maria', surname: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...readyBase, email: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...readyBase, identityDocumentPrimaryPath: '' })).toBe(false);
   });
 
   it('prefills only empty fields from the linked member and records the link', () => {

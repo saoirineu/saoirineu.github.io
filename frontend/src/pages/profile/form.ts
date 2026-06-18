@@ -139,9 +139,18 @@ function splitCommaValues(value: string) {
     .filter(Boolean);
 }
 
+function hasText(value: string | null | undefined) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function avatarFallback(name?: string, email?: string) {
   const base = name || email || '?';
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(base)}&background=1e293b&color=fff`;
+}
+
+export function isProfileFormReadyForApproval(form: ProfileFormState, hasSelectedIdentityDocument = false) {
+  const hasName = hasText(form.fullName) || hasText(form.displayName) || (hasText(form.firstName) && hasText(form.surname));
+  return hasName && hasText(form.email) && (hasText(form.identityDocumentPrimaryPath) || hasSelectedIdentityDocument);
 }
 
 export function buildProfileForm(user: User, profile?: UserProfile | null): ProfileFormState {

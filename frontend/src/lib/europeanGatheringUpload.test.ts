@@ -4,6 +4,7 @@ import {
   europeanGatheringImageCompressionThresholdBytes,
   europeanGatheringUploadMaxBytes,
   formatFileSize,
+  getEuropeanGatheringUploadContentType,
   isEuropeanGatheringUploadTypeAllowed,
   shouldOfferEuropeanGatheringImageCompression,
   validateEuropeanGatheringUploadFile
@@ -33,6 +34,14 @@ describe('europeanGathering upload helpers', () => {
         type: 'application/pdf'
       } as File)
     ).toBe('file-too-large');
+  });
+
+  it('infers upload content type from extension when the browser omits it', () => {
+    expect(getEuropeanGatheringUploadContentType({ name: 'scan.pdf', type: '' } as File)).toBe('application/pdf');
+    expect(getEuropeanGatheringUploadContentType({ name: 'scan.jpeg', type: '' } as File)).toBe('image/jpeg');
+    expect(getEuropeanGatheringUploadContentType({ name: 'scan.png', type: '' } as File)).toBe('image/png');
+    expect(getEuropeanGatheringUploadContentType({ name: 'scan.pdf', type: 'application/pdf' } as File)).toBe('application/pdf');
+    expect(getEuropeanGatheringUploadContentType({ name: 'scan.heic', type: '' } as File)).toBeUndefined();
   });
 
   it('offers compression only for larger jpeg or png images', () => {

@@ -2,7 +2,7 @@ PORT ?= 5174
 FIREBASE_PROJECT ?= sao-irineu
 FIREBASE ?= $(shell which firebase 2>/dev/null || echo npx firebase)
 
-.PHONY: serve up aup firestore-rules storage-rules backup migrate-dry migrate migrate-and-clean smtp-secrets leader-token-secret regenerate-leader-token leader-link seed-leader-demo unseed-leader-demo deploy-functions
+.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean smtp-secrets leader-token-secret regenerate-leader-token leader-link seed-leader-demo unseed-leader-demo
 
 serve:
 	npm --prefix frontend run dev -- --host --port $(PORT)
@@ -18,6 +18,10 @@ firestore-rules:
 
 storage-rules:
 	$(FIREBASE) deploy --only storage --project $(FIREBASE_PROJECT)
+
+firebase-rules: firestore-rules storage-rules
+
+deploy-backend: firestore-rules storage-rules deploy-functions
 
 # Installs npm dependencies for the scripts directory
 # This target runs 'npm install' in the scripts folder, creating/updating node_modules
