@@ -39,25 +39,34 @@ function interviewRequirementFor(decision: LeaderDecision): 'none' | 'standard' 
 
 const LEADER_TOKEN_HEX_LENGTH = 32;
 
-function signLeaderToken(registrationId: string, leaderEmail: string, secret: string) {
+// eventId is empty for legacy europeanGatheringRegistrations (keeps existing leader links valid)
+// and the event id for events/{eventId}/registrations.
+function leaderTokenPayload(registrationId: string, leaderEmail: string, eventId: string) {
+  const email = leaderEmail.trim().toLowerCase();
+  return eventId ? `${eventId}:${registrationId}:${email}` : `${registrationId}:${email}`;
+}
+
+function signLeaderToken(registrationId: string, leaderEmail: string, secret: string, eventId = '') {
   return crypto
     .createHmac('sha256', secret)
-    .update(`${registrationId}:${leaderEmail.trim().toLowerCase()}`)
+    .update(leaderTokenPayload(registrationId, leaderEmail, eventId))
     .digest('hex')
     .slice(0, LEADER_TOKEN_HEX_LENGTH);
 }
 
-function verifyLeaderToken(registrationId: string, leaderEmail: string, token: string, secret: string) {
-  const expected = signLeaderToken(registrationId, leaderEmail, secret);
+function verifyLeaderToken(registrationId: string, leaderEmail: string, token: string, secret: string, eventId = '') {
+  const expected = signLeaderToken(registrationId, leaderEmail, secret, eventId);
   const a = Buffer.from(expected, 'hex');
   const b = Buffer.from(token, 'hex');
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }
 
-function buildLeaderReviewUrl(registrationId: string, token: string) {
+function buildLeaderReviewUrl(registrationId: string, token: string, eventId = '') {
   const base = appBaseUrl.value().replace(/\/$/, '');
-  return `${base}/european-gathering/leader-review/${registrationId}?t=${token}`;
+  return eventId
+    ? `${base}/leader-review/${registrationId}?t=${token}&e=${encodeURIComponent(eventId)}`
+    : `${base}/european-gathering/leader-review/${registrationId}?t=${token}`;
 }
 
 function buildLeaderEmailBody(args: { name: string; reviewUrl: string }) {
@@ -216,6 +225,36 @@ export const onEuropeanGatheringRegistration = onDocumentCreated(
   }
 );
 
+// Generic events leader-review notification (Part 2, §7.5). Mirrors the EG trigger but for
+// events/{eventId}/registrations and an eventId-scoped tokenized leader link.
+export const onEventRegistration = onDocumentCreated(
+  {
+    document: 'events/{eventId}/registrations/{id}',
+    secrets: [smtpHost, smtpPort, smtpUser, smtpPass, leaderTokenSecret],
+  },
+  async event => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const { eventId, id } = event.params;
+    const name = `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim();
+    const leaderEmail = typeof data.centerLeaderEmail === 'string' ? data.centerLeaderEmail.trim() : '';
+    const leaderName = typeof data.centerLeader === 'string' ? data.centerLeader.trim() : '';
+    if (!leaderEmail) return;
+
+    const token = signLeaderToken(id, leaderEmail, leaderTokenSecret.value(), eventId);
+    const reviewUrl = buildLeaderReviewUrl(id, token, eventId);
+    const transporter = createTransporter();
+
+    await transporter.sendMail({
+      from: smtpUser.value(),
+      to: leaderEmail,
+      subject: `Registration approval request — ${name}`,
+      text: buildLeaderEmailBody({ name: leaderName || 'leader', reviewUrl }),
+    });
+  }
+);
+
 function sanitizeInterview(value: unknown) {
   const interview = (value ?? null) as { required?: unknown; status?: unknown; resolvedAt?: unknown } | null;
   if (!interview || !interview.required || interview.required === 'none') {
@@ -269,7 +308,7 @@ function sanitizeRegistrationForLeader(id: string, data: FirebaseFirestore.Docum
   };
 }
 
-async function loadRegistrationForLeader(args: { id: unknown; token: unknown }) {
+async function loadRegistrationForLeader(args: { id: unknown; token: unknown; eventId?: unknown }) {
   if (typeof args.id !== 'string' || !args.id) {
     throw new HttpsError('invalid-argument', 'Registration id is required.');
   }
@@ -278,7 +317,10 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown }) 
     throw new HttpsError('invalid-argument', 'Token is required.');
   }
 
-  const ref = admin.firestore().collection('europeanGatheringRegistrations').doc(args.id);
+  const eventId = typeof args.eventId === 'string' ? args.eventId : '';
+  const ref = eventId
+    ? admin.firestore().collection('events').doc(eventId).collection('registrations').doc(args.id)
+    : admin.firestore().collection('europeanGatheringRegistrations').doc(args.id);
   const snapshot = await ref.get();
   if (!snapshot.exists) {
     throw new HttpsError('not-found', 'Registration not found.');
@@ -290,7 +332,7 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown }) 
     throw new HttpsError('failed-precondition', 'No leader email associated with this registration.');
   }
 
-  if (!verifyLeaderToken(args.id, leaderEmail, args.token, leaderTokenSecret.value())) {
+  if (!verifyLeaderToken(args.id, leaderEmail, args.token, leaderTokenSecret.value(), eventId)) {
     throw new HttpsError('permission-denied', 'Invalid token.');
   }
 
@@ -300,8 +342,8 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown }) 
 export const europeanGatheringLeaderView = onCall(
   { secrets: [leaderTokenSecret] },
   async request => {
-    const { id, token } = (request.data ?? {}) as { id?: unknown; token?: unknown };
-    const { ref, data } = await loadRegistrationForLeader({ id, token });
+    const { id, token, eventId } = (request.data ?? {}) as { id?: unknown; token?: unknown; eventId?: unknown };
+    const { ref, data } = await loadRegistrationForLeader({ id, token, eventId });
     return sanitizeRegistrationForLeader(ref.id, data);
   }
 );
@@ -332,12 +374,13 @@ export const europeanGatheringLeaderRespond = onCall(
     const payload = (request.data ?? {}) as {
       id?: unknown;
       token?: unknown;
+      eventId?: unknown;
       comment?: unknown;
       decision?: unknown;
       interviewOutcome?: unknown;
     };
 
-    const { ref, data } = await loadRegistrationForLeader({ id: payload.id, token: payload.token });
+    const { ref, data } = await loadRegistrationForLeader({ id: payload.id, token: payload.token, eventId: payload.eventId });
     const leaderEmail = typeof data.centerLeaderEmail === 'string' ? data.centerLeaderEmail.trim() : '';
 
     const updates: Record<string, unknown> = {};

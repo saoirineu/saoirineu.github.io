@@ -38,6 +38,26 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
 }
 
+function leaderBadge(registration: EventRegistrationRecord) {
+  const { leaderApproval, interview } = registration;
+  if (!leaderApproval) return null;
+  const label =
+    leaderApproval === 'approved' ? 'Líder: aprovado'
+    : leaderApproval === 'approved-interview' ? 'Líder: aprovado (entrevista)'
+    : leaderApproval === 'approved-psychologist' ? 'Líder: aprovado (psicólogo)'
+    : 'Líder: rejeitado';
+  const cls =
+    leaderApproval === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : leaderApproval === 'rejected' ? 'border-rose-200 bg-rose-50 text-rose-800'
+    : 'border-amber-200 bg-amber-50 text-amber-800';
+  const interviewText = interview?.status === 'awaiting'
+    ? ` · aguardando ${interview.required === 'psychologist' ? 'psicólogo' : 'entrevista'}`
+    : interview
+      ? ` · pós-entrevista: ${interview.status === 'approved' ? 'aprovado' : 'rejeitado'}`
+      : '';
+  return <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${cls}`}>{label}{interviewText}</span>;
+}
+
 async function openDocument(path?: string) {
   if (!path) return;
   const url = await resolveEventDocumentUrl(path);
@@ -107,6 +127,7 @@ export default function EventRegistrationsAdminPage() {
                 <p className="mt-1 text-sm text-slate-700">
                   {registration.attendanceMode} · {registration.selectedWorks.length} trabalho(s) · {formatCurrency(registration.contribution.total)}
                 </p>
+                <div className="mt-2">{leaderBadge(registration)}</div>
               </div>
               <div className="flex flex-col items-start gap-2 sm:items-end">
                 <div className={`inline-flex rounded-xl border px-3 py-2 text-sm ${statusAccent[registration.status]}`}>

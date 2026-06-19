@@ -442,11 +442,20 @@ the events list): lists registrations with status control, capacity summary, doc
 delete, using the 4c.2 lib. Remaining for a richer view: leader-decision/interview columns (arrive
 with §7.5).
 
-### 7.5 Generalize the leader-review flow to events (EG-cutover prerequisite)
-`europeanGatheringLeaderView/Respond` (functions) + the tokenized leader link + `LeaderReviewPage`
-are EG-specific (`europeanGatheringRegistrations`). The two-phase leader decisions (Phase 3) +
-consent stamping must work for `events/{id}/registrations` (token signing to include `eventId`,
-callables to take `eventId`, leader-email notification) before the EG cutover.
+### 7.5 Generalize the leader-review flow to events (EG-cutover prerequisite) — DONE
+The leader-review flow now works for `events/{id}/registrations`:
+- functions: `signLeaderToken`/`verifyLeaderToken` take an optional `eventId` (legacy EG links
+  unchanged when absent); `loadRegistrationForLeader` + both callables route to the events
+  subcollection when `eventId` is given; consent stamping already keys on `eventId == regId`.
+- new `onEventRegistration` `onDocumentCreated` trigger emails the reference church an
+  eventId-scoped tokenized link; `buildLeaderReviewUrl` → `/leader-review/:id?t=…&e=eventId`.
+- frontend: `fetchEuropeanGatheringLeaderView`/`submitEuropeanGatheringLeaderResponse` take
+  `eventId`; `LeaderReviewPage` reads `?e=` (new `/leader-review/:id` route, legacy route kept);
+  `EventRegistrationRecord` maps `leaderApproval`/`interview` and the events-registrations admin
+  shows a leader badge.
+
+**EG cutover (4e.3) is now unblocked** — both prerequisites (§7.4 admin triage, §7.5 leader flow)
+are in place.
 
 ### 7.3 Harden `events/{id}/capacity` bucket integrity
 The capacity write rule enforces the invariant (`reserved` in range, `available == capacity -

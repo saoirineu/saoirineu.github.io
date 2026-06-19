@@ -598,17 +598,17 @@ export type EuropeanGatheringLeaderView = {
   leaderComments: Array<{ text: string; at: number | null }>;
 };
 
-const leaderViewCallable = httpsCallable<{ id: string; token: string }, EuropeanGatheringLeaderView>(
+const leaderViewCallable = httpsCallable<{ id: string; token: string; eventId?: string }, EuropeanGatheringLeaderView>(
   functions,
   'europeanGatheringLeaderView'
 );
 
 const leaderRespondCallable = httpsCallable<
-  { id: string; token: string; comment?: string; decision?: LeaderApprovalDecision; interviewOutcome?: InterviewOutcome },
+  { id: string; token: string; eventId?: string; comment?: string; decision?: LeaderApprovalDecision; interviewOutcome?: InterviewOutcome },
   EuropeanGatheringLeaderView
 >(functions, 'europeanGatheringLeaderRespond');
 
-export async function fetchEuropeanGatheringLeaderView(args: { id: string; token: string }) {
+export async function fetchEuropeanGatheringLeaderView(args: { id: string; token: string; eventId?: string }) {
   const result = await leaderViewCallable(args);
   return result.data;
 }
@@ -616,6 +616,7 @@ export async function fetchEuropeanGatheringLeaderView(args: { id: string; token
 export async function submitEuropeanGatheringLeaderResponse(args: {
   id: string;
   token: string;
+  eventId?: string;
   comment?: string;
   decision?: LeaderApprovalDecision;
   interviewOutcome?: InterviewOutcome;

@@ -15,6 +15,7 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 
 import { createConsentRecord } from './consents';
 import type { EventRecord } from './events';
+import type { LeaderApprovalDecision, RegistrationInterview } from './europeanGathering';
 import { getEuropeanGatheringUploadContentType, validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
 import { db, storage } from './firebase';
 import {
@@ -234,6 +235,8 @@ export type EventRegistrationRecord = Omit<EventRegistrationInput, 'status'> & {
   status: EventRegistrationStatus;
   submittedAt?: Date | null;
   userId?: string;
+  leaderApproval?: LeaderApprovalDecision;
+  interview?: RegistrationInterview;
 };
 
 const capacityBlockingStatuses: EventRegistrationStatus[] = ['pending', 'under-review', 'approved'];
@@ -317,6 +320,20 @@ async function adjustEventCapacity(eventId: string, bucket: EventCapacityBucket,
   });
 }
 
+function mapEventLeaderApproval(value: unknown): LeaderApprovalDecision | undefined {
+  return value === 'approved' || value === 'approved-interview' || value === 'approved-psychologist' || value === 'rejected'
+    ? value
+    : undefined;
+}
+
+function mapEventInterview(value: unknown): RegistrationInterview | undefined {
+  const data = asRecord(value);
+  const required = asOptionalString(data.required);
+  if (required !== 'standard' && required !== 'psychologist') return undefined;
+  const status = asOptionalString(data.status);
+  return { required, status: status === 'approved' || status === 'rejected' ? status : 'awaiting' };
+}
+
 function mapEventRegistration(id: string, eventId: string, value: unknown): EventRegistrationRecord {
   const data = asRecord(value);
   const contribution = asRecord(data.contribution);
@@ -360,7 +377,9 @@ function mapEventRegistration(id: string, eventId: string, value: unknown): Even
     },
     status,
     submittedAt: submittedAt instanceof Timestamp ? submittedAt.toDate() : null,
-    userId: asOptionalString(data.userId)
+    userId: asOptionalString(data.userId),
+    leaderApproval: mapEventLeaderApproval(data.leaderApproval),
+    interview: mapEventInterview(data.interview)
   };
 }
 

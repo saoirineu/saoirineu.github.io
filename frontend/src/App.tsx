@@ -88,6 +88,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/european-gathering" element={<EuropeanGatheringRoute />} />
         <Route path="/european-gathering/leader-review/:id" element={<LeaderReviewPage />} />
+        <Route path="/leader-review/:id" element={<LeaderReviewPage />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />

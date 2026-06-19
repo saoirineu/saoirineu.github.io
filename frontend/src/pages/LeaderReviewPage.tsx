@@ -44,6 +44,7 @@ export default function LeaderReviewPage() {
   const [searchParams] = useSearchParams();
   const id = params.id ?? '';
   const token = searchParams.get('t') ?? '';
+  const eventId = searchParams.get('e') ?? undefined;
 
   const [data, setData] = useState<EuropeanGatheringLeaderView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +63,7 @@ export default function LeaderReviewPage() {
 
     let cancelled = false;
     setLoading(true);
-    fetchEuropeanGatheringLeaderView({ id, token })
+    fetchEuropeanGatheringLeaderView({ id, token, eventId })
       .then(view => { if (!cancelled) setData(view); })
       .catch(error => {
         if (!cancelled) {
@@ -72,7 +73,7 @@ export default function LeaderReviewPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [id, token]);
+  }, [id, token, eventId]);
 
   const fullName = useMemo(() => {
     if (!data) return '';
@@ -87,7 +88,7 @@ export default function LeaderReviewPage() {
     setFeedback('');
     setSubmitting(key);
     try {
-      const next = await submitEuropeanGatheringLeaderResponse({ id, token, ...args });
+      const next = await submitEuropeanGatheringLeaderResponse({ id, token, eventId, ...args });
       setData(next);
       if (args.comment) setComment('');
       setFeedback(
