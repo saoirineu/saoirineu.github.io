@@ -413,9 +413,16 @@ Parity gaps still to settle (keep in the renderer vs drop) before cutover:
 - novice consent-form download link (would need an event-level consent-form URL)
 
 Steps:
-- [ ] Close the chosen parity gaps in `EventRegistrationPage`.
-- [ ] Publish the seeded event; point `/european-gathering` → `/events/encontro-europeu-2026`;
-      swap the dashboard card; retire the bespoke EG page; unify the duplicated `InfoTooltip`.
+- [x] Close the parity gaps in `EventRegistrationPage` — **all four** chosen features (4e.1 resources
+      model + 4e.2 payment/success, privacy, resource links + consent download, draft saving).
+- [ ] **Cutover is blocked on generalizing two EG-specific flows (see §7.4, §7.5).** Publishing the
+      EG event + redirect would leave generic-path registrations with **no admin triage and no
+      leader approval**. The seed is `draft`, so nothing is live/broken yet — this is a prerequisite,
+      not an active regression.
+      **Recommendation:** keep EG on its (fully functional) bespoke path and use the generic events
+      vertical for **new** events, until the admin + leader flows are generalized.
+- [ ] (after §7.4 + §7.5) publish event; redirect `/european-gathering` → `/events/encontro-europeu-2026`;
+      swap dashboard card; retire bespoke EG page + lib; unify the duplicated `InfoTooltip`.
 - [ ] `docs/firestore-schema.md` + `docs/encontroEuropeu.md`: mark EG as an `events` instance.
 
 ---
@@ -428,6 +435,18 @@ It must be localized into the four site languages like the registration page, in
 four phase-1 decision buttons, the phase-2 outcome buttons, the interview banner, status badges,
 and feedback/error strings. (The registration leader link could also carry the registrant's
 `locale` so the page opens in the right language.)
+
+### 7.4 Generalize the admin registrations view to events (EG-cutover prerequisite) — DONE
+`EventRegistrationsAdminPage` at `/admin/events/:slug/registrations` (eventadmin-gated, linked from
+the events list): lists registrations with status control, capacity summary, document links and
+delete, using the 4c.2 lib. Remaining for a richer view: leader-decision/interview columns (arrive
+with §7.5).
+
+### 7.5 Generalize the leader-review flow to events (EG-cutover prerequisite)
+`europeanGatheringLeaderView/Respond` (functions) + the tokenized leader link + `LeaderReviewPage`
+are EG-specific (`europeanGatheringRegistrations`). The two-phase leader decisions (Phase 3) +
+consent stamping must work for `events/{id}/registrations` (token signing to include `eventId`,
+callables to take `eventId`, leader-email notification) before the EG cutover.
 
 ### 7.3 Harden `events/{id}/capacity` bucket integrity
 The capacity write rule enforces the invariant (`reserved` in range, `available == capacity -

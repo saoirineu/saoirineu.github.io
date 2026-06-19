@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -333,6 +334,7 @@ export default function EventsAdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs">
+              <Link to={`/admin/events/${record.slug}/registrations`} className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm">Inscrições</Link>
               <button className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm" onClick={() => startEdit(record)}>Editar</button>
               <button
                 className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
