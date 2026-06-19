@@ -1,10 +1,9 @@
 import { Suspense, lazy, type ReactNode } from 'react';
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 
 import { AuthGate } from './components/AuthGate';
 import { NavBar } from './components/NavBar';
 import { RoleGate } from './components/RoleGate';
-import { useAuth } from './providers/useAuth';
 import { useDevMode } from './providers/useDevMode';
 
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
@@ -12,7 +11,6 @@ const SacramentPage = lazy(() => import('./pages/SacramentPage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
-const EuropeanGatheringPage = lazy(() => import('./pages/EuropeanGatheringPage'));
 const EventsAdminPage = lazy(() => import('./pages/EventsAdminPage'));
 const EventRegistrationsAdminPage = lazy(() => import('./pages/EventRegistrationsAdminPage'));
 const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
@@ -52,25 +50,6 @@ function ShellFrame({ children }: { children: ReactNode }) {
   );
 }
 
-function EuropeanGatheringRoute() {
-  const { user, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <RouteFallback />;
-  }
-
-  if (user) {
-    return (
-      <ShellFrame>
-        <EuropeanGatheringPage showPublicHero={false} />
-      </ShellFrame>
-    );
-  }
-
-  return <Navigate to="/login" replace state={{ from: location }} />;
-}
-
 function DevOnlyRoute() {
   const { devModeEnabled } = useDevMode();
 
@@ -86,7 +65,7 @@ function App() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/european-gathering" element={<EuropeanGatheringRoute />} />
+        <Route path="/european-gathering" element={<Navigate to="/events/encontro-europeu-2026" replace />} />
         <Route path="/european-gathering/leader-review/:id" element={<LeaderReviewPage />} />
         <Route path="/leader-review/:id" element={<LeaderReviewPage />} />
         <Route element={<AuthGate />}>

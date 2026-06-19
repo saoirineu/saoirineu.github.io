@@ -1,6 +1,14 @@
 ## Pagina de iscrizione incontro europeo
 
-Este documento descreve a especificacao funcional da pagina de inscricao para o encontro europeu.
+> **Atualizacao (Parte 2, Fase 4e.3 — cutover):** o Encontro Europeu agora e uma instancia da
+> colecao generica `events` (`events/encontro-europeu-2026`). A pagina dedicada foi aposentada;
+> `/european-gathering` redireciona para `/events/encontro-europeu-2026` (renderer generico
+> `EventRegistrationPage`). A configuracao (datas, vagas, caucao, valores, recursos) vive no
+> documento do evento, editavel por `eventadmin` em `/admin/events`. As inscricoes antigas
+> permanecem em `europeanGatheringRegistrations` (admin em `/admin/european-gathering`); as novas
+> vao para `events/encontro-europeu-2026/registrations`. Ver `events-eventadmin-design.md`.
+
+Este documento descreve a especificacao funcional original da pagina de inscricao para o encontro europeu.
 
 ## Regras gerais
 

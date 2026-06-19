@@ -95,6 +95,11 @@ senao `email-<hash>` ou `name-<hash>`.
 - Precedencia de merge: `ELENCO COMPLETO SOCI CLOUD.xlsx` e a fonte principal — seus valores vencem e o importer (`ImporterAnagrafichePF compilato.xlsx`) so preenche campos ausentes; excecao e a data de iscrizione (`registrationDate`), na qual o importer tem precedencia. Valores distintos dentro da mesma fonte resolvem pelo registro mais recente; os descartados ficam em `superseeded[campo]`. Certificados ("Primo Lavoro") casam por email somente quando o nome do sujeito tambem confere (emails de familia sao compartilhados), depois por nome. Registros que compartilham email mas tem nomes claramente diferentes ficam separados e ligados via `possibleDuplicateIds`, com `reviewReasons` incluindo `family-email` para revisao manual na UI admin.
 
 ### encontroEuropeuInscricoes
+> **Parte 2, Fase 4e.3:** o formulario do Encontro Europeu foi migrado para o renderer generico
+> (`events/encontro-europeu-2026/registrations`). Esta colecao guarda apenas as inscricoes
+> **antigas** (pre-cutover), ainda triadas em `/admin/european-gathering`. Inscricoes novas usam
+> a subcolecao do evento. Nao houve migracao de dados (ids de trabalhos antigos divergem).
+
 - locale: `pt` | `en` | `es` | `it`
 - firstName, lastName, country
 - church, centerLeader

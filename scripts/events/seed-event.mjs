@@ -3,10 +3,9 @@
  * Seed the generic `events/encontro-europeu-2026` document from the current
  * European Gathering constants (Part 2, Phase 4d). The doc id is the slug.
  *
- * Seeded as status `draft` on purpose: the generic renderer (/events/:slug) is
- * leaner than the live bespoke EG page, so we do not expose it to members until
- * the 4e parity check + cutover. An eventadmin reviews it in /admin/events and
- * publishes when ready. Re-running is idempotent (createdAt only on first write).
+ * Seeded as `published` (Phase 4e.3 cutover): /european-gathering now redirects here and
+ * the dashboard lists it for approved members. Run with --live to create/publish it.
+ * Re-running is idempotent (createdAt only on first write).
  *
  * Flags:
  *   --dry-run   Print what would happen without writing (default)
@@ -38,7 +37,7 @@ const event = {
     it: 'Incontro Europeo 2026'
   },
   slug: SLUG,
-  status: 'draft',
+  status: 'published',
   kind: 'multi',
   capacityMode: 'total',
   totalSlots: 84,

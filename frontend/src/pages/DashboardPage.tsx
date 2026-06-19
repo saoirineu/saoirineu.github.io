@@ -201,9 +201,6 @@ export function DashboardPage() {
 
   const stableCards = [
     ...(portalAccessCard ? [portalAccessCard] : []),
-    ...(approvalStatus === 'approved'
-      ? [{ to: '/european-gathering', ...copy.stableCards.gathering }]
-      : []),
     ...(approvalStatus === 'approved' ? eventCards : []),
     ...(hasRequiredRole(role, 'admin')
       ? [{ to: '/admin/european-gathering', ...copy.stableCards.registrations }]

@@ -412,18 +412,22 @@ Parity gaps still to settle (keep in the renderer vs drop) before cutover:
 - draft saving (localStorage)
 - novice consent-form download link (would need an event-level consent-form URL)
 
-Steps:
-- [x] Close the parity gaps in `EventRegistrationPage` — **all four** chosen features (4e.1 resources
-      model + 4e.2 payment/success, privacy, resource links + consent download, draft saving).
-- [ ] **Cutover is blocked on generalizing two EG-specific flows (see §7.4, §7.5).** Publishing the
-      EG event + redirect would leave generic-path registrations with **no admin triage and no
-      leader approval**. The seed is `draft`, so nothing is live/broken yet — this is a prerequisite,
-      not an active regression.
-      **Recommendation:** keep EG on its (fully functional) bespoke path and use the generic events
-      vertical for **new** events, until the admin + leader flows are generalized.
-- [ ] (after §7.4 + §7.5) publish event; redirect `/european-gathering` → `/events/encontro-europeu-2026`;
-      swap dashboard card; retire bespoke EG page + lib; unify the duplicated `InfoTooltip`.
-- [ ] `docs/firestore-schema.md` + `docs/encontroEuropeu.md`: mark EG as an `events` instance.
+Steps — **DONE (full cutover)**:
+- [x] Close the parity gaps in `EventRegistrationPage` — all four chosen features (4e.1 + 4e.2).
+- [x] Prerequisites generalized: §7.4 admin triage + §7.5 leader-review flow for events.
+- [x] Seed flipped to `published`; `/european-gathering` → `Navigate` to `/events/encontro-europeu-2026`;
+      dashboard now lists published events (hardcoded gathering card removed); bespoke
+      `EuropeanGatheringPage` + `european-gathering/form{,.test}.ts` deleted; `InfoTooltip`
+      duplication resolved by deletion (shared `components/InfoTooltip` remains).
+- [x] `docs/firestore-schema.md` + `docs/encontroEuropeu.md`: EG marked as an `events` instance.
+
+**Operational note:** run `node scripts/events/seed-event.mjs --live` to create/publish the
+`encontro-europeu-2026` event (the redirect/dashboard assume it exists & is `published`).
+**Not migrated:** existing `europeanGatheringRegistrations` stay in the legacy collection and are
+still triaged at `/admin/european-gathering`; new registrations go to the events subcollection.
+(The legacy `europeanGatheringAdminPage` + lib + the legacy leader route are intentionally kept for
+those records; the legacy collection's old work ids don't map cleanly to the new event's works, so a
+data migration was deliberately not attempted.)
 
 ---
 
