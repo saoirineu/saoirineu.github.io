@@ -433,12 +433,11 @@ data migration was deliberately not attempted.)
 
 ## 7. Deferred follow-ups (tracked debt — do not forget)
 
-### 7.1 Translate the leader review page (pt/en/es/it)
-[LeaderReviewPage.tsx](../frontend/src/pages/LeaderReviewPage.tsx) is currently English-only.
-It must be localized into the four site languages like the registration page, including the
-four phase-1 decision buttons, the phase-2 outcome buttons, the interview banner, status badges,
-and feedback/error strings. (The registration leader link could also carry the registrant's
-`locale` so the page opens in the right language.)
+### 7.1 Translate the leader review page (pt/en/es/it) — DONE
+[LeaderReviewPage.tsx](../frontend/src/pages/LeaderReviewPage.tsx) is now fully localized (4-language
+`copyByLocale`) via `useSiteLocale`, with a language switcher in the header and locale-aware
+date/currency formatting — covering the 4 phase-1 buttons, phase-2 buttons, interview banner,
+badges, and feedback/error strings.
 
 ### 7.4 Generalize the admin registrations view to events (EG-cutover prerequisite) — DONE
 `EventRegistrationsAdminPage` at `/admin/events/:slug/registrations` (eventadmin-gated, linked from
@@ -461,18 +460,18 @@ The leader-review flow now works for `events/{id}/registrations`:
 **EG cutover (4e.3) is now unblocked** — both prerequisites (§7.4 admin triage, §7.5 leader flow)
 are in place.
 
-### 7.3 Harden `events/{id}/capacity` bucket integrity
-The capacity write rule enforces the invariant (`reserved` in range, `available == capacity -
-reserved`) but does **not** validate `capacity` against the event doc, so a signed-in user could
-create a bucket with an arbitrary `capacity` and over-book. Low severity (counter integrity, not
-data exposure). Tighten by cross-reading the event doc in the rule (straightforward for `total`
-mode; per-room needs array lookup) or by moving capacity writes server-side.
+### 7.3 Harden `events/{id}/capacity` bucket integrity — DONE
+The capacity write rule now also requires the event doc to `exists()` and pins the `total` bucket's
+`capacity` to `event.totalSlots` (via `get()`), in addition to the existing invariant. Residual gap
+(documented): per-room bucket `capacity` still isn't matched to the specific room (rules can't
+`find` in the `rooms` array) — acceptable since events are eventadmin-authored; fully closing it
+would mean moving capacity writes server-side.
 
-### 7.2 Unit tests for the two-phase leader state-machine
-No automated tests cover the Phase 3 transitions yet. Add tests for: phase-1 `approved` →
-terminal + consent stamped; `rejected` → terminal, no consent; `approved-interview`/
-`approved-psychologist` → `interview.required` set + `status: awaiting`, **not** terminal;
-phase-2 `interviewOutcome` only allowed when awaiting (else `failed-precondition`); phase-2
-`approved` → consent stamped, `rejected` → not. Pure helpers (`interviewRequirementFor`,
-`isTerminalApproval`) are trivially unit-testable; the callable path needs a functions test
-harness (e.g. `firebase-functions-test` + Firestore emulator).
+### 7.2 Unit tests for the two-phase leader state-machine — DONE
+The transition logic was extracted into a pure module `functions/src/leaderDecision.ts`
+(`computeLeaderResponse` + `interviewRequirementFor`/`isTerminalApproval`); the respond callable
+now wraps it with timestamps/comments/consent. `functions/src/leaderDecision.test.ts` (9 cases via
+`node:test`, run by `npm test` in `functions/`) covers all transitions: phase-1 approved→terminal,
+rejected→terminal-not-approval, interview decisions→awaiting+not-terminal, phase-2 requires a
+pending interview, phase-2 approved→terminal/rejected→not, invalid/empty rejected, comment-only.
+(Test files compile into `functions/lib/`; harmless in deploy.)

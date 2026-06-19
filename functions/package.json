@@ -6,7 +6,8 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "build:watch": "tsc --watch"
+    "build:watch": "tsc --watch",
+    "test": "tsc && node --test \"lib/**/*.test.js\""
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",

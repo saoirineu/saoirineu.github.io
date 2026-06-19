@@ -435,7 +435,12 @@ service cloud.firestore {
           && request.resource.data.reserved >= 0
           && request.resource.data.reserved <= request.resource.data.capacity
           && request.resource.data.available == request.resource.data.capacity - request.resource.data.reserved
-          && request.resource.data.updatedAt == request.time;
+          && request.resource.data.updatedAt == request.time
+          // §7.3: the event must exist, and the 'total' bucket's capacity must match the event doc
+          // (per-room capacity can't be array-matched in rules; events are eventadmin-authored).
+          && exists(/databases/$(database)/documents/events/$(eventId))
+          && (bucket != 'total'
+            || request.resource.data.capacity == get(/databases/$(database)/documents/events/$(eventId)).data.totalSlots);
         allow delete: if false;
       }
     }
