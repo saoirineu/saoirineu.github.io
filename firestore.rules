@@ -107,7 +107,7 @@ service cloud.firestore {
         && request.resource.data.uploadedAt == request.time;
     }
 
-    function hasValidEncontroEuropeuStatus() {
+    function hasValidRegistrationStatus() {
       return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue', 'rejected', 'archived'];
     }
 
@@ -211,14 +211,14 @@ service cloud.firestore {
       ];
     }
 
-    function hasValidOptionalEncontroEuropeuString(field, maxSize) {
+    function hasValidOptionalString(field, maxSize) {
       return !request.resource.data.keys().hasAny([field])
         || (request.resource.data[field] is string
           && request.resource.data[field].size() > 0
           && request.resource.data[field].size() <= maxSize);
     }
 
-    function hasValidEncontroEuropeuContribution() {
+    function hasValidContribution() {
       return request.resource.data.contribution is map
         && request.resource.data.contribution.keys().hasAll([
           'nights',
@@ -265,28 +265,28 @@ service cloud.firestore {
         && request.resource.data.centerLeader is string
         && request.resource.data.centerLeader.size() > 0
         && request.resource.data.centerLeader.size() <= 240
-        && hasValidOptionalEncontroEuropeuString('centerLeaderEmail', 240)
+        && hasValidOptionalString('centerLeaderEmail', 240)
         && request.resource.data.isInitiated is bool
         && request.resource.data.isIcefluMember is bool
         && request.resource.data.isNovice is bool
         && request.resource.data.attendanceMode in ['lodging', 'meals', 'spiritual']
-        && hasValidOptionalEncontroEuropeuString('checkIn', 10)
-        && hasValidOptionalEncontroEuropeuString('checkOut', 10)
+        && hasValidOptionalString('checkIn', 10)
+        && hasValidOptionalString('checkOut', 10)
         && request.resource.data.selectedWorks is list
         && request.resource.data.selectedWorks.size() <= 4
         && request.resource.data.needsExtraLinen is bool
         && (!request.resource.data.keys().hasAny(['roomNumber']) || isValidEncontroEuropeuRoom(request.resource.data.roomNumber))
-        && hasValidOptionalEncontroEuropeuString('identityDocumentName', 240)
-        && hasValidOptionalEncontroEuropeuString('identityDocumentPath', 1024)
-        && hasValidOptionalEncontroEuropeuString('paymentProofName', 240)
-        && hasValidOptionalEncontroEuropeuString('paymentProofPath', 1024)
-        && hasValidOptionalEncontroEuropeuString('consentDocumentName', 240)
-        && hasValidOptionalEncontroEuropeuString('consentDocumentPath', 1024)
-        && hasValidOptionalEncontroEuropeuString('phone', 40)
-        && hasValidOptionalEncontroEuropeuString('phoneCountryCode', 10)
-        && hasValidOptionalEncontroEuropeuString('email', 240)
-        && hasValidEncontroEuropeuContribution()
-        && hasValidEncontroEuropeuStatus();
+        && hasValidOptionalString('identityDocumentName', 240)
+        && hasValidOptionalString('identityDocumentPath', 1024)
+        && hasValidOptionalString('paymentProofName', 240)
+        && hasValidOptionalString('paymentProofPath', 1024)
+        && hasValidOptionalString('consentDocumentName', 240)
+        && hasValidOptionalString('consentDocumentPath', 1024)
+        && hasValidOptionalString('phone', 40)
+        && hasValidOptionalString('phoneCountryCode', 10)
+        && hasValidOptionalString('email', 240)
+        && hasValidContribution()
+        && hasValidRegistrationStatus();
     }
 
     function hasValidEncontroEuropeuRegistrationCreatePayload() {
@@ -303,6 +303,158 @@ service cloud.firestore {
         && request.resource.data.submittedAt == resource.data.submittedAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(encontroEuropeuRegistrationOwnerEditableFields())
         && hasValidEncontroEuropeuRegistrationPayload();
+    }
+
+    // Generic events/{eventId}/registrations validation — same shape as the European
+    // Gathering registration, with eventId + capacityBucket instead of the fixed roomNumber.
+    function eventRegistrationRequiredFields() {
+      return [
+        'locale',
+        'firstName',
+        'lastName',
+        'userId',
+        'eventId',
+        'country',
+        'church',
+        'centerLeader',
+        'isInitiated',
+        'isIcefluMember',
+        'isNovice',
+        'attendanceMode',
+        'selectedWorks',
+        'needsExtraLinen',
+        'contribution',
+        'status',
+        'submittedAt'
+      ];
+    }
+
+    function eventRegistrationCreateFields() {
+      return [
+        'locale',
+        'firstName',
+        'lastName',
+        'userId',
+        'eventId',
+        'country',
+        'church',
+        'centerLeader',
+        'centerLeaderEmail',
+        'isInitiated',
+        'isIcefluMember',
+        'isNovice',
+        'attendanceMode',
+        'checkIn',
+        'checkOut',
+        'selectedWorks',
+        'needsExtraLinen',
+        'capacityBucket',
+        'identityDocumentName',
+        'identityDocumentPath',
+        'paymentProofName',
+        'paymentProofPath',
+        'consentDocumentName',
+        'consentDocumentPath',
+        'phone',
+        'phoneCountryCode',
+        'email',
+        'contribution',
+        'status',
+        'submittedAt'
+      ];
+    }
+
+    function eventRegistrationOwnerEditableFields() {
+      return [
+        'locale',
+        'firstName',
+        'lastName',
+        'country',
+        'church',
+        'centerLeader',
+        'centerLeaderEmail',
+        'isInitiated',
+        'isIcefluMember',
+        'isNovice',
+        'attendanceMode',
+        'checkIn',
+        'checkOut',
+        'selectedWorks',
+        'needsExtraLinen',
+        'identityDocumentName',
+        'identityDocumentPath',
+        'paymentProofName',
+        'paymentProofPath',
+        'consentDocumentName',
+        'consentDocumentPath',
+        'phone',
+        'phoneCountryCode',
+        'email',
+        'contribution'
+      ];
+    }
+
+    function hasValidEventRegistrationPayload(eventId) {
+      return request.resource.data.keys().hasAll(eventRegistrationRequiredFields())
+        && request.resource.data.locale in ['pt', 'en', 'es', 'it']
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.firstName.size() <= 120
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
+        && request.resource.data.lastName.size() <= 120
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.eventId == eventId
+        && request.resource.data.country is string
+        && request.resource.data.country.size() > 0
+        && request.resource.data.country.size() <= 120
+        && request.resource.data.church is string
+        && request.resource.data.church.size() > 0
+        && request.resource.data.church.size() <= 240
+        && request.resource.data.centerLeader is string
+        && request.resource.data.centerLeader.size() > 0
+        && request.resource.data.centerLeader.size() <= 240
+        && hasValidOptionalString('centerLeaderEmail', 240)
+        && request.resource.data.isInitiated is bool
+        && request.resource.data.isIcefluMember is bool
+        && request.resource.data.isNovice is bool
+        && request.resource.data.attendanceMode in ['lodging', 'meals', 'spiritual']
+        && hasValidOptionalString('checkIn', 10)
+        && hasValidOptionalString('checkOut', 10)
+        && request.resource.data.selectedWorks is list
+        && request.resource.data.selectedWorks.size() <= 20
+        && request.resource.data.needsExtraLinen is bool
+        && hasValidOptionalString('capacityBucket', 120)
+        && hasValidOptionalString('identityDocumentName', 240)
+        && hasValidOptionalString('identityDocumentPath', 1024)
+        && hasValidOptionalString('paymentProofName', 240)
+        && hasValidOptionalString('paymentProofPath', 1024)
+        && hasValidOptionalString('consentDocumentName', 240)
+        && hasValidOptionalString('consentDocumentPath', 1024)
+        && hasValidOptionalString('phone', 40)
+        && hasValidOptionalString('phoneCountryCode', 10)
+        && hasValidOptionalString('email', 240)
+        && hasValidContribution()
+        && hasValidRegistrationStatus();
+    }
+
+    function hasValidEventRegistrationCreatePayload(eventId) {
+      return request.resource.data.keys().hasOnly(eventRegistrationCreateFields())
+        && hasValidEventRegistrationPayload(eventId)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.submittedAt == request.time;
+    }
+
+    function hasValidEventRegistrationOwnerUpdate() {
+      return resource.data.userId == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.eventId == resource.data.eventId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.submittedAt == resource.data.submittedAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(eventRegistrationOwnerEditableFields())
+        && hasValidEventRegistrationPayload(resource.data.eventId);
     }
 
     match /users/{uid} {
@@ -389,7 +541,7 @@ service cloud.firestore {
         && hasValidEncontroEuropeuRegistrationCreatePayload();
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
-      allow update: if (isAdmin() && hasValidEncontroEuropeuStatus())
+      allow update: if (isAdmin() && hasValidRegistrationStatus())
         || (isSignedIn() && hasValidEncontroEuropeuRegistrationOwnerUpdate());
     }
 
@@ -416,10 +568,9 @@ service cloud.firestore {
       match /registrations/{registrationId} {
         allow read: if isEventAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
         allow create: if isSignedIn()
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.status == 'pending';
-        allow update: if isEventAdmin()
-          || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+          && hasValidEventRegistrationCreatePayload(eventId);
+        allow update: if (isEventAdmin() && hasValidRegistrationStatus())
+          || (isSignedIn() && hasValidEventRegistrationOwnerUpdate());
         allow delete: if isEventAdmin()
           || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
       }
