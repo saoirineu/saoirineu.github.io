@@ -1,5 +1,10 @@
 # English Refactor — Tracking File
 
+> **ARCHIVED — completed.** This refactor is done; the file is kept as a historical record only.
+> Note: the code-rename outcome differs from the glossary below in one place — `trabalho` was
+> ultimately renamed (`works.ts` / `WorksPage.tsx`), though the Firestore collection string
+> `trabalhos` was kept. Do not treat this file as current guidance.
+
 ## Goal
 Rename all Portuguese identifiers (types, functions, variables, file names, Firestore collection/field references) to English.
 Keep UI-facing strings, user-visible labels, and domain terms that have no clean English equivalent (e.g. `fardado`, `hinario`) flagged for case-by-case decision.

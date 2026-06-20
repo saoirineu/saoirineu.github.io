@@ -1,7 +1,10 @@
 # Design — Generic Events, `eventadmin`, Consent Aging & Richer Leader Decisions
 
-Status: **proposal / design doc** (no code yet). Covers Part 2 items A, B, C from the
-2026‑06 request. Part 1 (European Gathering page tweaks) is already implemented.
+Status: **implemented** — Part 2 items A, B, C are delivered (see git history through the
+European Gathering cutover); this doc is retained as the design record and source of intent.
+Part 1 (European Gathering page tweaks) was already implemented before this work. Section
+headers below carry per-phase "entregue/delivered" markers; `docs/firestore-schema.md` is the
+authoritative as-built schema.
 
 Decisions locked with the requester:
 - **Config‑driven events** — generalize the bespoke European Gathering into an `events`

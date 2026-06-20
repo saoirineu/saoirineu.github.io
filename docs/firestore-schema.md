@@ -1,8 +1,18 @@
-# Firestore - Schema e Regras (rascunho)
+# Firestore - Schema e Regras
+
+> Este documento mistura colecoes **implementadas** (com codigo em `frontend/src/lib/`) e
+> esbocos **planejados** (sem codigo ainda). Os nomes de colecao abaixo refletem o que o
+> codigo realmente usa; secoes sem backing de codigo estao marcadas como `(planejado — sem
+> codigo ainda)`. Fonte de verdade para campos: os tipos em `frontend/src/lib/`.
+>
+> **Implementadas:** `users`, `churches`, `beverageBatches`, `trabalhos`, `members`, `events`
+> (+ subcolecoes `registrations`/`capacity`), `users/{uid}/consents`, `europeanGatheringRegistrations`,
+> `europeanGatheringRooms`, `sacramentItems`, `sacramentStocks`, `sacramentTransactions`.
+> **Planejadas:** `pessoas`, `hinarios`, `hinos`, `conceitos`.
 
 ## Colecoes
 
-### usuarios (perfil do auth)
+### users (perfil do auth)
 - uid (igual ao auth)
 - systemRole: `user` | `useradmin` | `eventadmin` | `custodian` | `admin` | `superadmin` (campo legado/primario para compatibilidade). `eventadmin` (Parte 2, Fase 1 — entregue) cria/gerencia eventos; `admin`/`superadmin` o herdam. Ver `events-eventadmin-design.md` §1.
 - systemRoles: array de privilegios, ex.: `["useradmin", "custodian"]`; ausencia ou `["user"]` significa usuario comum
@@ -17,7 +27,7 @@
 - doutrina: isInitiated, initiationDate, initiationVenue, initiationChurchId, initiationChurchName, initiatorName, initiatedWith, isSponsor, sponsorChurchIds, sponsorChurchNames, currentChurchId, currentChurchName, originChurchName, doctrineRoles, observations
 - createdAt, updatedAt
 
-### pessoas
+### pessoas (planejado — sem codigo ainda)
 - nome, apelido?
 - papeis: string[] (taxonomia SKOS)
 - igrejaRef: ref(igrejas)?
@@ -25,7 +35,7 @@
 - status: ativo/inativo
 - createdAt, updatedAt
 
-### igrejas
+### churches
 - nome
 - localizacao: { cidade, uf, pais?, coords? }
 - linhagem?
@@ -34,14 +44,14 @@
 - contatos
 - createdAt, updatedAt
 
-### hinarios
+### hinarios (planejado — sem codigo ainda)
 - titulo
 - autorRef: ref(pessoas)
 - descricao
 - temas: string[] (SKOS)
 - createdAt, updatedAt
 
-### hinos
+### hinos (planejado — sem codigo ainda)
 - titulo
 - hinarioRef: ref(hinarios)
 - autorRef: ref(pessoas)
@@ -49,7 +59,7 @@
 - letra, fonte, midiUrl?
 - createdAt, updatedAt
 
-### bebidaLotes
+### beverageBatches
 - loteId (ex.: ano-localidade-seq)
 - ano, localidade
 - grau, concentracao
@@ -76,9 +86,18 @@
 - createdBy: uid
 - createdAt, updatedAt
 
-### conceitos (opcional espelho SKOS/OWL)
+### conceitos (planejado — sem codigo ainda; opcional, espelho SKOS/OWL)
 - id (URI ou slug)
 - label, definition, scopeNote, broader, narrower, related
+
+### sacramentStocks / sacramentItems / sacramentTransactions (Sacramento)
+Controle de estoque do Sacramento, acessivel ao papel `custodian` (e `admin`/`superadmin`).
+Fonte de verdade dos campos: `frontend/src/lib/sacrament.ts`.
+- `sacramentStocks/{id}`: name, location?, notes?, createdAt, updatedAt — locais/depositos de estoque.
+- `sacramentItems/{id}`: stockId, degree, concentration?, form (`liquid`|`gel`), originChurchId?,
+  originChurchName?, responsiblePerson?, feitioDate?, feitioDateEnd?, notes?, createdAt, updatedAt.
+- `sacramentTransactions/{id}`: itemId, stockId, type (`entry`|`exit`), date, missionaryName?,
+  destinationChurchId?, destinationChurchName?, quantity, notes?, createdBy?, createdAt.
 
 ### members (socios da associacao)
 Colecao unificada a partir das tres planilhas em `data/members/` (registro do cloud,
@@ -94,7 +113,7 @@ senao `email-<hash>` ou `name-<hash>`.
 - proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code (id do registro na fonte), line (linha 1-based na planilha) }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), superseeded ({ campo: string[] } com valores antigos rejeitados automaticamente ou na revisao manual), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
 - Precedencia de merge: `ELENCO COMPLETO SOCI CLOUD.xlsx` e a fonte principal — seus valores vencem e o importer (`ImporterAnagrafichePF compilato.xlsx`) so preenche campos ausentes; excecao e a data de iscrizione (`registrationDate`), na qual o importer tem precedencia. Valores distintos dentro da mesma fonte resolvem pelo registro mais recente; os descartados ficam em `superseeded[campo]`. Certificados ("Primo Lavoro") casam por email somente quando o nome do sujeito tambem confere (emails de familia sao compartilhados), depois por nome. Registros que compartilham email mas tem nomes claramente diferentes ficam separados e ligados via `possibleDuplicateIds`, com `reviewReasons` incluindo `family-email` para revisao manual na UI admin.
 
-### encontroEuropeuInscricoes
+### europeanGatheringRegistrations
 > **Parte 2, Fase 4e.3:** o formulario do Encontro Europeu foi migrado para o renderer generico
 > (`events/encontro-europeu-2026/registrations`). Esta colecao guarda apenas as inscricoes
 > **antigas** (pre-cutover), ainda triadas em `/admin/european-gathering`. Inscricoes novas usam
@@ -117,7 +136,7 @@ senao `email-<hash>` ou `name-<hash>`.
 - status: `pending` | `approved` | `under-review` | `payment-overdue` | `rejected` | `archived`
 - submittedAt
 
-### encontroEuropeuQuartos
+### europeanGatheringRooms
 - doc id: `Cedro` | `Luce` | `Aurora` | `Bosco` | `Fonte` | `Monte` | `Stella`
 - capacity: number fixa por quarto
 - reserved: total de vagas bloqueadas por inscricoes `pending`, `under-review` e `approved`
@@ -126,21 +145,21 @@ senao `email-<hash>` ou `name-<hash>`.
 
 ## Indices compostos sugeridos
 - pessoas: papeis+status; igrejaRef+status
-- igrejas: localizacao.cidade+localizacao.uf
+- churches: localizacao.cidade+localizacao.uf
 - hinarios: autorRef; temas
 - hinos: hinarioRef; autorRef; tema+hinarioRef
-- bebidaLotes: ano+localidade; grau+ano; responsaveis
+- beverageBatches: ano+localidade; grau+ano; responsaveis
 - trabalhos: data+igrejasResponsaveis; data+createdBy; hinarios+data
-- encontroEuropeuInscricoes: status+submittedAt; attendanceMode+submittedAt
-- encontroEuropeuQuartos: sem indice composto; leitura publica por doc/listagem simples
+- europeanGatheringRegistrations: status+submittedAt; attendanceMode+submittedAt
+- europeanGatheringRooms: sem indice composto; leitura publica por doc/listagem simples
 - members: needsReview+fullName; memberStatus+fullName (listagem e filtros admin)
 
 ## Regras (esboco)
 - Leitura: `allow read: if true;` (ou restrita a auth conforme politicas de privacidade).
 - Escrita geral: `allow create, update: if request.auth != null;` mais validacao de campos/tipos.
 - trabalhos: permitir criar/editar se `request.auth.uid == resource.data.createdBy` ou tiver claim/role apropriada.
-- bebidaLotes: escrita apenas para responsaveis ou admins (claim).
-- usuarios: cada uid edita apenas seu perfil; leitura publica opcional.
+- beverageBatches: escrita apenas para responsaveis ou admins (claim).
+- users: cada uid edita apenas seu perfil; leitura publica opcional.
 - members: escrita apenas para admins; leitura para admins ou para o usuario autenticado cujo e-mail do token coincide com `email`/`email2` do documento (prefill do perfil; dados pessoais sensiveis).
 - `users.systemRole`/`users.systemRoles` deve ser alterado apenas por superadmin; `useradmin` aprova usuarios (`approvalStatus`) mas nao concede privilegios. `renato.fabbri@gmail.com` atua como bootstrap superadmin.
 - Storage (se usar): uploads apenas autenticados; path por uid ou por colecao; validar tipo/tamanho.
@@ -149,8 +168,8 @@ senao `email-<hash>` ou `name-<hash>`.
 - Campos que referenciam taxonomias (papel, temas) devem usar labels/ids SKOS para alinhar UI/tooltips.
 - `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
-- `encontroEuropeuInscricoes` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
-- `encontroEuropeuQuartos` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
+- `europeanGatheringRegistrations` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
+- `europeanGatheringRooms` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
 - Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `eventadmin` cria/gerencia eventos, `admin` visualiza dados operacionais (e herda `eventadmin`), enquanto `superadmin` tambem gerencia privilegios de usuarios.
 - Parte 1 (entregue) do encontro europeu: o formulario publico nao coleta mais `roomNumber`; mostra um agregado de "vagas de participacao" (soma de `europeanGatheringRooms`). A caucao (caution deposit) e derivada (30% do total) e exibida na UI, **nao** e armazenada em `contribution` (a regra de criacao fixa `contribution` em `{nights, lodging, spiritualWorks, extras, total}`). Trabalhos atuais: sex 25, sab 26, seg 28, qua 30 de setembro, 19:00.
 
