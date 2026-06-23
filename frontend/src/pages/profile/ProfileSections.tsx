@@ -1,5 +1,15 @@
+import type { ReactNode } from 'react';
+
 import type { ChurchInfo } from '../../lib/works';
-import { avatarFallback, type ProfileFormFieldSetter, type ProfileFormState } from './form';
+import { avatarFallback, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
+
+/** Shared classes for an input/select that is present but disabled (grayed). */
+const disabledFieldClass = 'bg-slate-100 text-slate-400 cursor-not-allowed';
+
+/** Red asterisk marking a required field, matching the ICEFLU form. */
+function RequiredMark() {
+  return <span className="text-red-500"> *</span>;
+}
 
 type ChurchesProps = {
   churches?: ChurchInfo[];
@@ -91,36 +101,104 @@ export type ProfileSectionsCopy = {
   roles: string;
   rolesPlaceholder: string;
   rolesHint: string;
+  icefluOnlyNote: string;
+  nationalityQuestion: string;
+  nationalityItalian: string;
+  nationalityNonItalian: string;
+  nationalityHint: string;
+  information: string;
+  privacyLabel: string;
+  privacyText: string;
+  declarationLabel: string;
+  declarationText: string;
+  consentAgree: string;
+  consentDisagree: string;
 };
 
 function selectChurchName(churches: ChurchInfo[] | undefined, id: string) {
   return churches?.find(church => church.id === id)?.name ?? '';
 }
 
+/**
+ * An ICEFLU profile text field. On this form every active field is required, so
+ * `required` doubles as the enabled flag: required → editable + asterisk;
+ * not required → disabled + grayed (an extra field or the inactive variant).
+ */
 function TextInput<K extends TextProfileField>({
   field,
   form,
   label,
   placeholder,
   setField,
-  type = 'text'
+  type = 'text',
+  required
 }: BaseSectionProps & {
   field: K;
   label: string;
   placeholder?: string;
   type?: 'date' | 'email' | 'number' | 'text';
+  required: boolean;
 }) {
+  const disabled = !required;
   return (
-    <label className="text-sm text-slate-700">
+    <label className={`text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
       {label}
+      {required ? <RequiredMark /> : null}
       <input
         type={type}
-        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        disabled={disabled}
+        className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabled ? disabledFieldClass : ''}`}
         value={form[field]}
         onChange={event => setField(field, event.target.value as ProfileFormState[K])}
         placeholder={placeholder}
       />
     </label>
+  );
+}
+
+/**
+ * Wraps a block of fields that are not part of the ICEFLU membership form.
+ * They are kept (data is preserved and still saved) but rendered disabled and
+ * grayed, with a note explaining why, until we decide whether to remove them.
+ */
+export function IcefluDisabledGroup({ note, children }: { note: string; children: ReactNode }) {
+  return (
+    <fieldset disabled className="m-0 min-w-0 border-0 p-0">
+      <div className="opacity-60">{children}</div>
+      <p className="mt-1 px-1 text-xs italic text-slate-400">{note}</p>
+    </fieldset>
+  );
+}
+
+/** Declaration that gates the ICEFLU field set between the Italian and non-Italian variants. */
+export function ProfileNationalityDeclaration({ copy, form, setField }: BaseSectionProps) {
+  return (
+    <section className="space-y-2 rounded-lg border border-sky-200 bg-sky-50 p-3">
+      <h2 className="text-sm font-semibold text-slate-900">{copy.nationalityQuestion}</h2>
+      <div className="flex flex-wrap gap-4">
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+          <input
+            type="radio"
+            name="isItalian"
+            className="h-4 w-4 border-slate-300 text-slate-900"
+            checked={form.isItalian}
+            onChange={() => setField('isItalian', true)}
+          />
+          {copy.nationalityItalian}
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+          <input
+            type="radio"
+            name="isItalian"
+            className="h-4 w-4 border-slate-300 text-slate-900"
+            checked={!form.isItalian}
+            onChange={() => setField('isItalian', false)}
+          />
+          {copy.nationalityNonItalian}
+        </label>
+      </div>
+      <p className="text-xs text-slate-500">{copy.nationalityHint}</p>
+    </section>
   );
 }
 
@@ -132,18 +210,22 @@ export function ProfilePersonalSection({
   userPhotoURL
 }: BaseSectionProps & { avatarUrl: string; userPhotoURL?: string | null }) {
   const resolvedAvatar = avatarUrl || userPhotoURL || avatarFallback(form.displayName, form.email);
+  // ICEFLU uses "Telefono" (Italian form) vs "Mobile" (non-Italian form) — one
+  // phone field per variant. The other stays visible but disabled.
+  const required = new Set(requiredProfileTextFields(form.isItalian));
 
   return (
     <div className="grid gap-4 rounded-lg bg-slate-100 p-3 sm:grid-cols-[1fr,240px]">
       <div className="space-y-3">
-        <TextInput copy={copy} field="displayName" form={form} label={copy.name} placeholder={copy.yourName} setField={setField} />
+        <TextInput copy={copy} field="displayName" form={form} label={copy.name} placeholder={copy.yourName} setField={setField} required={required.has('displayName')} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <TextInput copy={copy} field="firstName" form={form} label={copy.firstName} setField={setField} />
-          <TextInput copy={copy} field="surname" form={form} label={copy.surname} setField={setField} />
-          <TextInput copy={copy} field="fullName" form={form} label={copy.fullName} setField={setField} />
+          <TextInput copy={copy} field="firstName" form={form} label={copy.firstName} setField={setField} required={required.has('firstName')} />
+          <TextInput copy={copy} field="surname" form={form} label={copy.surname} setField={setField} required={required.has('surname')} />
+          <TextInput copy={copy} field="fullName" form={form} label={copy.fullName} setField={setField} required={required.has('fullName')} />
         </div>
         <label className="text-sm text-slate-700">
           {copy.email}
+          <RequiredMark />
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
             value={form.email}
@@ -151,21 +233,21 @@ export function ProfilePersonalSection({
           />
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <TextInput copy={copy} field="email2" form={form} label={copy.email2} setField={setField} type="email" />
-          <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} />
-          <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} placeholder={copy.optional} setField={setField} />
+          <TextInput copy={copy} field="email2" form={form} label={copy.email2} setField={setField} type="email" required={required.has('email2')} />
+          <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} required={required.has('phone')} />
+          <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} placeholder={copy.optional} setField={setField} required={required.has('mobile')} />
         </div>
       </div>
-      <div className="flex flex-col items-center gap-3 rounded-lg bg-white/60 p-3 shadow-sm">
+      <fieldset disabled className="flex min-w-0 flex-col items-center gap-3 rounded-lg bg-white/60 p-3 opacity-60 shadow-sm">
         <img
           src={resolvedAvatar}
           alt={copy.avatar}
           className="h-28 w-28 rounded-full border border-slate-200 object-cover shadow-sm"
         />
-        <label className="w-full text-sm text-slate-700">
+        <label className="w-full text-sm text-slate-400">
           {copy.avatarUrl}
           <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabledFieldClass}`}
             value={form.avatarUrl}
             onChange={event => setField('avatarUrl', event.target.value)}
             placeholder="https://..."
@@ -174,18 +256,21 @@ export function ProfilePersonalSection({
         {userPhotoURL ? (
           <button
             type="button"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-400"
             onClick={() => setField('avatarUrl', userPhotoURL)}
           >
             {copy.useGooglePhoto}
           </button>
         ) : null}
-      </div>
+      </fieldset>
     </div>
   );
 }
 
 export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProps) {
+  // Italian form: "Sesso" + "Città Nascita". Non-Italian form: "Birth's country", no sex.
+  const required = new Set(requiredProfileTextFields(form.isItalian));
+  const sexRequired = required.has('sex');
   return (
     <section className="space-y-3 rounded-lg bg-slate-100 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -197,11 +282,13 @@ export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProp
         ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        <TextInput copy={copy} field="fiscalCode" form={form} label={copy.fiscalCode} setField={setField} />
-        <label className="text-sm text-slate-700">
+        <TextInput copy={copy} field="fiscalCode" form={form} label={copy.fiscalCode} setField={setField} required={required.has('fiscalCode')} />
+        <label className={`text-sm ${sexRequired ? 'text-slate-700' : 'text-slate-400'}`}>
           {copy.sex}
+          {sexRequired ? <RequiredMark /> : null}
           <select
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            disabled={!sexRequired}
+            className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${sexRequired ? '' : disabledFieldClass}`}
             value={form.sex}
             onChange={event => setField('sex', event.target.value)}
           >
@@ -210,32 +297,34 @@ export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProp
             <option value="M">{copy.sexMale}</option>
           </select>
         </label>
-        <TextInput copy={copy} field="birthDate" form={form} label={copy.birthDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="birthPlace" form={form} label={copy.birthPlace} setField={setField} />
-        <TextInput copy={copy} field="birthProvince" form={form} label={copy.birthProvince} setField={setField} />
-        <TextInput copy={copy} field="birthCountry" form={form} label={copy.birthCountry} setField={setField} />
-        <TextInput copy={copy} field="citizenship" form={form} label={copy.citizenship} setField={setField} />
-        <TextInput copy={copy} field="nationality" form={form} label={copy.nationality} setField={setField} />
-        <TextInput copy={copy} field="profession" form={form} label={copy.profession} setField={setField} />
+        <TextInput copy={copy} field="birthDate" form={form} label={copy.birthDate} setField={setField} type="date" required={required.has('birthDate')} />
+        <TextInput copy={copy} field="birthPlace" form={form} label={copy.birthPlace} setField={setField} required={required.has('birthPlace')} />
+        <TextInput copy={copy} field="birthProvince" form={form} label={copy.birthProvince} setField={setField} required={required.has('birthProvince')} />
+        <TextInput copy={copy} field="birthCountry" form={form} label={copy.birthCountry} setField={setField} required={required.has('birthCountry')} />
+        <TextInput copy={copy} field="citizenship" form={form} label={copy.citizenship} setField={setField} required={required.has('citizenship')} />
+        <TextInput copy={copy} field="nationality" form={form} label={copy.nationality} setField={setField} required={required.has('nationality')} />
+        <TextInput copy={copy} field="profession" form={form} label={copy.profession} setField={setField} required={required.has('profession')} />
       </div>
     </section>
   );
 }
 
 export function ProfileResidenceSection({ copy, form, setField }: BaseSectionProps) {
+  // "Provincia Residenza" only appears on the Italian form.
+  const required = new Set(requiredProfileTextFields(form.isItalian));
   return (
     <section className="space-y-3 rounded-lg bg-slate-100 p-3">
       <h2 className="text-sm font-semibold text-slate-900">{copy.residence}</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
-          <TextInput copy={copy} field="address" form={form} label={copy.address} setField={setField} />
+          <TextInput copy={copy} field="address" form={form} label={copy.address} setField={setField} required={required.has('address')} />
         </div>
-        <TextInput copy={copy} field="postalCode" form={form} label={copy.postalCode} setField={setField} />
-        <TextInput copy={copy} field="city" form={form} label={copy.city} setField={setField} />
-        <TextInput copy={copy} field="province" form={form} label={copy.province} setField={setField} />
-        <TextInput copy={copy} field="state" form={form} label={copy.state} setField={setField} />
-        <TextInput copy={copy} field="region" form={form} label={copy.region} setField={setField} />
-        <TextInput copy={copy} field="country" form={form} label={copy.country} setField={setField} />
+        <TextInput copy={copy} field="postalCode" form={form} label={copy.postalCode} setField={setField} required={required.has('postalCode')} />
+        <TextInput copy={copy} field="city" form={form} label={copy.city} setField={setField} required={required.has('city')} />
+        <TextInput copy={copy} field="province" form={form} label={copy.province} setField={setField} required={required.has('province')} />
+        <TextInput copy={copy} field="state" form={form} label={copy.state} setField={setField} required={required.has('state')} />
+        <TextInput copy={copy} field="region" form={form} label={copy.region} setField={setField} required={required.has('region')} />
+        <TextInput copy={copy} field="country" form={form} label={copy.country} setField={setField} required={required.has('country')} />
       </div>
     </section>
   );
@@ -246,20 +335,20 @@ export function ProfileAssociationSection({ copy, form, setField }: BaseSectionP
     <section className="space-y-3 rounded-lg bg-slate-100 p-3">
       <h2 className="text-sm font-semibold text-slate-900">{copy.association}</h2>
       <div className="grid gap-3 sm:grid-cols-3">
-        <TextInput copy={copy} field="memberCode" form={form} label={copy.memberCode} setField={setField} />
-        <TextInput copy={copy} field="memberStatus" form={form} label={copy.memberStatus} setField={setField} />
-        <TextInput copy={copy} field="group" form={form} label={copy.group} setField={setField} />
-        <TextInput copy={copy} field="category" form={form} label={copy.category} setField={setField} />
-        <TextInput copy={copy} field="cardNumber" form={form} label={copy.cardNumber} setField={setField} />
-        <TextInput copy={copy} field="cardExpiry" form={form} label={copy.cardExpiry} setField={setField} />
-        <TextInput copy={copy} field="referenceSeat" form={form} label={copy.referenceSeat} setField={setField} />
-        <TextInput copy={copy} field="originSociety" form={form} label={copy.originSociety} setField={setField} />
-        <TextInput copy={copy} field="registrationRequestDate" form={form} label={copy.registrationRequestDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="registrationDate" form={form} label={copy.registrationDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="renewalDate" form={form} label={copy.renewalDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="cancellationDate" form={form} label={copy.cancellationDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="firstWorkDate" form={form} label={copy.firstWorkDate} setField={setField} type="date" />
-        <TextInput copy={copy} field="membershipFeeAmount" form={form} label={copy.membershipFeeAmount} setField={setField} type="number" />
+        <TextInput copy={copy} field="memberCode" form={form} label={copy.memberCode} setField={setField} required={false} />
+        <TextInput copy={copy} field="memberStatus" form={form} label={copy.memberStatus} setField={setField} required={false} />
+        <TextInput copy={copy} field="group" form={form} label={copy.group} setField={setField} required={false} />
+        <TextInput copy={copy} field="category" form={form} label={copy.category} setField={setField} required={false} />
+        <TextInput copy={copy} field="cardNumber" form={form} label={copy.cardNumber} setField={setField} required={false} />
+        <TextInput copy={copy} field="cardExpiry" form={form} label={copy.cardExpiry} setField={setField} required={false} />
+        <TextInput copy={copy} field="referenceSeat" form={form} label={copy.referenceSeat} setField={setField} required={false} />
+        <TextInput copy={copy} field="originSociety" form={form} label={copy.originSociety} setField={setField} required={false} />
+        <TextInput copy={copy} field="registrationRequestDate" form={form} label={copy.registrationRequestDate} setField={setField} type="date" required={false} />
+        <TextInput copy={copy} field="registrationDate" form={form} label={copy.registrationDate} setField={setField} type="date" required={false} />
+        <TextInput copy={copy} field="renewalDate" form={form} label={copy.renewalDate} setField={setField} type="date" required={false} />
+        <TextInput copy={copy} field="cancellationDate" form={form} label={copy.cancellationDate} setField={setField} type="date" required={false} />
+        <TextInput copy={copy} field="firstWorkDate" form={form} label={copy.firstWorkDate} setField={setField} type="date" required={false} />
+        <TextInput copy={copy} field="membershipFeeAmount" form={form} label={copy.membershipFeeAmount} setField={setField} type="number" required={false} />
       </div>
     </section>
   );
@@ -308,17 +397,69 @@ export function ProfileChurchesSection({ copy, form, churches, setField }: BaseS
             placeholder={copy.originChurchPlaceholder}
           />
         </label>
-        <label className="text-sm text-slate-700">
-          {copy.notes}
-          <textarea
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            rows={3}
-            value={form.observations}
-            onChange={event => setField('observations', event.target.value)}
-          />
-        </label>
       </div>
     </div>
+  );
+}
+
+/** ICEFLU "Informative": required Privacy + Declaration consents (agree / not agree). */
+export function ProfileConsentsSection({ copy, form, setField }: BaseSectionProps) {
+  const items: Array<{ field: 'privacyConsent' | 'declarationConsent'; label: string; text: string }> = [
+    { field: 'privacyConsent', label: copy.privacyLabel, text: copy.privacyText },
+    { field: 'declarationConsent', label: copy.declarationLabel, text: copy.declarationText }
+  ];
+  return (
+    <section className="space-y-4 rounded-lg bg-slate-100 p-3">
+      <h2 className="text-sm font-semibold text-slate-900">{copy.information}</h2>
+      {items.map(item => (
+        <div key={item.field} className="space-y-2">
+          <h3 className="text-sm font-semibold text-slate-800">
+            {item.label}
+            <RequiredMark />
+          </h3>
+          <p className="text-sm text-slate-600">{item.text}</p>
+          <div className="flex flex-wrap gap-4">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+              <input
+                type="radio"
+                name={item.field}
+                className="h-4 w-4 border-slate-300 text-slate-900"
+                checked={form[item.field] === 'agree'}
+                onChange={() => setField(item.field, 'agree')}
+              />
+              {copy.consentAgree}
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+              <input
+                type="radio"
+                name={item.field}
+                className="h-4 w-4 border-slate-300 text-slate-900"
+                checked={form[item.field] === 'disagree'}
+                onChange={() => setField(item.field, 'disagree')}
+              />
+              {copy.consentDisagree}
+            </label>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** ICEFLU "Nota": a free, optional notes field. */
+export function ProfileNotesSection({ copy, form, setField }: BaseSectionProps) {
+  return (
+    <section className="space-y-2 rounded-lg bg-slate-100 p-3">
+      <label className="text-sm text-slate-700">
+        {copy.notes}
+        <textarea
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          rows={3}
+          value={form.observations}
+          onChange={event => setField('observations', event.target.value)}
+        />
+      </label>
+    </section>
   );
 }
 

@@ -33,6 +33,9 @@ export type UserProfile = {
   phone?: string;
   mobile?: string;
   avatarUrl?: string;
+  isItalian?: boolean;
+  privacyConsent?: string;
+  declarationConsent?: string;
   memberId?: string;
   surname?: string;
   firstName?: string;
@@ -127,6 +130,9 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     phone: asOptionalString(data.phone),
     mobile: asOptionalString(data.mobile),
     avatarUrl: asOptionalString(data.avatarUrl),
+    isItalian: asOptionalBoolean(data.isItalian),
+    privacyConsent: asOptionalString(data.privacyConsent),
+    declarationConsent: asOptionalString(data.declarationConsent),
     memberId: asOptionalString(data.memberId),
     surname: asOptionalString(data.surname),
     firstName: asOptionalString(data.firstName),
@@ -226,6 +232,9 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     phone: data.phone,
     mobile: data.mobile,
     avatarUrl: data.avatarUrl,
+    isItalian: data.isItalian,
+    privacyConsent: data.privacyConsent,
+    declarationConsent: data.declarationConsent,
     memberId: data.memberId,
     surname: data.surname,
     firstName: data.firstName,

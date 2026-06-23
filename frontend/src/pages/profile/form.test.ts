@@ -121,20 +121,55 @@ describe('profile form helpers', () => {
     expect(avatarFallback(undefined, 'mail@example.com')).toContain('mail%40example.com');
   });
 
-  it('requires name, email, and identity document before approval submission', () => {
-    const readyBase = {
+  it('requires every ICEFLU field (per nationality), the document, and both consents', () => {
+    const italianReady = {
       ...initialProfileForm,
-      email: 'auth@example.com',
-      fullName: 'Maria Rossi',
-      identityDocumentPrimaryPath: 'users/user-1/id.pdf'
+      isItalian: true,
+      firstName: 'Maria',
+      surname: 'Rossi',
+      birthDate: '1980-01-02',
+      sex: 'F',
+      birthPlace: 'Roma',
+      citizenship: 'Italiana',
+      fiscalCode: 'CF123',
+      address: 'Via Roma 1',
+      postalCode: '00100',
+      city: 'Roma',
+      province: 'RM',
+      country: 'Italia',
+      email: 'maria@example.com',
+      phone: '06123456',
+      profession: 'Insegnante',
+      identityDocumentPrimaryPath: 'users/user-1/id.pdf',
+      privacyConsent: 'agree',
+      declarationConsent: 'agree'
     };
 
-    expect(isProfileFormReadyForApproval(readyBase)).toBe(true);
-    expect(isProfileFormReadyForApproval({ ...readyBase, fullName: '', firstName: 'Maria', surname: 'Rossi' })).toBe(true);
-    expect(isProfileFormReadyForApproval({ ...readyBase, identityDocumentPrimaryPath: '' }, true)).toBe(true);
-    expect(isProfileFormReadyForApproval({ ...readyBase, fullName: '', displayName: '', firstName: 'Maria', surname: '' })).toBe(false);
-    expect(isProfileFormReadyForApproval({ ...readyBase, email: '' })).toBe(false);
-    expect(isProfileFormReadyForApproval({ ...readyBase, identityDocumentPrimaryPath: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval(italianReady)).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, profession: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, province: '' })).toBe(false);
+    // a freshly selected document file stands in for a stored path
+    expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' }, true)).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' })).toBe(false);
+    // both consents must be an explicit "agree"
+    expect(isProfileFormReadyForApproval({ ...italianReady, privacyConsent: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, declarationConsent: 'disagree' })).toBe(false);
+
+    // Non-Italian variant: birthCountry + mobile required; sex/birthPlace/province are not.
+    const nonItalianReady = {
+      ...italianReady,
+      isItalian: false,
+      sex: '',
+      birthPlace: '',
+      province: '',
+      phone: '',
+      birthCountry: 'Brasil',
+      mobile: '+5511999999999'
+    };
+
+    expect(isProfileFormReadyForApproval(nonItalianReady)).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, birthCountry: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, mobile: '' })).toBe(false);
   });
 
   it('prefills only empty fields from the linked member and records the link', () => {

@@ -10,6 +10,9 @@ export type ProfileFormState = {
   phone: string;
   mobile: string;
   avatarUrl: string;
+  isItalian: boolean;
+  privacyConsent: string;
+  declarationConsent: string;
   memberId: string;
   surname: string;
   firstName: string;
@@ -77,6 +80,9 @@ export const initialProfileForm: ProfileFormState = {
   phone: '',
   mobile: '',
   avatarUrl: '',
+  isItalian: true,
+  privacyConsent: '',
+  declarationConsent: '',
   memberId: '',
   surname: '',
   firstName: '',
@@ -148,9 +154,38 @@ export function avatarFallback(name?: string, email?: string) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(base)}&background=1e293b&color=fff`;
 }
 
+/** Text fields the ICEFLU form requires, depending on the Italian / non-Italian variant. */
+const REQUIRED_TEXT_FIELDS_COMMON: Array<keyof ProfileFormState> = [
+  'firstName', 'surname', 'birthDate', 'citizenship', 'fiscalCode',
+  'address', 'postalCode', 'city', 'country', 'email', 'profession'
+];
+
+/**
+ * The required fields for the current variant. Everything on the ICEFLU form is
+ * mandatory except the optional second identity-document image (the back), which
+ * is never in this list.
+ */
+export function requiredProfileTextFields(isItalian: boolean): Array<keyof ProfileFormState> {
+  return [
+    ...REQUIRED_TEXT_FIELDS_COMMON,
+    ...(isItalian ? (['sex', 'birthPlace', 'province', 'phone'] as Array<keyof ProfileFormState>) : (['birthCountry', 'mobile'] as Array<keyof ProfileFormState>))
+  ];
+}
+
+/** Required fields still missing a value (text fields + the primary identity document). */
+export function missingRequiredProfileFields(form: ProfileFormState, hasSelectedIdentityDocument = false): string[] {
+  const missing: string[] = requiredProfileTextFields(form.isItalian).filter(field => !hasText(form[field] as string));
+  if (!hasText(form.identityDocumentPrimaryPath) && !hasSelectedIdentityDocument) {
+    missing.push('identityDocumentPrimary');
+  }
+  // Privacy and Declaration must be explicitly agreed to (not just answered).
+  if (form.privacyConsent !== 'agree') missing.push('privacyConsent');
+  if (form.declarationConsent !== 'agree') missing.push('declarationConsent');
+  return missing;
+}
+
 export function isProfileFormReadyForApproval(form: ProfileFormState, hasSelectedIdentityDocument = false) {
-  const hasName = hasText(form.fullName) || hasText(form.displayName) || (hasText(form.firstName) && hasText(form.surname));
-  return hasName && hasText(form.email) && (hasText(form.identityDocumentPrimaryPath) || hasSelectedIdentityDocument);
+  return missingRequiredProfileFields(form, hasSelectedIdentityDocument).length === 0;
 }
 
 export function buildProfileForm(user: User, profile?: UserProfile | null): ProfileFormState {
@@ -161,6 +196,9 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     phone: profile?.phone || '',
     mobile: profile?.mobile || '',
     avatarUrl: profile?.avatarUrl || '',
+    isItalian: profile?.isItalian ?? true,
+    privacyConsent: profile?.privacyConsent || '',
+    declarationConsent: profile?.declarationConsent || '',
     memberId: profile?.memberId || '',
     surname: profile?.surname || '',
     firstName: profile?.firstName || '',
@@ -274,6 +312,9 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     phone: form.phone || undefined,
     mobile: form.mobile || undefined,
     avatarUrl: form.avatarUrl || undefined,
+    isItalian: form.isItalian,
+    privacyConsent: form.privacyConsent || undefined,
+    declarationConsent: form.declarationConsent || undefined,
     memberId: form.memberId || undefined,
     surname: form.surname || undefined,
     firstName: form.firstName || undefined,
