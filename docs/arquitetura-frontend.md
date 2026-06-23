@@ -27,7 +27,7 @@ O frontend fica em `frontend/` e usa React 18, Vite, TypeScript, React Router, T
 
 ## Areas que merecem cuidado
 
-- O motor generico de eventos (`frontend/src/lib/events.ts`, `eventRegistrations.ts`, `frontend/src/pages/events/`, `EventRegistrationPage.tsx`, `EventsAdminPage.tsx`) e o codigo do Encontro Europeu em desativacao (`europeanGathering*.ts`, `EuropeanGatheringAdminPage.tsx`) sao areas de evolucao ativa.
+- O motor generico de eventos (`frontend/src/lib/events.ts`, `eventRegistrations.ts`, `leaderReview.ts`, `frontend/src/pages/events/`, `EventRegistrationPage.tsx`, `EventsAdminPage.tsx`, `LeaderReviewPage.tsx`) e uma area de evolucao ativa. (O codigo bespoke do Encontro Europeu foi retirado em junho/2026; o EE agora e a instancia `events/encontro-europeu-2026`.)
 - `frontend/tsconfig.tsbuildinfo` e arquivo gerado e so deve mudar como consequencia de build validado.
 
 ## Validacao recomendada

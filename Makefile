@@ -2,7 +2,7 @@ PORT ?= 5174
 FIREBASE_PROJECT ?= sao-irineu
 FIREBASE ?= $(shell which firebase 2>/dev/null || echo npx firebase)
 
-.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean smtp-secrets leader-token-secret regenerate-leader-token leader-link seed-leader-demo unseed-leader-demo
+.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean smtp-secrets leader-token-secret regenerate-leader-token leader-link
 
 serve:
 	npm --prefix frontend run dev -- --host --port $(PORT)
@@ -52,19 +52,11 @@ regenerate-leader-token:
 	@echo "Next: make leader-token-secret && make deploy-functions"
 	@echo "Note: this invalidates all previously-emailed leader review links."
 
-# Generates a leader-review URL for an existing registration.
-# Usage: make leader-link ID=<registrationId> EMAIL=<leaderEmail> [BASE=<baseUrl>]
+# Generates a leader-review URL for an existing event registration.
+# Usage: make leader-link ID=<registrationId> EMAIL=<leaderEmail> EVENT=<eventId> [BASE=<baseUrl>]
 # BASE defaults to http://localhost:5174 (dev). For production, pass BASE=https://saoirineu.github.io
 leader-link:
-	@node scripts/leader-link.js --id "$(ID)" --email "$(EMAIL)" $(if $(BASE),--base "$(BASE)",)
-
-# Seeds a demo registration in Firestore so the example leader-review URL works locally.
-# Prints the URL after seeding. Run unseed-leader-demo to remove it afterwards.
-seed-leader-demo: scripts/node_modules
-	@node scripts/leader-demo.js --seed
-
-unseed-leader-demo: scripts/node_modules
-	@node scripts/leader-demo.js --unseed
+	@node scripts/leader-link.js --id "$(ID)" --email "$(EMAIL)" --event "$(EVENT)" $(if $(BASE),--base "$(BASE)",)
 
 deploy-functions:
 	npm --prefix functions run build

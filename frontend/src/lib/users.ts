@@ -2,7 +2,7 @@ import { addDoc, Timestamp, collection, doc, getDoc, getDocs, orderBy, query, se
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
-import { getEuropeanGatheringUploadContentType, validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
+import { getUploadContentType, validateUploadFile } from './uploads';
 import {
   asOptionalBoolean,
   asOptionalString,
@@ -439,7 +439,7 @@ export async function resolveUserDocumentUrl(path: string) {
 }
 
 export async function uploadUserIdentityDocument(uid: string, file: File) {
-  const validationError = validateEuropeanGatheringUploadFile(file);
+  const validationError = validateUploadFile(file);
   if (validationError === 'invalid-type') {
     throw new Error('Only PDF, JPG, and PNG files are allowed.');
   }
@@ -449,7 +449,7 @@ export async function uploadUserIdentityDocument(uid: string, file: File) {
   }
 
   const storagePath = `users/${uid}/identityDocument-${Date.now()}-${sanitizeFileName(file.name)}`;
-  await uploadBytes(ref(storage, storagePath), file, { contentType: getEuropeanGatheringUploadContentType(file) });
+  await uploadBytes(ref(storage, storagePath), file, { contentType: getUploadContentType(file) });
   return { name: file.name, path: storagePath };
 }
 

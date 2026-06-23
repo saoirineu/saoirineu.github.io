@@ -26,9 +26,7 @@ const COLLECTIONS = [
   'users',
   'churches',
   'beverageBatches',
-  'trabalhos',
-  'europeanGatheringRegistrations',
-  'europeanGatheringRooms'
+  'trabalhos'
 ];
 
 const PROJECT_ID = 'sao-irineu';

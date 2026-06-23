@@ -38,27 +38,11 @@ service firebase.storage {
         && request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
     }
 
-    function ownsPendingEuropeanGatheringRegistration(registrationId) {
-      return isSignedIn()
-        && firestore.exists(/databases/(default)/documents/europeanGatheringRegistrations/$(registrationId))
-        && firestore.get(/databases/(default)/documents/europeanGatheringRegistrations/$(registrationId)).data.userId == request.auth.uid
-        && firestore.get(/databases/(default)/documents/europeanGatheringRegistrations/$(registrationId)).data.status == 'pending';
-    }
-
     function ownsPendingEventRegistration(eventId, registrationId) {
       return isSignedIn()
         && firestore.exists(/databases/(default)/documents/events/$(eventId)/registrations/$(registrationId))
         && firestore.get(/databases/(default)/documents/events/$(eventId)/registrations/$(registrationId)).data.userId == request.auth.uid
         && firestore.get(/databases/(default)/documents/events/$(eventId)/registrations/$(registrationId)).data.status == 'pending';
-    }
-
-    match /europeanGatheringRegistrations/{registrationId}/{fileName} {
-      allow read: if isAdmin() || isSignedIn();
-      allow create: if isSignedIn()
-        && isAllowedDocument()
-        && fileName.matches('(identityDocument|paymentProof|consentDocument)-.*');
-      allow delete: if isAdmin() || ownsPendingEuropeanGatheringRegistration(registrationId);
-      allow update: if false;
     }
 
     match /events/{eventId}/registrations/{registrationId}/{fileName} {

@@ -10,7 +10,6 @@ const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const SacramentPage = lazy(() => import('./pages/SacramentPage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const EuropeanGatheringAdminPage = lazy(() => import('./pages/EuropeanGatheringAdminPage'));
 const EventsAdminPage = lazy(() => import('./pages/EventsAdminPage'));
 const EventRegistrationsAdminPage = lazy(() => import('./pages/EventRegistrationsAdminPage'));
 const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
@@ -66,7 +65,6 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/european-gathering" element={<Navigate to="/events/encontro-europeu-2026" replace />} />
-        <Route path="/european-gathering/leader-review/:id" element={<LeaderReviewPage />} />
         <Route path="/leader-review/:id" element={<LeaderReviewPage />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
@@ -83,7 +81,6 @@ function App() {
               <Route path="/sacrament" element={<SacramentPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
-              <Route path="/admin/european-gathering" element={<EuropeanGatheringAdminPage />} />
               <Route path="/admin/members" element={<MembersPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="eventadmin" />}>

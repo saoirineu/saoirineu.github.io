@@ -111,106 +111,6 @@ service cloud.firestore {
       return request.resource.data.status in ['pending', 'approved', 'under-review', 'payment-overdue', 'rejected', 'archived'];
     }
 
-    function isValidEncontroEuropeuRoom(room) {
-      return room in ['Cedro', 'Luce', 'Aurora', 'Bosco', 'Fonte', 'Monte', 'Stella'];
-    }
-
-    function expectedEncontroEuropeuRoomCapacity(room) {
-      return room == 'Cedro' ? 6
-        : room == 'Luce' ? 8
-        : room == 'Aurora' ? 10
-        : room == 'Bosco' ? 12
-        : room == 'Fonte' ? 14
-        : room == 'Monte' ? 16
-        : 18;
-    }
-
-    function encontroEuropeuRegistrationRequiredFields() {
-      return [
-        'locale',
-        'firstName',
-        'lastName',
-        'userId',
-        'country',
-        'church',
-        'centerLeader',
-        'isInitiated',
-        'isIcefluMember',
-        'isNovice',
-        'attendanceMode',
-        'selectedWorks',
-        'needsExtraLinen',
-        'contribution',
-        'status',
-        'submittedAt'
-      ];
-    }
-
-    function encontroEuropeuRegistrationCreateFields() {
-      return [
-        'locale',
-        'firstName',
-        'lastName',
-        'userId',
-        'country',
-        'church',
-        'centerLeader',
-        'centerLeaderEmail',
-        'isInitiated',
-        'isIcefluMember',
-        'isNovice',
-        'attendanceMode',
-        'checkIn',
-        'checkOut',
-        'selectedWorks',
-        'needsExtraLinen',
-        'roomNumber',
-        'identityDocumentName',
-        'identityDocumentPath',
-        'paymentProofName',
-        'paymentProofPath',
-        'consentDocumentName',
-        'consentDocumentPath',
-        'phone',
-        'phoneCountryCode',
-        'email',
-        'contribution',
-        'status',
-        'submittedAt'
-      ];
-    }
-
-    function encontroEuropeuRegistrationOwnerEditableFields() {
-      return [
-        'locale',
-        'firstName',
-        'lastName',
-        'country',
-        'church',
-        'centerLeader',
-        'centerLeaderEmail',
-        'isInitiated',
-        'isIcefluMember',
-        'isNovice',
-        'attendanceMode',
-        'checkIn',
-        'checkOut',
-        'selectedWorks',
-        'needsExtraLinen',
-        'roomNumber',
-        'identityDocumentName',
-        'identityDocumentPath',
-        'paymentProofName',
-        'paymentProofPath',
-        'consentDocumentName',
-        'consentDocumentPath',
-        'phone',
-        'phoneCountryCode',
-        'email',
-        'contribution'
-      ];
-    }
-
     function hasValidOptionalString(field, maxSize) {
       return !request.resource.data.keys().hasAny([field])
         || (request.resource.data[field] is string
@@ -246,67 +146,7 @@ service cloud.firestore {
         && request.resource.data.contribution.total >= 0;
     }
 
-    function hasValidEncontroEuropeuRegistrationPayload() {
-      return request.resource.data.keys().hasAll(encontroEuropeuRegistrationRequiredFields())
-        && request.resource.data.locale in ['pt', 'en', 'es', 'it']
-        && request.resource.data.firstName is string
-        && request.resource.data.firstName.size() > 0
-        && request.resource.data.firstName.size() <= 120
-        && request.resource.data.lastName is string
-        && request.resource.data.lastName.size() > 0
-        && request.resource.data.lastName.size() <= 120
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.country is string
-        && request.resource.data.country.size() > 0
-        && request.resource.data.country.size() <= 120
-        && request.resource.data.church is string
-        && request.resource.data.church.size() > 0
-        && request.resource.data.church.size() <= 240
-        && request.resource.data.centerLeader is string
-        && request.resource.data.centerLeader.size() > 0
-        && request.resource.data.centerLeader.size() <= 240
-        && hasValidOptionalString('centerLeaderEmail', 240)
-        && request.resource.data.isInitiated is bool
-        && request.resource.data.isIcefluMember is bool
-        && request.resource.data.isNovice is bool
-        && request.resource.data.attendanceMode in ['lodging', 'meals', 'spiritual']
-        && hasValidOptionalString('checkIn', 10)
-        && hasValidOptionalString('checkOut', 10)
-        && request.resource.data.selectedWorks is list
-        && request.resource.data.selectedWorks.size() <= 4
-        && request.resource.data.needsExtraLinen is bool
-        && (!request.resource.data.keys().hasAny(['roomNumber']) || isValidEncontroEuropeuRoom(request.resource.data.roomNumber))
-        && hasValidOptionalString('identityDocumentName', 240)
-        && hasValidOptionalString('identityDocumentPath', 1024)
-        && hasValidOptionalString('paymentProofName', 240)
-        && hasValidOptionalString('paymentProofPath', 1024)
-        && hasValidOptionalString('consentDocumentName', 240)
-        && hasValidOptionalString('consentDocumentPath', 1024)
-        && hasValidOptionalString('phone', 40)
-        && hasValidOptionalString('phoneCountryCode', 10)
-        && hasValidOptionalString('email', 240)
-        && hasValidContribution()
-        && hasValidRegistrationStatus();
-    }
-
-    function hasValidEncontroEuropeuRegistrationCreatePayload() {
-      return request.resource.data.keys().hasOnly(encontroEuropeuRegistrationCreateFields())
-        && hasValidEncontroEuropeuRegistrationPayload()
-        && request.resource.data.status == 'pending'
-        && request.resource.data.submittedAt == request.time;
-    }
-
-    function hasValidEncontroEuropeuRegistrationOwnerUpdate() {
-      return resource.data.userId == request.auth.uid
-        && request.resource.data.userId == resource.data.userId
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.submittedAt == resource.data.submittedAt
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(encontroEuropeuRegistrationOwnerEditableFields())
-        && hasValidEncontroEuropeuRegistrationPayload();
-    }
-
-    // Generic events/{eventId}/registrations validation — same shape as the European
-    // Gathering registration, with eventId + capacityBucket instead of the fixed roomNumber.
+    // events/{eventId}/registrations validation: type/size checks mirrored on create + owner-update.
     function eventRegistrationRequiredFields() {
       return [
         'locale',
@@ -534,29 +374,6 @@ service cloud.firestore {
     match /members/{id} {
       allow get, list: if isAdmin() || isOwnMemberRecord();
       allow create, update, delete: if isAdmin();
-    }
-
-    match /europeanGatheringRegistrations/{id} {
-      allow create: if isSignedIn()
-        && hasValidEncontroEuropeuRegistrationCreatePayload();
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
-      allow update: if (isAdmin() && hasValidRegistrationStatus())
-        || (isSignedIn() && hasValidEncontroEuropeuRegistrationOwnerUpdate());
-    }
-
-    match /europeanGatheringRooms/{room} {
-      allow read: if true;
-      allow create, update: if isValidEncontroEuropeuRoom(room)
-        && request.resource.data.keys().hasOnly(['capacity', 'reserved', 'available', 'updatedAt'])
-        && request.resource.data.capacity == expectedEncontroEuropeuRoomCapacity(room)
-        && request.resource.data.reserved is number
-        && request.resource.data.available is number
-        && request.resource.data.reserved >= 0
-        && request.resource.data.reserved <= request.resource.data.capacity
-        && request.resource.data.available == request.resource.data.capacity - request.resource.data.reserved
-        && request.resource.data.updatedAt == request.time;
-      allow delete: if false;
     }
 
     // Item C (Phase 4a): generic events authored by eventadmins. Published events are public-readable.

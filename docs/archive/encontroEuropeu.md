@@ -1,3 +1,9 @@
+# Encontro Europeu (ARQUIVADO)
+
+> **ARCHIVED (junho/2026).** A página e as coleções bespoke do Encontro Europeu foram retiradas;
+> o evento agora é a primeira instância do motor genérico de eventos (`events/encontro-europeu-2026`).
+> Mantido apenas como registro histórico do design original.
+
 ## Pagina de iscrizione incontro europeo
 
 > **Atualizacao (Parte 2, Fase 4e.3 — cutover):** o Encontro Europeu agora e uma instancia da

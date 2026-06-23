@@ -202,8 +202,8 @@ export function DashboardPage() {
   const stableCards = [
     ...(portalAccessCard ? [portalAccessCard] : []),
     ...(approvalStatus === 'approved' ? eventCards : []),
-    ...(hasRequiredRole(role, 'admin')
-      ? [{ to: '/admin/european-gathering', ...copy.stableCards.registrations }]
+    ...(hasRequiredRole(role, 'eventadmin')
+      ? [{ to: '/admin/events', ...copy.stableCards.registrations }]
       : [])
   ];
 
@@ -218,7 +218,7 @@ export function DashboardPage() {
 
   const cards = devModeEnabled ? devCards : stableCards;
 
-  const isAdminRegistrationsCard = (to: string) => to === '/admin/european-gathering';
+  const isAdminRegistrationsCard = (to: string) => to === '/admin/events';
 
   return (
     <div className="space-y-6">

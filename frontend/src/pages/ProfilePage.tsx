@@ -5,7 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 import { fetchChurches } from '../lib/works';
 import { fetchMembersByEmail, type MemberRecord } from '../lib/members';
 import { fetchUser, fetchApprovedSnapshots, nextUserApprovalStatus, resolveUserDocumentUrl, uploadUserIdentityDocument, upsertUser } from '../lib/users';
-import { europeanGatheringUploadAccept } from '../lib/europeanGatheringUpload';
+import { uploadAccept } from '../lib/uploads';
 import { getFileUploadLabels } from '../lib/fileUploadLabels';
 import { FileUploadField } from '../components/FileUploadField';
 import { useAuth } from '../providers/useAuth';
@@ -562,7 +562,7 @@ export default function ProfilePage() {
               </p>
             ) : null}
             <FileUploadField
-              accept={europeanGatheringUploadAccept}
+              accept={uploadAccept}
               file={identityDocumentFile}
               label={copy.idUploadChoose}
               onChange={setIdentityDocumentFile}

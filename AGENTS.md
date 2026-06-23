@@ -39,7 +39,7 @@ Agents working here should optimize for small, verified changes and preserve use
 
 - Keep changes focused; do not reformat unrelated files.
 - Check local changes before editing active feature files.
-- Active work area: the generic events engine (`frontend/src/lib/events.ts`, `frontend/src/lib/eventRegistrations.ts`, `frontend/src/pages/events/`, `EventRegistrationPage.tsx`, `EventsAdminPage.tsx`) and the bespoke European Gathering code being retired alongside it (`frontend/src/lib/europeanGathering*.ts`, `EuropeanGatheringAdminPage.tsx`). Check recent git history before editing these.
+- Active work area: the generic events engine (`frontend/src/lib/events.ts`, `frontend/src/lib/eventRegistrations.ts`, `frontend/src/lib/leaderReview.ts`, `frontend/src/pages/events/`, `EventRegistrationPage.tsx`, `EventsAdminPage.tsx`, `LeaderReviewPage.tsx`). Check recent git history before editing these. (The bespoke European Gathering code was retired in June 2026 — EG is now the `events/encontro-europeu-2026` instance.)
 - Do not modify generated files unless they change as a result of a validated command.
 - Use route-level lazy loading and domain splits before accepting bundle growth.
 

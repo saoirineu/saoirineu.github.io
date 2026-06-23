@@ -1,4 +1,4 @@
-import { europeanGatheringUploadMaxBytes, formatFileSize } from './europeanGatheringUpload';
+import { uploadMaxBytes, formatFileSize } from './uploads';
 
 export type FileUploadLabelsLocale = 'pt' | 'en' | 'es' | 'it';
 
@@ -105,6 +105,6 @@ export function getFileUploadLabels(locale: FileUploadLabelsLocale): FileUploadL
   const labels = labelsByLocale[locale];
   return {
     ...labels,
-    tooLargeError: labels.tooLargeError.replace('XXX', formatFileSize(europeanGatheringUploadMaxBytes))
+    tooLargeError: labels.tooLargeError.replace('XXX', formatFileSize(uploadMaxBytes))
   };
 }

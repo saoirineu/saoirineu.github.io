@@ -1,5 +1,5 @@
 // Pure, dependency-free two-phase leader decision state machine (Part 2, §7.2).
-// Extracted from the europeanGatheringLeaderRespond callable so the transitions are unit-testable
+// Extracted from the leaderRespond callable so the transitions are unit-testable
 // without a Firestore/functions harness. The callable wraps this with timestamps/comments/consent.
 
 export type LeaderDecision = 'approved' | 'approved-interview' | 'approved-psychologist' | 'rejected';

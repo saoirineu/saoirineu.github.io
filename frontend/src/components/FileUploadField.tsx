@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import {
-  compressEuropeanGatheringImage,
+  compressImage,
   formatFileSize,
-  shouldOfferEuropeanGatheringImageCompression,
-  validateEuropeanGatheringUploadFile
-} from '../lib/europeanGatheringUpload';
+  shouldOfferImageCompression,
+  validateUploadFile
+} from '../lib/uploads';
 
 export function FileUploadField({
   accept,
@@ -95,7 +95,7 @@ export function FileUploadField({
       return;
     }
 
-    const validationError = validateEuropeanGatheringUploadFile(nextFile);
+    const validationError = validateUploadFile(nextFile);
     if (validationError === 'invalid-type') {
       setErrorMessage(invalidTypeError);
       setCompressionCandidate(null);
@@ -112,11 +112,11 @@ export function FileUploadField({
 
     setErrorMessage('');
 
-    if (shouldOfferEuropeanGatheringImageCompression(nextFile)) {
+    if (shouldOfferImageCompression(nextFile)) {
       setIsProcessing(true);
 
       try {
-        const compressed = await compressEuropeanGatheringImage(nextFile);
+        const compressed = await compressImage(nextFile);
         if (compressed !== nextFile) {
           setCompressionCandidate({ compressed, original: nextFile });
           return;

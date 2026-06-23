@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
- * Generate a leader-review URL for a given European Gathering registration.
+ * Generate a leader-review URL for a given event registration
+ * (events/{eventId}/registrations/{registrationId}).
  *
  * Reads LEADER_TOKEN_SECRET from docs/credentials/leader-token.env (override
  * with --secret-file), computes the same HMAC the Cloud Function does, and
  * prints the resulting URL. Defaults to the local dev base.
  *
  * Usage:
- *   node scripts/leader-link.js --id <registrationId> --email <leaderEmail>
- *   node scripts/leader-link.js --id abc123 --email leader@example.com --base https://saoirineu.github.io
+ *   node scripts/leader-link.js --id <registrationId> --email <leaderEmail> --event <eventId>
+ *   node scripts/leader-link.js --id abc123 --email leader@example.com --event encontro-europeu-2026 --base https://saoirineu.github.io
  */
 
 import crypto from 'crypto';
@@ -39,8 +40,8 @@ function loadSecret(envPath) {
 
 const args = parseArgs(process.argv);
 
-if (!args.id || !args.email) {
-  console.error('Usage: node scripts/leader-link.js --id <registrationId> --email <leaderEmail> [--base <baseUrl>] [--secret-file <path>]');
+if (!args.id || !args.email || !args.event) {
+  console.error('Usage: node scripts/leader-link.js --id <registrationId> --email <leaderEmail> --event <eventId> [--base <baseUrl>] [--secret-file <path>]');
   process.exit(2);
 }
 
@@ -50,8 +51,8 @@ const secret = loadSecret(secretFile);
 
 const token = crypto
   .createHmac('sha256', secret)
-  .update(`${args.id}:${args.email.trim().toLowerCase()}`)
+  .update(`${args.event}:${args.id}:${args.email.trim().toLowerCase()}`)
   .digest('hex')
   .slice(0, 32);
 
-console.log(`${base}/european-gathering/leader-review/${args.id}?t=${token}`);
+console.log(`${base}/leader-review/${args.id}?t=${token}&e=${encodeURIComponent(args.event)}`);

@@ -6,9 +6,11 @@
 > codigo ainda)`. Fonte de verdade para campos: os tipos em `frontend/src/lib/`.
 >
 > **Implementadas:** `users`, `churches`, `beverageBatches`, `trabalhos`, `members`, `events`
-> (+ subcolecoes `registrations`/`capacity`), `users/{uid}/consents`, `europeanGatheringRegistrations`,
-> `europeanGatheringRooms`, `sacramentItems`, `sacramentStocks`, `sacramentTransactions`.
+> (+ subcolecoes `registrations`/`capacity`), `users/{uid}/consents`, `sacramentItems`,
+> `sacramentStocks`, `sacramentTransactions`.
 > **Planejadas:** `pessoas`, `hinarios`, `hinos`, `conceitos`.
+> **Removidas:** `europeanGatheringRegistrations` e `europeanGatheringRooms` (cutover do Encontro
+> Europeu para `events/encontro-europeu-2026`; código e regras retirados — junho/2026).
 
 ## Colecoes
 
@@ -113,35 +115,12 @@ senao `email-<hash>` ou `name-<hash>`.
 - proveniencia/merge: sources[] ({ file: `complete`|`importer`|`certificates`, code (id do registro na fonte), line (linha 1-based na planilha) }), needsReview (bool), reviewReasons (string[]), conflicts ({ campo: string[] }), superseeded ({ campo: string[] } com valores antigos rejeitados automaticamente ou na revisao manual), possibleDuplicateIds (string[]), reviewedBy?, reviewedAt?, createdAt, updatedAt
 - Precedencia de merge: `ELENCO COMPLETO SOCI CLOUD.xlsx` e a fonte principal — seus valores vencem e o importer (`ImporterAnagrafichePF compilato.xlsx`) so preenche campos ausentes; excecao e a data de iscrizione (`registrationDate`), na qual o importer tem precedencia. Valores distintos dentro da mesma fonte resolvem pelo registro mais recente; os descartados ficam em `superseeded[campo]`. Certificados ("Primo Lavoro") casam por email somente quando o nome do sujeito tambem confere (emails de familia sao compartilhados), depois por nome. Registros que compartilham email mas tem nomes claramente diferentes ficam separados e ligados via `possibleDuplicateIds`, com `reviewReasons` incluindo `family-email` para revisao manual na UI admin.
 
-### europeanGatheringRegistrations
-> **Parte 2, Fase 4e.3:** o formulario do Encontro Europeu foi migrado para o renderer generico
-> (`events/encontro-europeu-2026/registrations`). Esta colecao guarda apenas as inscricoes
-> **antigas** (pre-cutover), ainda triadas em `/admin/european-gathering`. Inscricoes novas usam
-> a subcolecao do evento. Nao houve migracao de dados (ids de trabalhos antigos divergem).
-
-- locale: `pt` | `en` | `es` | `it`
-- firstName, lastName, country
-- church, centerLeader
-- isFardado: bool
-- isIcefluMember: bool
-- isNovice: bool
-- attendanceMode: `lodging` | `meals` | `spiritual`
-- checkIn, checkOut: string ISO curta (`YYYY-MM-DD`), opcionais quando a modalidade nao envolve permanencia
-- selectedWorks: string[] com ids dos trabalhos espirituais selecionados
-- needsExtraLinen: bool
-- roomNumber: string?
-- identityDocumentName, paymentProofName, consentDocumentName: string?
-- identityDocumentPath, paymentProofPath, consentDocumentPath: string? com path no Firebase Storage para download administrativo
-- contribution: { nights, lodging, spiritualWorks, extras, total }
-- status: `pending` | `approved` | `under-review` | `payment-overdue` | `rejected` | `archived`
-- submittedAt
-
-### europeanGatheringRooms
-- doc id: `Cedro` | `Luce` | `Aurora` | `Bosco` | `Fonte` | `Monte` | `Stella`
-- capacity: number fixa por quarto
-- reserved: total de vagas bloqueadas por inscricoes `pending`, `under-review` e `approved`
-- available: `capacity - reserved`
-- updatedAt
+### europeanGatheringRegistrations / europeanGatheringRooms (removidas)
+> **Retiradas (junho/2026).** O Encontro Europeu virou a primeira instância de `events`
+> (`events/encontro-europeu-2026` + subcoleções `registrations`/`capacity`). As coleções
+> bespoke `europeanGatheringRegistrations` e `europeanGatheringRooms`, a página admin dedicada,
+> o gatilho de e-mail e as regras correspondentes foram removidos. Inscrições e capacidade agora
+> vivem inteiramente sob `events/{eventId}`.
 
 ## Indices compostos sugeridos
 - pessoas: papeis+status; igrejaRef+status
@@ -150,8 +129,7 @@ senao `email-<hash>` ou `name-<hash>`.
 - hinos: hinarioRef; autorRef; tema+hinarioRef
 - beverageBatches: ano+localidade; grau+ano; responsaveis
 - trabalhos: data+igrejasResponsaveis; data+createdBy; hinarios+data
-- europeanGatheringRegistrations: status+submittedAt; attendanceMode+submittedAt
-- europeanGatheringRooms: sem indice composto; leitura publica por doc/listagem simples
+- events/{eventId}/registrations: status+submittedAt; attendanceMode+submittedAt
 - members: needsReview+fullName; memberStatus+fullName (listagem e filtros admin)
 
 ## Regras (esboco)
@@ -168,8 +146,7 @@ senao `email-<hash>` ou `name-<hash>`.
 - Campos que referenciam taxonomias (papel, temas) devem usar labels/ids SKOS para alinhar UI/tooltips.
 - `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
-- `europeanGatheringRegistrations` recebe inscricoes anonimas via pagina publica; leitura fica restrita a admins. Os anexos agora sobem ao Firebase Storage e a inscricao guarda o path administrativo de download.
-- `europeanGatheringRooms` eh um agregado publico para mostrar apenas disponibilidade de vagas no formulario, sem expor dados pessoais das inscricoes.
+- Inscricoes de eventos vivem em `events/{eventId}/registrations` (anexos no Firebase Storage, path administrativo guardado); `events/{eventId}/capacity/{bucket}` eh o agregado publico de vagas.
 - Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `eventadmin` cria/gerencia eventos, `admin` visualiza dados operacionais (e herda `eventadmin`), enquanto `superadmin` tambem gerencia privilegios de usuarios.
 - Parte 1 (entregue) do encontro europeu: o formulario publico nao coleta mais `roomNumber`; mostra um agregado de "vagas de participacao" (soma de `europeanGatheringRooms`). A caucao (caution deposit) e derivada (30% do total) e exibida na UI, **nao** e armazenada em `contribution` (a regra de criacao fixa `contribution` em `{nights, lodging, spiritualWorks, extras, total}`). Trabalhos atuais: sex 25, sab 26, seg 28, qua 30 de setembro, 19:00.
 
@@ -194,7 +171,7 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
 - Regras: dono cria `pending` (payload validado, `uploadedAt == request.time`); transicao para
   `approved`/`rejected` apenas por `isUserAdmin()`/`isEventAdmin()` (o fluxo do dirigente da Fase 3
   e server-side via callable). Leitura: dono/admin/eventadmin.
-- Storage: o arquivo do consentimento continua em `europeanGatheringRegistrations/{id}/consentDocument-*`
+- Storage: o arquivo do consentimento fica em `events/{eventId}/registrations/{id}/consentDocument-*`
   (path da inscricao); o ledger apenas referencia esse `documentPath`/`documentName`.
 - Pendente da Fase 3: aprovacao terminal do dirigente carimba o consentimento como `approved`.
   Ate la, `consentRequired` retorna `true` para todos (nenhum consentimento aprovado ainda).
@@ -227,7 +204,7 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
   (as duas de entrevista nao sao terminais).
 - `interview` (no doc da inscricao): { required: `none|standard|psychologist`,
   status: `awaiting|approved|rejected`, resolvedAt?, resolvedBy? }. Gravado server-side pela
-  callable `europeanGatheringLeaderRespond` (Admin SDK — sem regra de cliente nova).
+  callable `leaderRespond` (Admin SDK — sem regra de cliente nova).
 - Fase 2: a igreja de referencia envia `interviewOutcome` (`approved|rejected`) na mesma pagina
   tokenizada quando `interview.status == 'awaiting'`. O `eventadmin` ve o badge
   "Aguardando entrevista/psicólogo" no admin.

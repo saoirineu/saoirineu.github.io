@@ -15,8 +15,8 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 
 import { createConsentRecord } from './consents';
 import type { EventRecord } from './events';
-import type { LeaderApprovalDecision, RegistrationInterview } from './europeanGathering';
-import { getEuropeanGatheringUploadContentType, validateEuropeanGatheringUploadFile } from './europeanGatheringUpload';
+import type { LeaderApprovalDecision, RegistrationInterview } from './leaderReview';
+import { getUploadContentType, validateUploadFile } from './uploads';
 import { db, storage } from './firebase';
 import {
   asOptionalBoolean,
@@ -286,12 +286,12 @@ async function uploadEventRegistrationDocuments(args: {
     const entries = await Promise.all(
       Object.entries(args.documents).map(async ([key, file]) => {
         if (!file) return null;
-        const validationError = validateEuropeanGatheringUploadFile(file);
+        const validationError = validateUploadFile(file);
         if (validationError === 'invalid-type') throw new Error('Only PDF, JPG, and PNG files are allowed.');
         if (validationError === 'file-too-large') throw new Error('Uploaded files must be 10 MB or smaller.');
 
         const path = `events/${args.eventId}/registrations/${args.registrationId}/${key}-${sanitizeFileName(file.name)}`;
-        await uploadBytes(ref(storage, path), file, { contentType: getEuropeanGatheringUploadContentType(file) });
+        await uploadBytes(ref(storage, path), file, { contentType: getUploadContentType(file) });
         const stored = { name: file.name, path };
         uploaded.push(stored);
         return [key, stored] as const;

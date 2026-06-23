@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import {
-  fetchEuropeanGatheringLeaderView,
-  submitEuropeanGatheringLeaderResponse,
-  type EuropeanGatheringLeaderView,
+  fetchLeaderView,
+  submitLeaderResponse,
+  type LeaderView,
   type InterviewOutcome,
   type LeaderApprovalDecision
-} from '../lib/europeanGathering';
+} from '../lib/leaderReview';
 import { siteLocaleOptions, type SiteLocale } from '../lib/siteLocale';
 import { useSiteLocale } from '../providers/useSiteLocale';
 
@@ -190,7 +190,7 @@ export default function LeaderReviewPage() {
   const token = searchParams.get('t') ?? '';
   const eventId = searchParams.get('e') ?? undefined;
 
-  const [data, setData] = useState<EuropeanGatheringLeaderView | null>(null);
+  const [data, setData] = useState<LeaderView | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [comment, setComment] = useState('');
@@ -207,7 +207,7 @@ export default function LeaderReviewPage() {
 
     let cancelled = false;
     setLoading(true);
-    fetchEuropeanGatheringLeaderView({ id, token, eventId })
+    fetchLeaderView({ id, token, eventId })
       .then(view => { if (!cancelled) setData(view); })
       .catch(error => {
         if (!cancelled) {
@@ -232,7 +232,7 @@ export default function LeaderReviewPage() {
     setFeedback('');
     setSubmitting(key);
     try {
-      const next = await submitEuropeanGatheringLeaderResponse({ id, token, eventId, ...args });
+      const next = await submitLeaderResponse({ id, token, eventId, ...args });
       setData(next);
       if (args.comment) setComment('');
       setFeedback(

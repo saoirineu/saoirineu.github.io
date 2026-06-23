@@ -1,12 +1,12 @@
-export const europeanGatheringUploadAccept = '.pdf,.jpg,.jpeg,.png';
-export const europeanGatheringUploadMaxBytes = 10 * 1024 * 1024;
-export const europeanGatheringImageCompressionThresholdBytes = 3 * 1024 * 1024;
-const europeanGatheringImageCompressionMaxDimension = 2200;
+export const uploadAccept = '.pdf,.jpg,.jpeg,.png';
+export const uploadMaxBytes = 10 * 1024 * 1024;
+export const imageCompressionThresholdBytes = 3 * 1024 * 1024;
+const imageCompressionMaxDimension = 2200;
 
 const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
 
-export type EuropeanGatheringUploadValidationError = 'invalid-type' | 'file-too-large';
+export type UploadValidationError = 'invalid-type' | 'file-too-large';
 
 export function formatFileSize(bytes: number) {
   if (bytes < 1024) {
@@ -30,12 +30,12 @@ function hasAllowedExtension(fileName: string) {
   return allowedExtensions.some(extension => normalizedName.endsWith(extension));
 }
 
-export function isEuropeanGatheringUploadTypeAllowed(file: Pick<File, 'name' | 'type'>) {
+export function isUploadTypeAllowed(file: Pick<File, 'name' | 'type'>) {
   const normalizedType = file.type.toLowerCase();
   return allowedMimeTypes.has(normalizedType) || (!normalizedType && hasAllowedExtension(file.name));
 }
 
-export function getEuropeanGatheringUploadContentType(file: Pick<File, 'name' | 'type'>) {
+export function getUploadContentType(file: Pick<File, 'name' | 'type'>) {
   const normalizedType = file.type.toLowerCase();
   if (allowedMimeTypes.has(normalizedType)) return normalizedType;
 
@@ -47,24 +47,24 @@ export function getEuropeanGatheringUploadContentType(file: Pick<File, 'name' | 
   return undefined;
 }
 
-export function isEuropeanGatheringCompressibleImage(file: Pick<File, 'type'>) {
+export function isCompressibleImage(file: Pick<File, 'type'>) {
   return file.type === 'image/jpeg' || file.type === 'image/png';
 }
 
-export function validateEuropeanGatheringUploadFile(file: Pick<File, 'name' | 'size' | 'type'>): EuropeanGatheringUploadValidationError | null {
-  if (!isEuropeanGatheringUploadTypeAllowed(file)) {
+export function validateUploadFile(file: Pick<File, 'name' | 'size' | 'type'>): UploadValidationError | null {
+  if (!isUploadTypeAllowed(file)) {
     return 'invalid-type';
   }
 
-  if (file.size > europeanGatheringUploadMaxBytes) {
+  if (file.size > uploadMaxBytes) {
     return 'file-too-large';
   }
 
   return null;
 }
 
-export function shouldOfferEuropeanGatheringImageCompression(file: Pick<File, 'size' | 'type'>) {
-  return isEuropeanGatheringCompressibleImage(file) && file.size > europeanGatheringImageCompressionThresholdBytes;
+export function shouldOfferImageCompression(file: Pick<File, 'size' | 'type'>) {
+  return isCompressibleImage(file) && file.size > imageCompressionThresholdBytes;
 }
 
 function loadImage(file: File) {
@@ -99,15 +99,15 @@ function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality?: num
   });
 }
 
-export async function compressEuropeanGatheringImage(file: File) {
-  if (!isEuropeanGatheringCompressibleImage(file)) {
+export async function compressImage(file: File) {
+  if (!isCompressibleImage(file)) {
     return file;
   }
 
   const image = await loadImage(file);
   const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
-  const scale = longestSide > europeanGatheringImageCompressionMaxDimension
-    ? europeanGatheringImageCompressionMaxDimension / longestSide
+  const scale = longestSide > imageCompressionMaxDimension
+    ? imageCompressionMaxDimension / longestSide
     : 1;
 
   const canvas = document.createElement('canvas');

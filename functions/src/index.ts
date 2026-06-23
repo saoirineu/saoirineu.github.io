@@ -25,14 +25,13 @@ type LeaderComment = {
 
 const LEADER_TOKEN_HEX_LENGTH = 32;
 
-// eventId is empty for legacy europeanGatheringRegistrations (keeps existing leader links valid)
-// and the event id for events/{eventId}/registrations.
+// Leader token is scoped to events/{eventId}/registrations/{registrationId}.
 function leaderTokenPayload(registrationId: string, leaderEmail: string, eventId: string) {
   const email = leaderEmail.trim().toLowerCase();
-  return eventId ? `${eventId}:${registrationId}:${email}` : `${registrationId}:${email}`;
+  return `${eventId}:${registrationId}:${email}`;
 }
 
-function signLeaderToken(registrationId: string, leaderEmail: string, secret: string, eventId = '') {
+function signLeaderToken(registrationId: string, leaderEmail: string, secret: string, eventId: string) {
   return crypto
     .createHmac('sha256', secret)
     .update(leaderTokenPayload(registrationId, leaderEmail, eventId))
@@ -40,7 +39,7 @@ function signLeaderToken(registrationId: string, leaderEmail: string, secret: st
     .slice(0, LEADER_TOKEN_HEX_LENGTH);
 }
 
-function verifyLeaderToken(registrationId: string, leaderEmail: string, token: string, secret: string, eventId = '') {
+function verifyLeaderToken(registrationId: string, leaderEmail: string, token: string, secret: string, eventId: string) {
   const expected = signLeaderToken(registrationId, leaderEmail, secret, eventId);
   const a = Buffer.from(expected, 'hex');
   const b = Buffer.from(token, 'hex');
@@ -48,11 +47,9 @@ function verifyLeaderToken(registrationId: string, leaderEmail: string, token: s
   return crypto.timingSafeEqual(a, b);
 }
 
-function buildLeaderReviewUrl(registrationId: string, token: string, eventId = '') {
+function buildLeaderReviewUrl(registrationId: string, token: string, eventId: string) {
   const base = appBaseUrl.value().replace(/\/$/, '');
-  return eventId
-    ? `${base}/leader-review/${registrationId}?t=${token}&e=${encodeURIComponent(eventId)}`
-    : `${base}/european-gathering/leader-review/${registrationId}?t=${token}`;
+  return `${base}/leader-review/${registrationId}?t=${token}&e=${encodeURIComponent(eventId)}`;
 }
 
 function buildLeaderEmailBody(args: { name: string; reviewUrl: string }) {
@@ -147,72 +144,8 @@ export const onUserApprovalPending = onDocumentWritten(
   }
 );
 
-export const onEuropeanGatheringRegistration = onDocumentCreated(
-  {
-    document: 'europeanGatheringRegistrations/{id}',
-    secrets: [smtpHost, smtpPort, smtpUser, smtpPass, leaderTokenSecret],
-  },
-  async event => {
-    const data = event.data?.data();
-    if (!data) return;
-
-    const id = event.params.id;
-    const name = `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim();
-    const contribution = data.contribution?.total != null
-      ? `€ ${data.contribution.total}`
-      : '—';
-
-    const lines = [
-      `Nome: ${name}`,
-      `Paese: ${data.country ?? '—'}`,
-      `Centro: ${data.church ?? '—'}`,
-      `Dirigente: ${data.centerLeader ?? '—'}`,
-      `Email dirigente: ${data.centerLeaderEmail ?? '—'}`,
-      `Email: ${data.email ?? '—'}`,
-      `Telefono: ${data.phone ?? '—'}`,
-      ``,
-      `Fardado: ${data.isInitiated ? 'Sì' : 'No'}`,
-      `Membro ICEFLU: ${data.isIcefluMember ? 'Sì' : 'No'}`,
-      `Prima partecipazione: ${data.isNovice ? 'Sì' : 'No'}`,
-      ``,
-      `Modalità: ${data.attendanceMode ?? '—'}`,
-      `Check-in: ${data.checkIn ?? '—'}`,
-      `Check-out: ${data.checkOut ?? '—'}`,
-      `Camera: ${data.roomNumber ?? '—'}`,
-      ``,
-      `Contributo totale: ${contribution}`,
-      ``,
-      `ID iscrizione: ${id}`,
-    ];
-
-    const transporter = createTransporter();
-
-    await transporter.sendMail({
-      from: smtpUser.value(),
-      to: NOTIFY_TO,
-      subject: `Nuova iscrizione Encontro Europeu 2026 — ${name}`,
-      text: lines.join('\n'),
-    });
-
-    const leaderEmail = typeof data.centerLeaderEmail === 'string' ? data.centerLeaderEmail.trim() : '';
-    const leaderName = typeof data.centerLeader === 'string' ? data.centerLeader.trim() : '';
-
-    if (leaderEmail) {
-      const token = signLeaderToken(id, leaderEmail, leaderTokenSecret.value());
-      const reviewUrl = buildLeaderReviewUrl(id, token);
-
-      await transporter.sendMail({
-        from: smtpUser.value(),
-        to: leaderEmail,
-        subject: `Registration approval request — ${name}`,
-        text: buildLeaderEmailBody({ name: leaderName || 'leader', reviewUrl }),
-      });
-    }
-  }
-);
-
-// Generic events leader-review notification (Part 2, §7.5). Mirrors the EG trigger but for
-// events/{eventId}/registrations and an eventId-scoped tokenized leader link.
+// Leader-review notification for events/{eventId}/registrations (Part 2, §7.5): emails the
+// reference leader an eventId-scoped tokenized review link.
 export const onEventRegistration = onDocumentCreated(
   {
     document: 'events/{eventId}/registrations/{id}',
@@ -303,10 +236,12 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown; ev
     throw new HttpsError('invalid-argument', 'Token is required.');
   }
 
-  const eventId = typeof args.eventId === 'string' ? args.eventId : '';
-  const ref = eventId
-    ? admin.firestore().collection('events').doc(eventId).collection('registrations').doc(args.id)
-    : admin.firestore().collection('europeanGatheringRegistrations').doc(args.id);
+  if (typeof args.eventId !== 'string' || !args.eventId) {
+    throw new HttpsError('invalid-argument', 'Event id is required.');
+  }
+
+  const eventId = args.eventId;
+  const ref = admin.firestore().collection('events').doc(eventId).collection('registrations').doc(args.id);
   const snapshot = await ref.get();
   if (!snapshot.exists) {
     throw new HttpsError('not-found', 'Registration not found.');
@@ -325,7 +260,7 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown; ev
   return { ref, data };
 }
 
-export const europeanGatheringLeaderView = onCall(
+export const leaderView = onCall(
   { secrets: [leaderTokenSecret] },
   async request => {
     const { id, token, eventId } = (request.data ?? {}) as { id?: unknown; token?: unknown; eventId?: unknown };
@@ -354,7 +289,7 @@ async function approveUserConsentForRegistration(userId: unknown, registrationId
   );
 }
 
-export const europeanGatheringLeaderRespond = onCall(
+export const leaderRespond = onCall(
   { secrets: [leaderTokenSecret] },
   async request => {
     const payload = (request.data ?? {}) as {

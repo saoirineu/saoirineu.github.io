@@ -20,7 +20,7 @@ import {
   type EventAttendanceMode,
   type EventRegistrationFormValues
 } from '../lib/eventRegistrations';
-import { europeanGatheringUploadAccept } from '../lib/europeanGatheringUpload';
+import { uploadAccept } from '../lib/uploads';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { registrationCopyByLocale } from './events/registrationCopy';
@@ -282,7 +282,7 @@ export default function EventRegistrationPage() {
   }
 
   const fileProps = (key: keyof DocumentState, label: ReactNode) => ({
-    accept: europeanGatheringUploadAccept,
+    accept: uploadAccept,
     className: 'flex h-full flex-col',
     closeLabel: copy.close,
     compressedSizeLabel: copy.fileCompressedSize,
