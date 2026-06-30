@@ -235,7 +235,7 @@ export function ProfilePersonalSection({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <TextInput copy={copy} field="email2" form={form} label={copy.email2} setField={setField} type="email" required={required.has('email2')} />
           <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} required={required.has('phone')} />
-          <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} placeholder={copy.optional} setField={setField} required={required.has('mobile')} />
+          <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} setField={setField} required={required.has('mobile')} />
         </div>
       </div>
       <fieldset disabled className="flex min-w-0 flex-col items-center gap-3 rounded-lg bg-white/60 p-3 opacity-60 shadow-sm">

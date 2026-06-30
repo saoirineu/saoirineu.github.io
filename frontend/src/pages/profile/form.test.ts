@@ -138,7 +138,7 @@ describe('profile form helpers', () => {
       province: 'RM',
       country: 'Italia',
       email: 'maria@example.com',
-      phone: '06123456',
+      mobile: '+39 333 1234567',
       profession: 'Insegnante',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       privacyConsent: 'agree',
@@ -148,6 +148,7 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval(italianReady)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, profession: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, province: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, mobile: '' })).toBe(false);
     // a freshly selected document file stands in for a stored path
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' }, true)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' })).toBe(false);

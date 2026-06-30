@@ -168,7 +168,8 @@ const REQUIRED_TEXT_FIELDS_COMMON: Array<keyof ProfileFormState> = [
 export function requiredProfileTextFields(isItalian: boolean): Array<keyof ProfileFormState> {
   return [
     ...REQUIRED_TEXT_FIELDS_COMMON,
-    ...(isItalian ? (['sex', 'birthPlace', 'province', 'phone'] as Array<keyof ProfileFormState>) : (['birthCountry', 'mobile'] as Array<keyof ProfileFormState>))
+    'mobile',
+    ...(isItalian ? (['sex', 'birthPlace', 'province'] as Array<keyof ProfileFormState>) : (['birthCountry'] as Array<keyof ProfileFormState>))
   ];
 }
 
