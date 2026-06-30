@@ -189,6 +189,7 @@ describe('profile form helpers', () => {
     };
 
     expect(isProfileFormReadyForApproval(italianReady)).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, birthDate: '2001-01-01' })).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, profession: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, province: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, mobile: '' })).toBe(false);

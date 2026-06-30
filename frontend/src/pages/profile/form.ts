@@ -151,6 +151,8 @@ function hasText(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+export const PROFILE_BIRTH_DATE_PICKER_START = '2000-01-01';
+
 export function isValidOptionalEmail(value: string) {
   const email = value.trim();
   return email.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

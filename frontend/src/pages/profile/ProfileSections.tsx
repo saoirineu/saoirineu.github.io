@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import type { ChurchInfo } from '../../lib/works';
-import { avatarFallback, isValidOptionalEmail, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
+import { PROFILE_BIRTH_DATE_PICKER_START, avatarFallback, isValidOptionalEmail, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
 
 /** Shared classes for an input/select that is present but disabled (grayed). */
 const disabledFieldClass = 'bg-slate-100 text-slate-400 cursor-not-allowed';
@@ -52,6 +52,7 @@ export type ProfileSectionsCopy = {
   sexFemale: string;
   sexMale: string;
   birthDate: string;
+  birthDateMonthShortNames: string[];
   birthPlace: string;
   birthProvince: string;
   birthCountry: string;
@@ -126,6 +127,13 @@ function selectChurchName(churches: ChurchInfo[] | undefined, id: string) {
   return churches?.find(church => church.id === id)?.name ?? '';
 }
 
+function formatDateWithShortMonth(value: string, monthShortNames: string[]) {
+  const [year, month, day] = value.split('-');
+  const monthIndex = Number(month) - 1;
+  if (!year || !day || monthIndex < 0 || monthIndex >= monthShortNames.length) return value;
+  return `${day}/${monthShortNames[monthIndex]}/${year}`;
+}
+
 /**
  * An ICEFLU profile text field. On this form every active field is required, so
  * `required` doubles as the enabled flag: required → editable + asterisk;
@@ -151,6 +159,7 @@ function TextInput<K extends TextProfileField>({
   hint?: string;
 }) {
   const disabled = disabledProp ?? !required;
+  const value = form[field];
   return (
     <label className={`text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
       {label}
@@ -160,9 +169,63 @@ function TextInput<K extends TextProfileField>({
         type={type}
         disabled={disabled}
         className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabled ? disabledFieldClass : ''}`}
-        value={form[field]}
+        value={value}
         onChange={event => setField(field, event.target.value as ProfileFormState[K])}
         placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
+function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & { required: boolean }) {
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const displayValue = formatDateWithShortMonth(form.birthDate, copy.birthDateMonthShortNames);
+  const disabled = !required;
+
+  const openPicker = () => {
+    const input = dateInputRef.current;
+    if (!input || disabled) return;
+    if (!form.birthDate) input.value = PROFILE_BIRTH_DATE_PICKER_START;
+    const picker = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof picker.showPicker === 'function') {
+      picker.showPicker();
+      return;
+    }
+    input.click();
+  };
+
+  return (
+    <label className={`relative text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
+      {copy.birthDate}
+      {required ? <RequiredMark /> : null}
+      <input
+        type="text"
+        readOnly
+        disabled={disabled}
+        className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabled ? disabledFieldClass : 'cursor-pointer bg-white'}`}
+        value={displayValue}
+        onClick={openPicker}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openPicker();
+          }
+        }}
+        placeholder="DD/MMM/YYYY"
+      />
+      <input
+        ref={dateInputRef}
+        type="date"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="absolute bottom-0 right-0 h-px w-px opacity-0"
+        value={form.birthDate}
+        onChange={event => setField('birthDate', event.target.value)}
+        onBlur={event => {
+          if (!form.birthDate && event.currentTarget.value === PROFILE_BIRTH_DATE_PICKER_START) {
+            event.currentTarget.value = '';
+          }
+        }}
       />
     </label>
   );
@@ -359,7 +422,7 @@ export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProp
             <option value="M">{copy.sexMale}</option>
           </select>
         </label>
-        <TextInput copy={copy} field="birthDate" form={form} label={copy.birthDate} setField={setField} type="date" required={required.has('birthDate')} />
+        <BirthDateInput copy={copy} form={form} setField={setField} required={required.has('birthDate')} />
         <TextInput copy={copy} field="birthPlace" form={form} label={copy.birthPlace} setField={setField} required={required.has('birthPlace')} />
         <TextInput copy={copy} field="birthProvince" form={form} label={copy.birthProvince} setField={setField} required={required.has('birthProvince')} />
         <TextInput copy={copy} field="birthCountry" form={form} label={copy.birthCountry} setField={setField} required={required.has('birthCountry')} />
