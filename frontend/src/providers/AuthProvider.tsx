@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { httpsCallable } from 'firebase/functions';
 import {
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -11,7 +11,7 @@ import {
   signOut as firebaseSignOut
 } from 'firebase/auth';
 
-import { auth, googleProvider } from '../lib/firebase';
+import { auth, functions, googleProvider } from '../lib/firebase';
 import { syncUserProfileForLogin } from '../lib/users';
 import { AuthContext, type AuthContextValue } from './auth-context';
 
@@ -58,8 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     emailSignIn: (email, password) => signInWithEmailAndPassword(auth, email, password).then(() => undefined),
     emailSignUp: async (email, password) => {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await sendEmailVerification(credential.user);
+      await createUserWithEmailAndPassword(auth, email, password);
+      await httpsCallable(functions, 'sendVerificationEmailCallable')();
       await firebaseSignOut(auth);
     },
     sendPasswordReset: email => sendPasswordResetEmail(auth, email).then(() => undefined),
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     sendVerificationEmail: async () => {
       if (!auth.currentUser) return;
-      await sendEmailVerification(auth.currentUser);
+      await httpsCallable(functions, 'sendVerificationEmailCallable')();
     },
     signOut: () => firebaseSignOut(auth)
   };

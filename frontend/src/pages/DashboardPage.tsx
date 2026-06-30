@@ -10,7 +10,7 @@ import { useSystemRole } from '../providers/useSystemRole';
 const copyByLocale = {
   pt: {
     panel: 'Painel',
-    home: 'Início',
+    home: 'Home',
     devIntro: 'Navegue pelos dados e ontologias do Santo Daime.',
     stableIntro: 'Acesse daqui apenas as áreas estáveis disponíveis para uso diário.',
     devHint: 'PWA: funciona offline após o primeiro acesso; dados sincronizam quando a conexão volta.',
@@ -88,7 +88,7 @@ const copyByLocale = {
   },
   es: {
     panel: 'Panel',
-    home: 'Inicio',
+    home: 'Home',
     devIntro: 'Navegue por los datos y ontologías del Santo Daime.',
     stableIntro: 'Acceda aquí solo a las áreas estables disponibles para el uso diario.',
     devHint: 'PWA: funciona sin conexión después del primer acceso; los datos se sincronizan cuando vuelve la conexión.',
@@ -127,7 +127,7 @@ const copyByLocale = {
   },
   it: {
     panel: 'Pannello',
-    home: 'Inizio',
+    home: 'Home',
     devIntro: 'Naviga tra i dati e le ontologie del Santo Daime.',
     stableIntro: 'Accedi qui solo alle aree stabili disponibili per l\'uso quotidiano.',
     devHint: 'PWA: funziona offline dopo il primo accesso; i dati si sincronizzano quando torna la connessione.',

@@ -103,6 +103,44 @@ async function loadUserAdminEmails() {
   return Array.from(emails);
 }
 
+function buildVerificationEmailText(link: string): string {
+  return [
+    'São Irineu',
+    '',
+    '────────────────────────────────',
+    'Bem-vindo/a ao São Irineu!',
+    '',
+    'Clique no link abaixo para confirmar o seu endereço de e-mail e activar a sua conta:',
+    link,
+    '',
+    'Se não criou esta conta, pode ignorar este e-mail.',
+    '',
+    '────────────────────────────────',
+    'Welcome to São Irineu!',
+    '',
+    'Click the link below to confirm your email address and activate your account:',
+    link,
+    '',
+    'If you did not create this account, you can ignore this email.',
+    '',
+    '────────────────────────────────',
+    '¡Bienvenido/a a São Irineu!',
+    '',
+    'Haz clic en el enlace a continuación para confirmar tu dirección de correo electrónico y activar tu cuenta:',
+    link,
+    '',
+    'Si no creaste esta cuenta, puedes ignorar este correo.',
+    '',
+    '────────────────────────────────',
+    'Benvenuto/a su São Irineu!',
+    '',
+    'Clicca sul link qui sotto per confermare il tuo indirizzo email e attivare il tuo account:',
+    link,
+    '',
+    'Se non hai creato questo account, puoi ignorare questa email.',
+  ].join('\n');
+}
+
 function buildUserApprovalEmailBody(args: { uid: string; data: FirebaseFirestore.DocumentData; reviewUrl: string }) {
   const name = args.data.fullName ?? args.data.displayName ?? `${args.data.firstName ?? ''} ${args.data.surname ?? ''}`.trim() ?? '—';
 
@@ -361,5 +399,29 @@ export const leaderRespond = onCall(
 
     const refreshed = await ref.get();
     return sanitizeRegistrationForLeader(ref.id, refreshed.data() ?? {});
+  }
+);
+
+// Sends a multilingual email verification to the currently signed-in user.
+// Called from the frontend instead of Firebase's built-in sendEmailVerification so the
+// email body is in all four app languages (pt, en, es, it).
+export const sendVerificationEmailCallable = onCall(
+  { secrets: [smtpHost, smtpPort, smtpUser, smtpPass] },
+  async request => {
+    const email = request.auth?.token.email;
+    if (!email) {
+      throw new HttpsError('unauthenticated', 'Must be signed in with an email account.');
+    }
+
+    const base = appBaseUrl.value().replace(/\/$/, '');
+    const link = await admin.auth().generateEmailVerificationLink(email, { url: `${base}/login` });
+
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: smtpUser.value(),
+      to: email,
+      subject: 'Confirm your email — São Irineu',
+      text: buildVerificationEmailText(link),
+    });
   }
 );

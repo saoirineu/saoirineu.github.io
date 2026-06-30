@@ -33,7 +33,7 @@ const adminLinks: Array<{ to: string; key: NavCopyKey }> = [
 
 const copyByLocale = {
   pt: {
-    home: 'Início',
+    home: 'Home',
     profile: 'Perfil',
     churches: 'Igrejas',
     events: 'Eventos',
@@ -63,7 +63,7 @@ const copyByLocale = {
     language: 'Language'
   },
   es: {
-    home: 'Inicio',
+    home: 'Home',
     profile: 'Perfil',
     churches: 'Iglesias',
     events: 'Eventos',
@@ -78,7 +78,7 @@ const copyByLocale = {
     language: 'Idioma'
   },
   it: {
-    home: 'Inizio',
+    home: 'Home',
     profile: 'Profilo',
     churches: 'Chiese',
     events: 'Eventi',

@@ -266,7 +266,7 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
     privacyLabel: 'Privacidade',
     privacyText: 'Tendo recebido, lido e aprovado a política de privacidade relativa ao uso dos meus dados pessoais, consinto, nos termos do art. 4, n.º 11 do GDPR 697/2016, ao seu tratamento na medida necessária à realização das finalidades estatutárias. Consinto também que os dados relativos à inscrição sejam comunicados à entidade Stella Azzurra ETS, com a qual a Associação colabora, e por esta tratados na medida necessária ao cumprimento das obrigações previstas em lei e nas normas estatutárias.',
     declarationLabel: 'Declaração',
-    declarationText: 'Solicito a este Conselho Diretivo ser admitido(a) como sócio(a) da Associação e poder participar das atividades associativas. Para tal, declaro ter lido e compartilhado as disposições estatutárias vigentes e as deliberações dos órgãos sociais validamente constituídos, que me comprometo a respeitar. Comprometo-me também a pagar a quota anual para o sustento financeiro da Associação (fixada em € 2,00).',
+    declarationText: 'Solicito a este Conselho Diretivo ser admitido(a) como sócio(a) da Associação e poder participar das atividades associativas. Para tal, declaro ter lido e compartilhado as disposições estatutárias vigentes e as deliberações dos órgãos sociais validamente constituídos, que me comprometo a respeitar.',
     consentAgree: 'Concordo',
     consentDisagree: 'Não concordo'
   },
@@ -275,7 +275,7 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
     privacyLabel: 'Privacy',
     privacyText: 'Having received, read, and approved the privacy policy regarding the use of my personal data, I consent, pursuant to Article 4, No. 11 of GDPR 697/2016, to the processing of such data as necessary for the pursuit of the statutory purposes. I also consent to my registration data being communicated to Stella Azzurra ETS, with which the Association cooperates, to be processed to the extent necessary to the fulfillment of the obligations required by law and statutory regulations.',
     declarationLabel: 'Declaration',
-    declarationText: 'I hereby submit a request to the Board of Directors to be admitted as a member of the Association and to be allowed to participate in its activities. To this end, I state having read and shared the current statutory provisions and the resolutions of the duly constituted social bodies, which I commit to respect. I also agree to pay the annual fee for the financial support of the Association (set at €2.00).',
+    declarationText: 'I hereby submit a request to the Board of Directors to be admitted as a member of the Association and to be allowed to participate in its activities. To this end, I state having read and shared the current statutory provisions and the resolutions of the duly constituted social bodies, which I commit to respect.',
     consentAgree: 'I agree',
     consentDisagree: 'Not agree'
   },
@@ -284,7 +284,7 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
     privacyLabel: 'Privacidad',
     privacyText: 'Habiendo recibido, leído y aprobado la política de privacidad relativa al uso de mis datos personales, consiento, conforme al art. 4, n.º 11 del GDPR 697/2016, a su tratamiento en la medida necesaria para la consecución de los fines estatutarios. Consiento también que los datos relativos a la inscripción sean comunicados a la entidad Stella Azzurra ETS, con la que la Asociación colabora, y tratados por esta en la medida necesaria para el cumplimiento de las obligaciones previstas por la ley y las normas estatutarias.',
     declarationLabel: 'Declaración',
-    declarationText: 'Solicito a este Consejo Directivo ser admitido(a) como socio(a) de la Asociación y poder participar en las actividades asociativas. A tal fin, declaro haber leído y compartido las disposiciones estatutarias vigentes y las resoluciones de los órganos sociales válidamente constituidos, que me comprometo a respetar. Me comprometo además a pagar la cuota anual para el sostenimiento financiero de la Asociación (fijada en € 2,00).',
+    declarationText: 'Solicito a este Consejo Directivo ser admitido(a) como socio(a) de la Asociación y poder participar en las actividades asociativas. A tal fin, declaro haber leído y compartido las disposiciones estatutarias vigentes y las resoluciones de los órganos sociales válidamente constituidos, que me comprometo a respetar.',
     consentAgree: 'Acepto',
     consentDisagree: 'No acepto'
   },
@@ -293,7 +293,7 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
     privacyLabel: 'Privacy',
     privacyText: "Ricevuta, letta ed approvata l'informativa sull'utilizzazione dei miei dati personali, consento ai sensi dell'art. 4 n. 11 G.D.P.R. 697/2016 al loro trattamento nella misura necessaria per il perseguimento degli scopi statutari. Consento anche che i dati riguardanti l'iscrizione siano comunicati all'ente Stella Azzurra ETS con cui l'Associazione collabora e da questi trattati nella misura necessaria all'adempimento di obblighi previsti dalla legge e dalle norme statutarie.",
     declarationLabel: 'Dichiarazione',
-    declarationText: "Chiede a questo spett.le Consiglio Direttivo di essere ammesso/a quale socio/a dell'Associazione, e di poter partecipare alle attività associative. A tal fine, dichiara di aver letto e condiviso le disposizioni statutarie vigenti e le delibere degli organi sociali validamente costituiti, che si impegna a rispettare. S'impegna altresì a versare la quota annuale per il sostegno finanziario dell'Associazione (fissata a Euro 2,00).",
+    declarationText: "Chiede a questo spett.le Consiglio Direttivo di essere ammesso/a quale socio/a dell'Associazione, e di poter partecipare alle attività associative. A tal fine, dichiara di aver letto e condiviso le disposizioni statutarie vigenti e le delibere degli organi sociali validamente costituiti, che si impegna a rispettare.",
     consentAgree: 'Acconsento',
     consentDisagree: 'Non Acconsento'
   }
