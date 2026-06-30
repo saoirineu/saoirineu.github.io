@@ -21,7 +21,7 @@
 - consentimentos (Parte 2, planejado): subcolecao `users/{uid}/consents/{id}` — ver secao "Parte 2" abaixo
 - approvalStatus: `needs-profile` | `pending` | `approved` | `needs-info`
 - approvalSubmittedAt, approvalApprovedAt, approvalApprovedBy
-- displayName, email, email2, phone, mobile, avatarUrl
+- displayName, email, email2, preferredCommunicationEmail (`login` | `secondary`), phone, mobile, avatarUrl
 - memberId: id do documento em `members` usado para preencher o perfil quando o e-mail de login coincide
 - identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex, birthDate, birthPlace, birthProvince, birthCountry, citizenship, nationality, profession
 - residencia Cloud32/socio: address, postalCode, city, province, state, region, country

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { ChurchInfo } from '../../lib/works';
-import { avatarFallback, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
+import { avatarFallback, isValidOptionalEmail, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
 
 /** Shared classes for an input/select that is present but disabled (grayed). */
 const disabledFieldClass = 'bg-slate-100 text-slate-400 cursor-not-allowed';
@@ -34,11 +34,16 @@ export type ProfileSectionsCopy = {
   yourName: string;
   nameHint: string;
   fullNameHint: string;
+  emailHint: string;
+  email2Hint: string;
   firstName: string;
   surname: string;
   fullName: string;
   email: string;
   email2: string;
+  preferredCommunicationEmail: string;
+  preferredLoginEmail: string;
+  preferredSecondaryEmail: string;
   phone: string;
   mobile: string;
   optional: string;
@@ -220,6 +225,12 @@ export function ProfilePersonalSection({
   // ICEFLU uses "Telefono" (Italian form) vs "Mobile" (non-Italian form) — one
   // phone field per variant. The other stays visible but disabled.
   const required = new Set(requiredProfileTextFields(form.isItalian));
+  const secondaryEmailHasValue = form.email2.trim().length > 0;
+  const secondaryEmailValid = isValidOptionalEmail(form.email2);
+  const secondaryEmailAvailable = secondaryEmailHasValue && secondaryEmailValid;
+  const preferredCommunicationEmail = form.preferredCommunicationEmail === 'secondary' && secondaryEmailAvailable
+    ? 'secondary'
+    : 'login';
 
   return (
     <div className="grid gap-4 rounded-lg bg-slate-100 p-3 sm:grid-cols-[1fr,240px]">
@@ -233,16 +244,60 @@ export function ProfilePersonalSection({
         <label className="text-sm text-slate-700">
           {copy.email}
           <RequiredMark />
+          <span className="ml-1 cursor-help text-slate-400 hover:text-slate-600" title={copy.emailHint}>ⓘ</span>
           <input
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabledFieldClass}`}
             value={form.email}
             readOnly
           />
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <TextInput copy={copy} field="email2" form={form} label={copy.email2} setField={setField} type="email" required={required.has('email2')} />
+          <label className="text-sm text-slate-700">
+            {copy.email2}
+            <span className="ml-1 cursor-help text-slate-400 hover:text-slate-600" title={copy.email2Hint}>ⓘ</span>
+            <input
+              type="email"
+              aria-invalid={!secondaryEmailValid}
+              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm ${secondaryEmailValid ? 'border-slate-200' : 'border-red-500 focus:border-red-500 focus:outline-red-500'}`}
+              value={form.email2}
+              onChange={event => {
+                const nextEmail = event.target.value;
+                setField('email2', nextEmail);
+                if ((!nextEmail.trim() || !isValidOptionalEmail(nextEmail)) && form.preferredCommunicationEmail === 'secondary') {
+                  setField('preferredCommunicationEmail', 'login');
+                }
+              }}
+              placeholder={copy.optional}
+            />
+          </label>
           <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} disabled={false} required={required.has('phone')} />
           <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} setField={setField} required={required.has('mobile')} />
+          <fieldset className="sm:col-span-3 rounded-lg border border-slate-200 bg-white/70 px-3 py-2">
+            <legend className="px-1 text-sm font-medium text-slate-700">{copy.preferredCommunicationEmail}</legend>
+            <div className="flex flex-wrap gap-4 pt-1">
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+                <input
+                  type="radio"
+                  name="preferredCommunicationEmail"
+                  className="h-4 w-4 border-slate-300 text-slate-900"
+                  checked={preferredCommunicationEmail === 'login'}
+                  onChange={() => setField('preferredCommunicationEmail', 'login')}
+                />
+                {copy.preferredLoginEmail}
+              </label>
+              <label className={`inline-flex items-center gap-2 text-sm font-medium ${secondaryEmailAvailable ? 'text-slate-800' : 'text-slate-400'}`}>
+                <input
+                  type="radio"
+                  name="preferredCommunicationEmail"
+                  className="h-4 w-4 border-slate-300 text-slate-900 disabled:cursor-not-allowed"
+                  checked={preferredCommunicationEmail === 'secondary'}
+                  disabled={!secondaryEmailAvailable}
+                  onChange={() => setField('preferredCommunicationEmail', 'secondary')}
+                />
+                {copy.preferredSecondaryEmail}
+              </label>
+            </div>
+          </fieldset>
         </div>
       </div>
       <fieldset disabled className="flex min-w-0 flex-col items-center gap-3 rounded-lg bg-white/60 p-3 opacity-60 shadow-sm">

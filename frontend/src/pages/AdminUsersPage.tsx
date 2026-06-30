@@ -51,8 +51,11 @@ const copyByLocale = {
       title: 'Perfil do candidato',
       submittedAt: 'Enviado em',
       name: 'Nome completo',
-      email: 'Email',
-      email2: 'Email alternativo',
+      email: 'Email de login',
+      email2: 'Email secundário',
+      preferredCommunicationEmail: 'Email preferido',
+      preferredLoginEmail: 'Email de login',
+      preferredSecondaryEmail: 'Email secundário',
       phone: 'Telefone',
       mobile: 'Celular',
       fiscalCode: 'Código fiscal',
@@ -114,8 +117,11 @@ const copyByLocale = {
       title: 'Applicant profile',
       submittedAt: 'Submitted at',
       name: 'Full name',
-      email: 'Email',
-      email2: 'Alternative email',
+      email: 'Login email',
+      email2: 'Secondary email',
+      preferredCommunicationEmail: 'Preferred email',
+      preferredLoginEmail: 'Login email',
+      preferredSecondaryEmail: 'Secondary email',
       phone: 'Phone',
       mobile: 'Mobile',
       fiscalCode: 'Fiscal code',
@@ -177,8 +183,11 @@ const copyByLocale = {
       title: 'Perfil del candidato',
       submittedAt: 'Enviado el',
       name: 'Nombre completo',
-      email: 'Correo electrónico',
-      email2: 'Correo alternativo',
+      email: 'Correo de inicio de sesión',
+      email2: 'Correo secundario',
+      preferredCommunicationEmail: 'Correo preferido',
+      preferredLoginEmail: 'Correo de inicio de sesión',
+      preferredSecondaryEmail: 'Correo secundario',
       phone: 'Teléfono',
       mobile: 'Móvil',
       fiscalCode: 'Código fiscal',
@@ -240,8 +249,11 @@ const copyByLocale = {
       title: 'Profilo del candidato',
       submittedAt: 'Inviato il',
       name: 'Nome completo',
-      email: 'Email',
-      email2: 'Email alternativa',
+      email: 'Email di login',
+      email2: 'Email secondaria',
+      preferredCommunicationEmail: 'Email preferita',
+      preferredLoginEmail: 'Email di login',
+      preferredSecondaryEmail: 'Email secondaria',
       phone: 'Telefono',
       mobile: 'Cellulare',
       fiscalCode: 'Codice fiscale',
@@ -595,6 +607,12 @@ function UserProfileReviewModal({
             <ProfileRow label={labels.name} value={displayName} />
             <ProfileRow label={labels.email} value={user.email} />
             {user.email2 ? <ProfileRow label={labels.email2} value={user.email2} /> : null}
+            <ProfileRow
+              label={labels.preferredCommunicationEmail}
+              value={user.preferredCommunicationEmail === 'secondary' && user.email2
+                ? labels.preferredSecondaryEmail
+                : labels.preferredLoginEmail}
+            />
             {user.phone ? <ProfileRow label={labels.phone} value={user.phone} /> : null}
             {user.mobile ? <ProfileRow label={labels.mobile} value={user.mobile} /> : null}
           </ProfileSection>

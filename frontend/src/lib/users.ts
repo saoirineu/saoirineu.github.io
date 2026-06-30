@@ -1,4 +1,4 @@
-import { addDoc, Timestamp, collection, doc, getDoc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
+import { addDoc, Timestamp, collection, deleteField, doc, getDoc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
@@ -30,6 +30,7 @@ export type UserProfile = {
   displayName?: string;
   email?: string;
   email2?: string;
+  preferredCommunicationEmail?: PreferredCommunicationEmail;
   phone?: string;
   mobile?: string;
   avatarUrl?: string;
@@ -95,6 +96,7 @@ export type UserProfile = {
 };
 
 export type UserApprovalStatus = 'needs-profile' | 'pending' | 'approved' | 'needs-info';
+export type PreferredCommunicationEmail = 'login' | 'secondary';
 
 const usersRef = collection(db, 'users');
 
@@ -110,8 +112,17 @@ function normalizeUserApprovalStatus(value: unknown): UserApprovalStatus | undef
   return undefined;
 }
 
+function normalizePreferredCommunicationEmail(value: unknown): PreferredCommunicationEmail | undefined {
+  if (value === 'login' || value === 'secondary') return value;
+  return undefined;
+}
+
 function sanitizeFileName(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+function hasOwnField<T extends object>(value: T, field: keyof T) {
+  return Object.prototype.hasOwnProperty.call(value, field);
 }
 
 function mapUserProfile(uid: string, value: unknown): UserProfile {
@@ -127,6 +138,7 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     displayName: asOptionalString(data.displayName),
     email: asOptionalString(data.email),
     email2: asOptionalString(data.email2),
+    preferredCommunicationEmail: normalizePreferredCommunicationEmail(data.preferredCommunicationEmail),
     phone: asOptionalString(data.phone),
     mobile: asOptionalString(data.mobile),
     avatarUrl: asOptionalString(data.avatarUrl),
@@ -228,7 +240,8 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     approvalApprovedBy: data.approvalApprovedBy,
     displayName: data.displayName,
     email: data.email,
-    email2: data.email2,
+    email2: hasOwnField(data, 'email2') ? data.email2 ?? deleteField() : undefined,
+    preferredCommunicationEmail: data.preferredCommunicationEmail,
     phone: data.phone,
     mobile: data.mobile,
     avatarUrl: data.avatarUrl,
@@ -330,6 +343,7 @@ export type ApprovedProfileSnapshot = {
   displayName?: string;
   email?: string;
   email2?: string;
+  preferredCommunicationEmail?: PreferredCommunicationEmail;
   phone?: string;
   mobile?: string;
   firstName?: string;
@@ -370,6 +384,7 @@ function mapApprovedSnapshot(id: string, value: unknown): ApprovedProfileSnapsho
     displayName: asOptionalString(data.displayName),
     email: asOptionalString(data.email),
     email2: asOptionalString(data.email2),
+    preferredCommunicationEmail: normalizePreferredCommunicationEmail(data.preferredCommunicationEmail),
     phone: asOptionalString(data.phone),
     mobile: asOptionalString(data.mobile),
     firstName: asOptionalString(data.firstName),
@@ -405,6 +420,7 @@ export async function createApprovedSnapshot(uid: string, profile: UserProfile, 
     displayName: profile.displayName,
     email: profile.email,
     email2: profile.email2,
+    preferredCommunicationEmail: profile.preferredCommunicationEmail,
     phone: profile.phone,
     mobile: profile.mobile,
     firstName: profile.firstName,

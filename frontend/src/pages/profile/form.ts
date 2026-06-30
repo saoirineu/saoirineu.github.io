@@ -1,12 +1,13 @@
 import type { User } from 'firebase/auth';
 
 import type { MemberRecord } from '../../lib/members';
-import type { UserProfile } from '../../lib/users';
+import type { PreferredCommunicationEmail, UserProfile } from '../../lib/users';
 
 export type ProfileFormState = {
   displayName: string;
   email: string;
   email2: string;
+  preferredCommunicationEmail: PreferredCommunicationEmail;
   phone: string;
   mobile: string;
   avatarUrl: string;
@@ -77,6 +78,7 @@ export const initialProfileForm: ProfileFormState = {
   displayName: '',
   email: '',
   email2: '',
+  preferredCommunicationEmail: 'login',
   phone: '',
   mobile: '',
   avatarUrl: '',
@@ -149,6 +151,11 @@ function hasText(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+export function isValidOptionalEmail(value: string) {
+  const email = value.trim();
+  return email.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export function avatarFallback(name?: string, email?: string) {
   const base = name || email || '?';
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(base)}&background=1e293b&color=fff`;
@@ -176,6 +183,9 @@ export function requiredProfileTextFields(isItalian: boolean): Array<keyof Profi
 /** Required fields still missing a value (text fields + the primary identity document). */
 export function missingRequiredProfileFields(form: ProfileFormState, hasSelectedIdentityDocument = false): string[] {
   const missing: string[] = requiredProfileTextFields(form.isItalian).filter(field => !hasText(form[field] as string));
+  if (!isValidOptionalEmail(form.email2)) {
+    missing.push('email2');
+  }
   if (!hasText(form.identityDocumentPrimaryPath) && !hasSelectedIdentityDocument) {
     missing.push('identityDocumentPrimary');
   }
@@ -190,10 +200,15 @@ export function isProfileFormReadyForApproval(form: ProfileFormState, hasSelecte
 }
 
 export function buildProfileForm(user: User, profile?: UserProfile | null): ProfileFormState {
+  const preferredCommunicationEmail = profile?.preferredCommunicationEmail === 'secondary' && profile.email2 && isValidOptionalEmail(profile.email2)
+    ? 'secondary'
+    : 'login';
+
   return {
     displayName: profile?.displayName || user.displayName || '',
     email: user.email || profile?.email || '',
     email2: profile?.email2 || '',
+    preferredCommunicationEmail,
     phone: profile?.phone || '',
     mobile: profile?.mobile || '',
     avatarUrl: profile?.avatarUrl || '',
@@ -304,12 +319,18 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
   const isSponsor = isInitiated && form.isSponsor;
   const sponsorChurchNames = splitCommaValues(form.sponsorChurchesText);
   const doctrineRoles = splitCommaValues(form.doctrineRolesText);
+  const secondaryEmail = form.email2.trim();
+  const acceptedSecondaryEmail = secondaryEmail && isValidOptionalEmail(secondaryEmail) ? secondaryEmail : '';
+  const preferredCommunicationEmail = form.preferredCommunicationEmail === 'secondary' && acceptedSecondaryEmail
+    ? 'secondary'
+    : 'login';
 
   return {
     uid: user.uid,
     displayName: form.displayName || undefined,
-    email: form.email || user.email || undefined,
-    email2: form.email2 || undefined,
+    email: user.email || form.email || undefined,
+    email2: acceptedSecondaryEmail || undefined,
+    preferredCommunicationEmail,
     phone: form.phone || undefined,
     mobile: form.mobile || undefined,
     avatarUrl: form.avatarUrl || undefined,

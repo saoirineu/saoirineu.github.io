@@ -9,7 +9,8 @@ import {
   buildProfileForm,
   buildUserPayload,
   initialProfileForm,
-  isProfileFormReadyForApproval
+  isProfileFormReadyForApproval,
+  isValidOptionalEmail
 } from './form';
 
 const user = {
@@ -37,6 +38,8 @@ describe('profile form helpers', () => {
       uid: 'user-1',
       displayName: 'Nome Perfil',
       email: 'perfil@example.com',
+      email2: 'secondary@example.com',
+      preferredCommunicationEmail: 'secondary',
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
@@ -53,6 +56,8 @@ describe('profile form helpers', () => {
 
     expect(form.displayName).toBe('Nome Perfil');
     expect(form.email).toBe('auth@example.com');
+    expect(form.email2).toBe('secondary@example.com');
+    expect(form.preferredCommunicationEmail).toBe('secondary');
     expect(form.firstName).toBe('Maria');
     expect(form.fiscalCode).toBe('CF123');
     expect(form.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
@@ -66,7 +71,9 @@ describe('profile form helpers', () => {
     const payload = buildUserPayload(user, {
       ...initialProfileForm,
       displayName: 'Nome Form',
-      email: '',
+      email: 'typed@example.com',
+      email2: 'secondary@example.com',
+      preferredCommunicationEmail: 'secondary',
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
@@ -90,6 +97,8 @@ describe('profile form helpers', () => {
 
     expect(payload.uid).toBe('user-1');
     expect(payload.email).toBe('auth@example.com');
+    expect(payload.email2).toBe('secondary@example.com');
+    expect(payload.preferredCommunicationEmail).toBe('secondary');
     expect(payload.firstName).toBe('Maria');
     expect(payload.fiscalCode).toBe('CF123');
     expect(payload.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
@@ -114,6 +123,40 @@ describe('profile form helpers', () => {
     expect(payload.isSponsor).toBe(false);
     expect(payload.sponsorChurchIds).toBeUndefined();
     expect(payload.sponsorChurchNames).toBeUndefined();
+  });
+
+  it('falls back to login email as preferred when secondary email is empty', () => {
+    const payload = buildUserPayload(user, {
+      ...initialProfileForm,
+      preferredCommunicationEmail: 'secondary'
+    });
+
+    expect(payload.email2).toBeUndefined();
+    expect(payload.preferredCommunicationEmail).toBe('login');
+
+    const form = buildProfileForm(user, {
+      uid: 'user-1',
+      email2: 'not-an-email',
+      preferredCommunicationEmail: 'secondary'
+    });
+
+    expect(form.preferredCommunicationEmail).toBe('login');
+  });
+
+  it('accepts empty or valid secondary email only', () => {
+    expect(isValidOptionalEmail('')).toBe(true);
+    expect(isValidOptionalEmail(' secondary@example.com ')).toBe(true);
+    expect(isValidOptionalEmail('not-an-email')).toBe(false);
+    expect(isValidOptionalEmail('person@example')).toBe(false);
+
+    const payload = buildUserPayload(user, {
+      ...initialProfileForm,
+      email2: 'not-an-email',
+      preferredCommunicationEmail: 'secondary'
+    });
+
+    expect(payload.email2).toBeUndefined();
+    expect(payload.preferredCommunicationEmail).toBe('login');
   });
 
   it('creates avatar fallback url from name or email', () => {
@@ -149,6 +192,8 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval({ ...italianReady, profession: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, province: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, mobile: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'secondary@example.com' })).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'not-an-email' })).toBe(false);
     // a freshly selected document file stands in for a stored path
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' }, true)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' })).toBe(false);
