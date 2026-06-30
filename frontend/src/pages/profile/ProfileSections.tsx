@@ -32,6 +32,8 @@ export type ProfileSectionsCopy = {
   memberLinked: string;
   name: string;
   yourName: string;
+  nameHint: string;
+  fullNameHint: string;
   firstName: string;
   surname: string;
   fullName: string;
@@ -132,7 +134,8 @@ function TextInput<K extends TextProfileField>({
   setField,
   type = 'text',
   required,
-  disabled: disabledProp
+  disabled: disabledProp,
+  hint
 }: BaseSectionProps & {
   field: K;
   label: string;
@@ -140,12 +143,14 @@ function TextInput<K extends TextProfileField>({
   type?: 'date' | 'email' | 'number' | 'text';
   required: boolean;
   disabled?: boolean;
+  hint?: string;
 }) {
   const disabled = disabledProp ?? !required;
   return (
     <label className={`text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
       {label}
       {required ? <RequiredMark /> : null}
+      {hint ? <span className="ml-1 cursor-help text-slate-400 hover:text-slate-600" title={hint}>ⓘ</span> : null}
       <input
         type={type}
         disabled={disabled}
@@ -219,11 +224,11 @@ export function ProfilePersonalSection({
   return (
     <div className="grid gap-4 rounded-lg bg-slate-100 p-3 sm:grid-cols-[1fr,240px]">
       <div className="space-y-3">
-        <TextInput copy={copy} field="displayName" form={form} label={copy.name} placeholder={copy.yourName} setField={setField} required={required.has('displayName')} />
+        <TextInput copy={copy} field="displayName" form={form} label={copy.name} placeholder={copy.yourName} setField={setField} disabled={false} hint={copy.nameHint} required={required.has('displayName')} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <TextInput copy={copy} field="firstName" form={form} label={copy.firstName} setField={setField} required={required.has('firstName')} />
           <TextInput copy={copy} field="surname" form={form} label={copy.surname} setField={setField} required={required.has('surname')} />
-          <TextInput copy={copy} field="fullName" form={form} label={copy.fullName} setField={setField} required={required.has('fullName')} />
+          <TextInput copy={copy} field="fullName" form={form} label={copy.fullName} setField={setField} disabled={false} hint={copy.fullNameHint} required={required.has('fullName')} />
         </div>
         <label className="text-sm text-slate-700">
           {copy.email}
