@@ -59,7 +59,8 @@ const copyByLocale = {
       phone: 'Telefone',
       mobile: 'Celular',
       fiscalCode: 'Código fiscal',
-      sex: 'Sexo',
+      sex: 'Sexo atribuído ao nascer',
+      gender: 'Gênero',
       birthDate: 'Data de nascimento',
       birthPlace: 'Local de nascimento',
       birthCountry: 'País de nascimento',
@@ -125,7 +126,8 @@ const copyByLocale = {
       phone: 'Phone',
       mobile: 'Mobile',
       fiscalCode: 'Fiscal code',
-      sex: 'Sex',
+      sex: 'Sex assigned at birth',
+      gender: 'Gender',
       birthDate: 'Date of birth',
       birthPlace: 'Place of birth',
       birthCountry: 'Country of birth',
@@ -191,7 +193,8 @@ const copyByLocale = {
       phone: 'Teléfono',
       mobile: 'Móvil',
       fiscalCode: 'Código fiscal',
-      sex: 'Sexo',
+      sex: 'Sexo asignado al nacer',
+      gender: 'Género',
       birthDate: 'Fecha de nacimiento',
       birthPlace: 'Lugar de nacimiento',
       birthCountry: 'País de nacimiento',
@@ -257,7 +260,8 @@ const copyByLocale = {
       phone: 'Telefono',
       mobile: 'Cellulare',
       fiscalCode: 'Codice fiscale',
-      sex: 'Sesso',
+      sex: 'Sesso assegnato alla nascita',
+      gender: 'Genere',
       birthDate: 'Data di nascita',
       birthPlace: 'Luogo di nascita',
       birthCountry: 'Paese di nascita',
@@ -620,6 +624,12 @@ function UserProfileReviewModal({
           <ProfileSection>
             {user.fiscalCode ? <ProfileRow label={labels.fiscalCode} value={user.fiscalCode} /> : null}
             {user.sex ? <ProfileRow label={labels.sex} value={user.sex} /> : null}
+            {user.gender ? (
+              <ProfileRow
+                label={labels.gender}
+                value={user.gender === 'self-describe' && user.genderSelfDescription ? user.genderSelfDescription : user.gender}
+              />
+            ) : null}
             {user.birthDate ? <ProfileRow label={labels.birthDate} value={user.birthDate} /> : null}
             {user.birthPlace ? <ProfileRow label={labels.birthPlace} value={user.birthPlace} /> : null}
             {user.birthCountry ? <ProfileRow label={labels.birthCountry} value={user.birthCountry} /> : null}

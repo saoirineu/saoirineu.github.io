@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Timestamp } from 'firebase/firestore';
 
-import { fetchChurches } from '../lib/works';
+import { ensureItalianReferenceChurches, fetchChurches } from '../lib/works';
 import { fetchMembersByEmail, type MemberRecord } from '../lib/members';
+import type { ProfileLocale } from '../lib/profileCatalog';
 import { fetchUser, fetchApprovedSnapshots, nextUserApprovalStatus, resolveUserDocumentUrl, uploadUserIdentityDocument, upsertUser } from '../lib/users';
 import { uploadAccept } from '../lib/uploads';
 import { getFileUploadLabels } from '../lib/fileUploadLabels';
@@ -11,6 +12,8 @@ import { FileUploadField } from '../components/FileUploadField';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { formatFullName } from './members/form';
+import { AddChurchModal, type AddChurchModalState } from './sacrament/SacramentSections';
+import { churchFormCopyByLocale, requiredChurchNameByLocale } from './sacrament/copy';
 import {
   applyAuthFallback,
   applyMemberPrefill,
@@ -35,7 +38,6 @@ import {
   type ProfileSectionsCopy
 } from './profile/ProfileSections';
 
-type ProfileLocale = 'pt' | 'en' | 'es' | 'it';
 type ProfileSaveMode = 'save' | 'submit';
 
 const birthDateMonthShortNamesByLocale: Record<ProfileLocale, string[]> = {
@@ -59,11 +61,26 @@ type RegistryCopyKey =
   | 'sex'
   | 'sexFemale'
   | 'sexMale'
+  | 'sexIntersex'
+  | 'sexPreferNotToSay'
+  | 'sexHint'
+  | 'gender'
+  | 'genderMan'
+  | 'genderWoman'
+  | 'genderNonBinary'
+  | 'genderSelfDescribe'
+  | 'genderPreferNotToSay'
+  | 'genderSelfDescription'
+  | 'genderSelfDescriptionPlaceholder'
+  | 'genderHint'
   | 'birthDate'
   | 'birthPlace'
   | 'birthProvince'
   | 'birthCountry'
   | 'citizenship'
+  | 'citizenshipAdd'
+  | 'citizenshipRemove'
+  | 'citizenshipCurrent'
   | 'nationality'
   | 'address'
   | 'postalCode'
@@ -78,6 +95,15 @@ type RegistryCopyKey =
   | 'cardExpiry'
   | 'referenceSeat'
   | 'originSociety'
+  | 'referenceChurchOrCenter'
+  | 'addReferenceChurch'
+  | 'roleSelectPlaceholder'
+  | 'roleCustomLabel'
+  | 'roleCustomPlaceholder'
+  | 'roleAdd'
+  | 'roleRemove'
+  | 'roleLimitReached'
+  | 'doctrineRoleOptions'
   | 'registrationRequestDate'
   | 'registrationDate'
   | 'renewalDate'
@@ -86,6 +112,69 @@ type RegistryCopyKey =
   | 'identityDocumentPrimary'
   | 'identityDocumentSecondary'
   | 'membershipFeeAmount';
+
+const doctrineRoleOptionsByLocale: Record<ProfileLocale, ProfileSectionsCopy['doctrineRoleOptions']> = {
+  pt: [
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'leader', label: 'Dirigente' },
+    { value: 'musician', label: 'Músico' },
+    { value: 'official musician', label: 'Músico oficial' },
+    { value: 'treasurer', label: 'Tesoureiro' },
+    { value: 'secretary', label: 'Secretaria' },
+    { value: 'kitchen', label: 'Cozinha' },
+    { value: 'setup', label: 'Arrumação' },
+    { value: 'cleaning', label: 'Limpeza' },
+    { value: 'reception', label: 'Recepção' },
+    { value: 'children care', label: 'Cuidado de crianças' },
+    { value: 'organization', label: 'Organização' },
+    { value: 'other', label: 'Descrever outro' }
+  ],
+  en: [
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'leader', label: 'Leader' },
+    { value: 'musician', label: 'Musician' },
+    { value: 'official musician', label: 'Official musician' },
+    { value: 'treasurer', label: 'Treasurer' },
+    { value: 'secretary', label: 'Secretary' },
+    { value: 'kitchen', label: 'Kitchen' },
+    { value: 'setup', label: 'Setup' },
+    { value: 'cleaning', label: 'Cleaning' },
+    { value: 'reception', label: 'Reception' },
+    { value: 'children care', label: 'Children care' },
+    { value: 'organization', label: 'Organization' },
+    { value: 'other', label: 'Describe another role' }
+  ],
+  es: [
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'leader', label: 'Dirigente' },
+    { value: 'musician', label: 'Músico' },
+    { value: 'official musician', label: 'Músico oficial' },
+    { value: 'treasurer', label: 'Tesorero' },
+    { value: 'secretary', label: 'Secretaría' },
+    { value: 'kitchen', label: 'Cocina' },
+    { value: 'setup', label: 'Preparación' },
+    { value: 'cleaning', label: 'Limpieza' },
+    { value: 'reception', label: 'Recepción' },
+    { value: 'children care', label: 'Cuidado de niños' },
+    { value: 'organization', label: 'Organización' },
+    { value: 'other', label: 'Describir otro' }
+  ],
+  it: [
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'leader', label: 'Dirigente' },
+    { value: 'musician', label: 'Musicista' },
+    { value: 'official musician', label: 'Musicista ufficiale' },
+    { value: 'treasurer', label: 'Tesoriere' },
+    { value: 'secretary', label: 'Segreteria' },
+    { value: 'kitchen', label: 'Cucina' },
+    { value: 'setup', label: 'Preparazione' },
+    { value: 'cleaning', label: 'Pulizia' },
+    { value: 'reception', label: 'Accoglienza' },
+    { value: 'children care', label: 'Cura dei bambini' },
+    { value: 'organization', label: 'Organizzazione' },
+    { value: 'other', label: 'Descrivere altro' }
+  ]
+};
 
 const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, RegistryCopyKey>> = {
   pt: {
@@ -99,14 +188,29 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Email secundário',
     mobile: 'Celular',
     fiscalCode: 'Codice Fiscale',
-    sex: 'Sexo',
+    sex: 'Sexo atribuído ao nascer',
     sexFemale: 'Feminino',
     sexMale: 'Masculino',
+    sexIntersex: 'Intersexo',
+    sexPreferNotToSay: 'Prefiro não dizer',
+    sexHint: 'Usado para apoiar a acomodação e a organização ritualística.',
+    gender: 'Gênero',
+    genderMan: 'Homem',
+    genderWoman: 'Mulher',
+    genderNonBinary: 'Não binário',
+    genderSelfDescribe: 'Prefiro me autodescrever',
+    genderPreferNotToSay: 'Prefiro não dizer',
+    genderSelfDescription: 'Autodescrição de gênero',
+    genderSelfDescriptionPlaceholder: 'Descreva seu gênero',
+    genderHint: 'Usado para apoiar a acomodação e a organização ritualística.',
     birthDate: 'Data de nascimento',
     birthPlace: 'Local de nascimento',
     birthProvince: 'Província de nascimento',
     birthCountry: 'País de nascimento',
     citizenship: 'Cidadania',
+    citizenshipAdd: 'Adicionar cidadania',
+    citizenshipRemove: 'Remover cidadania',
+    citizenshipCurrent: 'Cidadania atual',
     nationality: 'Nacionalidade',
     address: 'Endereço',
     postalCode: 'CEP/CAP',
@@ -121,6 +225,15 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     cardExpiry: 'Validade da carteirinha',
     referenceSeat: 'Sede de referência',
     originSociety: 'Sociedade de origem',
+    referenceChurchOrCenter: 'Igreja ou centro de referência',
+    addReferenceChurch: 'Cadastrar nova igreja ou centro',
+    roleSelectPlaceholder: 'Selecionar papel...',
+    roleCustomLabel: 'Descrever papel',
+    roleCustomPlaceholder: 'Descreva o papel na doutrina',
+    roleAdd: 'Adicionar',
+    roleRemove: 'Remover papel',
+    roleLimitReached: 'Limite de 20 papéis atingido.',
+    doctrineRoleOptions: doctrineRoleOptionsByLocale.pt,
     registrationRequestDate: 'Data do pedido',
     registrationDate: 'Data de inscrição',
     renewalDate: 'Data de renovação',
@@ -141,14 +254,29 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Secondary email',
     mobile: 'Mobile',
     fiscalCode: 'Tax code',
-    sex: 'Sex',
+    sex: 'Sex Assigned at Birth',
     sexFemale: 'Female',
     sexMale: 'Male',
+    sexIntersex: 'Intersex',
+    sexPreferNotToSay: 'Prefer not to say',
+    sexHint: 'Used to support accommodation and ritualistic organization.',
+    gender: 'Gender',
+    genderMan: 'Man',
+    genderWoman: 'Woman',
+    genderNonBinary: 'non-binary',
+    genderSelfDescribe: 'Prefer to self-describe',
+    genderPreferNotToSay: 'Prefer not to say',
+    genderSelfDescription: 'Gender self-description',
+    genderSelfDescriptionPlaceholder: 'Describe your gender',
+    genderHint: 'Used to support accommodation and ritualistic organization.',
     birthDate: 'Birth date',
     birthPlace: 'Birthplace',
     birthProvince: 'Birth province',
     birthCountry: 'Birth country',
     citizenship: 'Citizenship',
+    citizenshipAdd: 'Add citizenship',
+    citizenshipRemove: 'Remove citizenship',
+    citizenshipCurrent: 'Current citizenship',
     nationality: 'Nationality',
     address: 'Address',
     postalCode: 'ZIP code',
@@ -163,6 +291,15 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     cardExpiry: 'Card expiry',
     referenceSeat: 'Reference seat',
     originSociety: 'Origin society',
+    referenceChurchOrCenter: 'Reference Church or Center',
+    addReferenceChurch: 'Create new church or center',
+    roleSelectPlaceholder: 'Select role...',
+    roleCustomLabel: 'Describe role',
+    roleCustomPlaceholder: 'Describe the role in the doctrine',
+    roleAdd: 'Add',
+    roleRemove: 'Remove role',
+    roleLimitReached: 'Limit of 20 roles reached.',
+    doctrineRoleOptions: doctrineRoleOptionsByLocale.en,
     registrationRequestDate: 'Request date',
     registrationDate: 'Registration date',
     renewalDate: 'Renewal date',
@@ -183,14 +320,29 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Correo secundario',
     mobile: 'Celular',
     fiscalCode: 'Codice Fiscale',
-    sex: 'Sexo',
+    sex: 'Sexo asignado al nacer',
     sexFemale: 'Femenino',
     sexMale: 'Masculino',
+    sexIntersex: 'Intersexual',
+    sexPreferNotToSay: 'Prefiero no decirlo',
+    sexHint: 'Se usa para apoyar la acomodación y la organización ritual.',
+    gender: 'Género',
+    genderMan: 'Hombre',
+    genderWoman: 'Mujer',
+    genderNonBinary: 'No binario',
+    genderSelfDescribe: 'Prefiero autodescribirme',
+    genderPreferNotToSay: 'Prefiero no decirlo',
+    genderSelfDescription: 'Autodescripción de género',
+    genderSelfDescriptionPlaceholder: 'Describa su género',
+    genderHint: 'Se usa para apoyar la acomodación y la organización ritual.',
     birthDate: 'Fecha de nacimiento',
     birthPlace: 'Lugar de nacimiento',
     birthProvince: 'Provincia de nacimiento',
     birthCountry: 'País de nacimiento',
     citizenship: 'Ciudadanía',
+    citizenshipAdd: 'Añadir ciudadanía',
+    citizenshipRemove: 'Quitar ciudadanía',
+    citizenshipCurrent: 'Ciudadanía actual',
     nationality: 'Nacionalidad',
     address: 'Dirección',
     postalCode: 'Código postal',
@@ -205,6 +357,15 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     cardExpiry: 'Validez del carné',
     referenceSeat: 'Sede de referencia',
     originSociety: 'Sociedad de origen',
+    referenceChurchOrCenter: 'Iglesia o centro de referencia',
+    addReferenceChurch: 'Registrar nueva iglesia o centro',
+    roleSelectPlaceholder: 'Seleccionar rol...',
+    roleCustomLabel: 'Describir rol',
+    roleCustomPlaceholder: 'Describa el rol en la doctrina',
+    roleAdd: 'Añadir',
+    roleRemove: 'Quitar rol',
+    roleLimitReached: 'Límite de 20 roles alcanzado.',
+    doctrineRoleOptions: doctrineRoleOptionsByLocale.es,
     registrationRequestDate: 'Fecha de solicitud',
     registrationDate: 'Fecha de inscripción',
     renewalDate: 'Fecha de renovación',
@@ -225,14 +386,29 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Email secondaria',
     mobile: 'Cellulare',
     fiscalCode: 'Codice Fiscale',
-    sex: 'Sesso',
+    sex: 'Sesso assegnato alla nascita',
     sexFemale: 'Femmina',
     sexMale: 'Maschio',
+    sexIntersex: 'Intersessuale',
+    sexPreferNotToSay: 'Preferisco non dirlo',
+    sexHint: 'Usato per supportare l\'alloggio e l\'organizzazione rituale.',
+    gender: 'Genere',
+    genderMan: 'Uomo',
+    genderWoman: 'Donna',
+    genderNonBinary: 'Non binario',
+    genderSelfDescribe: 'Preferisco autodescrivermi',
+    genderPreferNotToSay: 'Preferisco non dirlo',
+    genderSelfDescription: 'Autodescrizione del genere',
+    genderSelfDescriptionPlaceholder: 'Descrivi il tuo genere',
+    genderHint: 'Usato per supportare l\'alloggio e l\'organizzazione rituale.',
     birthDate: 'Data di nascita',
     birthPlace: 'Luogo di nascita',
     birthProvince: 'Provincia di nascita',
-    birthCountry: 'Paese di nascita',
+    birthCountry: 'Nazione di nascita',
     citizenship: 'Cittadinanza',
+    citizenshipAdd: 'Aggiungi cittadinanza',
+    citizenshipRemove: 'Rimuovi cittadinanza',
+    citizenshipCurrent: 'Cittadinanza attuale',
     nationality: 'Nazionalità',
     address: 'Indirizzo',
     postalCode: 'CAP',
@@ -247,6 +423,15 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     cardExpiry: 'Scadenza tessera',
     referenceSeat: 'Sede di riferimento',
     originSociety: 'Società di provenienza',
+    referenceChurchOrCenter: 'Chiesa o centro di riferimento',
+    addReferenceChurch: 'Registra nuova chiesa o centro',
+    roleSelectPlaceholder: 'Seleziona ruolo...',
+    roleCustomLabel: 'Descrivi ruolo',
+    roleCustomPlaceholder: 'Descrivi il ruolo nella dottrina',
+    roleAdd: 'Aggiungi',
+    roleRemove: 'Rimuovi ruolo',
+    roleLimitReached: 'Limite di 20 ruoli raggiunto.',
+    doctrineRoleOptions: doctrineRoleOptionsByLocale.it,
     registrationRequestDate: 'Data richiesta',
     registrationDate: 'Data iscrizione',
     renewalDate: 'Data rinnovo',
@@ -260,6 +445,10 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
 
 type ConsentCopyKey =
   | 'information'
+  | 'privacyDocumentLink'
+  | 'privacyDocumentUrl'
+  | 'statuteDocumentLink'
+  | 'statuteDocumentUrl'
   | 'privacyLabel'
   | 'privacyText'
   | 'declarationLabel'
@@ -270,6 +459,10 @@ type ConsentCopyKey =
 const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, ConsentCopyKey>> = {
   pt: {
     information: 'Informações',
+    privacyDocumentLink: 'Documento de privacidade',
+    privacyDocumentUrl: '/docs/iceflu-privacy.html',
+    statuteDocumentLink: 'Estatuto ICEFLU',
+    statuteDocumentUrl: '/docs/iceflu-statuto.html',
     privacyLabel: 'Privacidade',
     privacyText: 'Tendo recebido, lido e aprovado a política de privacidade relativa ao uso dos meus dados pessoais, consinto, nos termos do art. 4, n.º 11 do GDPR 697/2016, ao seu tratamento na medida necessária à realização das finalidades estatutárias. Consinto também que os dados relativos à inscrição sejam comunicados à entidade Stella Azzurra ETS, com a qual a Associação colabora, e por esta tratados na medida necessária ao cumprimento das obrigações previstas em lei e nas normas estatutárias.',
     declarationLabel: 'Declaração',
@@ -279,6 +472,10 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
   },
   en: {
     information: 'Information',
+    privacyDocumentLink: 'Privacy document',
+    privacyDocumentUrl: '/docs/iceflu-privacy.html',
+    statuteDocumentLink: 'ICEFLU statute',
+    statuteDocumentUrl: '/docs/iceflu-statuto.html',
     privacyLabel: 'Privacy',
     privacyText: 'Having received, read, and approved the privacy policy regarding the use of my personal data, I consent, pursuant to Article 4, No. 11 of GDPR 697/2016, to the processing of such data as necessary for the pursuit of the statutory purposes. I also consent to my registration data being communicated to Stella Azzurra ETS, with which the Association cooperates, to be processed to the extent necessary to the fulfillment of the obligations required by law and statutory regulations.',
     declarationLabel: 'Declaration',
@@ -288,6 +485,10 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
   },
   es: {
     information: 'Información',
+    privacyDocumentLink: 'Documento de privacidad',
+    privacyDocumentUrl: '/docs/iceflu-privacy.html',
+    statuteDocumentLink: 'Estatuto ICEFLU',
+    statuteDocumentUrl: '/docs/iceflu-statuto.html',
     privacyLabel: 'Privacidad',
     privacyText: 'Habiendo recibido, leído y aprobado la política de privacidad relativa al uso de mis datos personales, consiento, conforme al art. 4, n.º 11 del GDPR 697/2016, a su tratamiento en la medida necesaria para la consecución de los fines estatutarios. Consiento también que los datos relativos a la inscripción sean comunicados a la entidad Stella Azzurra ETS, con la que la Asociación colabora, y tratados por esta en la medida necesaria para el cumplimiento de las obligaciones previstas por la ley y las normas estatutarias.',
     declarationLabel: 'Declaración',
@@ -297,6 +498,10 @@ const consentCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Conse
   },
   it: {
     information: 'Informative',
+    privacyDocumentLink: 'Documento privacy',
+    privacyDocumentUrl: '/docs/iceflu-privacy.html',
+    statuteDocumentLink: 'Statuto ICEFLU',
+    statuteDocumentUrl: '/docs/iceflu-statuto.html',
     privacyLabel: 'Privacy',
     privacyText: "Ricevuta, letta ed approvata l'informativa sull'utilizzazione dei miei dati personali, consento ai sensi dell'art. 4 n. 11 G.D.P.R. 697/2016 al loro trattamento nella misura necessaria per il perseguimento degli scopi statutari. Consento anche che i dati riguardanti l'iscrizione siano comunicati all'ente Stella Azzurra ETS con cui l'Associazione collabora e da questi trattati nella misura necessaria all'adempimento di obblighi previsti dalla legge e dalle norme statutarie.",
     declarationLabel: 'Dichiarazione',
@@ -379,17 +584,42 @@ const copyByLocale: Record<ProfileLocale, {
   }
 };
 
+const roleTitleByLocale: Record<ProfileLocale, string> = {
+  pt: 'Papéis na doutrina',
+  en: 'Roles in the doctrine',
+  es: 'Roles en la doctrina',
+  it: 'Ruoli nella dottrina'
+};
+
+const roleHintByLocale: Record<ProfileLocale, string> = {
+  pt: 'Selecione os papéis aplicáveis. Use a opção de descrever para papéis que não aparecem na lista.',
+  en: 'Select the applicable roles. Use the describe option for roles that do not appear in the list.',
+  es: 'Seleccione los roles aplicables. Use la opción de describir para roles que no aparecen en la lista.',
+  it: 'Seleziona i ruoli applicabili. Usa l\'opzione di descrizione per ruoli non presenti nella lista.'
+};
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
-  const copy = copyByLocale[locale];
+  const copyBase = copyByLocale[locale];
+  const copy = {
+    ...copyBase,
+    sections: {
+      ...copyBase.sections,
+      country: locale === 'it' ? 'Nazione' : copyBase.sections.country,
+      roles: roleTitleByLocale[locale],
+      rolesHint: roleHintByLocale[locale]
+    }
+  };
   const uploadLabels = getFileUploadLabels(locale);
 
   const [form, setForm] = useState<ProfileFormState>(initialProfileForm);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [identityDocumentFile, setIdentityDocumentFile] = useState<File | null>(null);
+  const [identitySecondaryDocumentFile, setIdentitySecondaryDocumentFile] = useState<File | null>(null);
+  const [addChurchModal, setAddChurchModal] = useState<AddChurchModalState | null>(null);
 
   const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
   const profileQuery = useQuery({
@@ -428,6 +658,13 @@ export default function ProfilePage() {
     setForm(applyAuthFallback(next, user));
   }, [profileQuery.data, user, linkedMember]);
 
+  useEffect(() => {
+    if (!user) return;
+    ensureItalianReferenceChurches()
+      .then(() => qc.invalidateQueries({ queryKey: ['churches'] }))
+      .catch(() => undefined);
+  }, [qc, user]);
+
   const setField = <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => {
     setForm(current => ({ ...current, [field]: value }));
   };
@@ -453,9 +690,17 @@ export default function ProfilePage() {
       if (identityDocumentFile) {
         const uploadedDocument = await uploadUserIdentityDocument(user.uid, identityDocumentFile);
         nextForm = {
-          ...form,
+          ...nextForm,
           identityDocumentPrimaryName: uploadedDocument.name,
           identityDocumentPrimaryPath: uploadedDocument.path
+        };
+      }
+      if (identitySecondaryDocumentFile) {
+        const uploadedSecondary = await uploadUserIdentityDocument(user.uid, identitySecondaryDocumentFile);
+        nextForm = {
+          ...nextForm,
+          identityDocumentSecondaryName: uploadedSecondary.name,
+          identityDocumentSecondaryPath: uploadedSecondary.path
         };
       }
 
@@ -481,6 +726,7 @@ export default function ProfilePage() {
     onSuccess: (_data, mode) => {
       qc.invalidateQueries({ queryKey: ['user', user?.uid] });
       setIdentityDocumentFile(null);
+      setIdentitySecondaryDocumentFile(null);
       setSuccessMessage(mode === 'submit' ? copy.submittedForApproval : copy.saved);
     },
     onError: err => {
@@ -606,9 +852,9 @@ export default function ProfilePage() {
             userPhotoURL={user.photoURL}
           />
 
-          <ProfileIdentitySection copy={copy.sections} form={form} setField={setField} />
+          <ProfileIdentitySection copy={copy.sections} form={form} locale={locale} setField={setField} />
 
-          <ProfileResidenceSection copy={copy.sections} form={form} setField={setField} />
+          <ProfileResidenceSection copy={copy.sections} form={form} locale={locale} setField={setField} />
 
           <IcefluDisabledGroup note={copy.sections.icefluOnlyNote}>
             <ProfileAssociationSection copy={copy.sections} form={form} setField={setField} />
@@ -622,35 +868,53 @@ export default function ProfilePage() {
               </h2>
               <p className="mt-1 text-xs text-slate-600">{copy.idUploadIntro}</p>
             </div>
-            {form.identityDocumentPrimaryName && !identityDocumentFile ? (
-              <p className="text-sm text-slate-700">
-                <span className="font-medium">{copy.idUploadCurrent}:</span> {form.identityDocumentPrimaryName}
-              </p>
-            ) : null}
-            <FileUploadField
-              accept={uploadAccept}
-              file={identityDocumentFile}
-              label={copy.idUploadChoose}
-              onChange={setIdentityDocumentFile}
-              {...uploadLabels}
-            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                {form.identityDocumentPrimaryName && !identityDocumentFile ? (
+                  <p className="text-sm text-slate-700">
+                    <span className="font-medium">{copy.idUploadCurrent}:</span> {form.identityDocumentPrimaryName}
+                  </p>
+                ) : null}
+                <FileUploadField
+                  accept={uploadAccept}
+                  file={identityDocumentFile}
+                  label={<>{copy.sections.identityDocumentPrimary}<span className="text-red-500"> *</span></>}
+                  onChange={setIdentityDocumentFile}
+                  {...uploadLabels}
+                />
+              </div>
+              <div className="space-y-2">
+                {form.identityDocumentSecondaryName && !identitySecondaryDocumentFile ? (
+                  <p className="text-sm text-slate-700">
+                    <span className="font-medium">{copy.idUploadCurrent}:</span> {form.identityDocumentSecondaryName}
+                  </p>
+                ) : null}
+                <FileUploadField
+                  accept={uploadAccept}
+                  file={identitySecondaryDocumentFile}
+                  label={copy.sections.identityDocumentSecondary}
+                  onChange={setIdentitySecondaryDocumentFile}
+                  {...uploadLabels}
+                />
+              </div>
+            </div>
           </section>
 
           <ProfileConsentsSection copy={copy.sections} form={form} setField={setField} />
 
           <ProfileNotesSection copy={copy.sections} form={form} setField={setField} />
 
-          <IcefluDisabledGroup note={copy.sections.icefluOnlyNote}>
-            <ProfileChurchesSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
-          </IcefluDisabledGroup>
+          <ProfileChurchesSection
+            copy={copy.sections}
+            form={form}
+            churches={churchesQuery.data}
+            onRequestCreateChurch={onCreated => setAddChurchModal({ onCreated })}
+            setField={setField}
+          />
 
-          <IcefluDisabledGroup note={copy.sections.icefluOnlyNote}>
-            <ProfileInitiationSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
-          </IcefluDisabledGroup>
+          <ProfileInitiationSection copy={copy.sections} form={form} churches={churchesQuery.data} setField={setField} />
 
-          <IcefluDisabledGroup note={copy.sections.icefluOnlyNote}>
-            <ProfileRolesSection copy={copy.sections} form={form} setField={setField} />
-          </IcefluDisabledGroup>
+          <ProfileRolesSection copy={copy.sections} form={form} setField={setField} />
         </fieldset>
 
         {!isPending ? (
@@ -678,6 +942,16 @@ export default function ProfilePage() {
           </div>
         ) : null}
       </form>
+      {addChurchModal ? (
+        <AddChurchModal
+          copy={churchFormCopyByLocale[locale]}
+          loginToCreate={churchFormCopyByLocale[locale].loginToSave}
+          onClose={() => setAddChurchModal(null)}
+          onCreated={addChurchModal.onCreated}
+          requiredName={requiredChurchNameByLocale[locale]}
+          userPresent={!!user}
+        />
+      ) : null}
     </div>
   );
 }

@@ -43,9 +43,15 @@ describe('profile form helpers', () => {
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
+      gender: 'self-describe',
+      genderSelfDescription: 'Agender',
       identityDocumentPrimaryName: 'id.pdf',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
+      birthCountry: 'Italy',
+      birthCountryCode: 'IT',
+      birthProvince: 'Roma',
+      birthProvinceCode: 'RM',
       address: 'Via Roma 1',
       currentChurchId: 'igreja-1',
       currentChurchName: 'Igreja Atual',
@@ -60,6 +66,8 @@ describe('profile form helpers', () => {
     expect(form.preferredCommunicationEmail).toBe('secondary');
     expect(form.firstName).toBe('Maria');
     expect(form.fiscalCode).toBe('CF123');
+    expect(form.gender).toBe('self-describe');
+    expect(form.genderSelfDescription).toBe('Agender');
     expect(form.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(form.address).toBe('Via Roma 1');
     expect(form.currentChurchName).toBe('Igreja Atual');
@@ -77,9 +85,15 @@ describe('profile form helpers', () => {
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
+      gender: 'self-describe',
+      genderSelfDescription: 'Agender',
       identityDocumentPrimaryName: 'id.pdf',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
+      birthCountry: 'Italy',
+      birthCountryCode: 'IT',
+      birthProvince: 'Roma',
+      birthProvinceCode: 'RM',
       address: 'Via Roma 1',
       postalCode: '00100',
       city: 'Roma',
@@ -101,13 +115,17 @@ describe('profile form helpers', () => {
     expect(payload.preferredCommunicationEmail).toBe('secondary');
     expect(payload.firstName).toBe('Maria');
     expect(payload.fiscalCode).toBe('CF123');
+    expect(payload.gender).toBe('self-describe');
+    expect(payload.genderSelfDescription).toBe('Agender');
+    expect(payload.birthCountryCode).toBe('IT');
+    expect(payload.birthProvinceCode).toBe('RM');
     expect(payload.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(payload.address).toBe('Via Roma 1');
     expect(payload.province).toBe('RM');
     expect(payload.isInitiated).toBe(true);
-    expect(payload.isSponsor).toBe(true);
-    expect(payload.sponsorChurchIds).toEqual(['i1']);
-    expect(payload.sponsorChurchNames).toEqual(['Igreja 1', 'Igreja 2']);
+    expect(payload.isSponsor).toBe(false);
+    expect(payload.sponsorChurchIds).toBeUndefined();
+    expect(payload.sponsorChurchNames).toBeUndefined();
     expect(payload.doctrineRoles).toEqual(['fiscal', 'apoio']);
   });
 
@@ -143,6 +161,17 @@ describe('profile form helpers', () => {
     expect(form.preferredCommunicationEmail).toBe('login');
   });
 
+  it('only keeps gender self-description for the self-describe option', () => {
+    const payload = buildUserPayload(user, {
+      ...initialProfileForm,
+      gender: 'woman',
+      genderSelfDescription: 'Should be cleared'
+    });
+
+    expect(payload.gender).toBe('woman');
+    expect(payload.genderSelfDescription).toBeUndefined();
+  });
+
   it('accepts empty or valid secondary email only', () => {
     expect(isValidOptionalEmail('')).toBe(true);
     expect(isValidOptionalEmail(' secondary@example.com ')).toBe(true);
@@ -173,6 +202,8 @@ describe('profile form helpers', () => {
       birthDate: '1980-01-02',
       sex: 'F',
       birthPlace: 'Roma',
+      birthProvince: 'Roma',
+      birthCountry: 'Italia',
       citizenship: 'Italiana',
       fiscalCode: 'CF123',
       address: 'Via Roma 1',
@@ -192,9 +223,14 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval({ ...italianReady, birthDate: '2001-01-01' })).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, profession: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, province: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, birthProvince: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, birthCountry: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, mobile: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'secondary@example.com' })).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'not-an-email' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, gender: 'self-describe', genderSelfDescription: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, gender: 'self-describe', genderSelfDescription: 'Agender' })).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, gender: 'prefer-not-to-say' })).toBe(true);
     // a freshly selected document file stands in for a stored path
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' }, true)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' })).toBe(false);
@@ -208,7 +244,8 @@ describe('profile form helpers', () => {
       isItalian: false,
       sex: '',
       birthPlace: '',
-      province: '',
+      province: 'SP',
+      birthProvince: 'São Paulo',
       phone: '',
       birthCountry: 'Brasil',
       mobile: '+5511999999999'

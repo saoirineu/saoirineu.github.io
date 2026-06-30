@@ -6,11 +6,13 @@ import {
   getDocs,
   orderBy,
   query,
+  setDoc,
   Timestamp,
   updateDoc
 } from 'firebase/firestore';
 
 import { db } from './firebase';
+import { ITALIAN_REFERENCE_CHURCHES } from './profileCatalog';
 import {
   asOptionalNumber,
   asOptionalString,
@@ -162,11 +164,22 @@ export type BeverageInfo = {
   description: string;
 };
 
+function mergeCatalogChurches(churches: ChurchInfo[]) {
+  const byId = new Map<string, ChurchInfo>();
+  for (const church of ITALIAN_REFERENCE_CHURCHES) {
+    byId.set(church.id, church);
+  }
+  for (const church of churches) {
+    byId.set(church.id, church);
+  }
+  return Array.from(byId.values());
+}
+
 export async function fetchChurches(): Promise<ChurchInfo[]> {
   try {
     const q = query(churchesRef);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(docSnapshot => {
+    const churches = snapshot.docs.map(docSnapshot => {
       const data = asRecord(docSnapshot.data());
       return {
         id: docSnapshot.id,
@@ -183,8 +196,9 @@ export async function fetchChurches(): Promise<ChurchInfo[]> {
         lng: typeof data.lng === 'number' ? data.lng : undefined
       };
     });
+    return mergeCatalogChurches(churches);
   } catch {
-    return [];
+    return mergeCatalogChurches([]);
   }
 }
 
@@ -202,8 +216,8 @@ export type ChurchInput = {
   lng?: number;
 };
 
-export async function createChurch(input: ChurchInput) {
-  const payload = removeUndefinedDeep({
+function buildChurchFirestorePayload(input: ChurchInput, includeCreatedAt = true) {
+  return removeUndefinedDeep({
     name: input.name,
     city: input.city || undefined,
     state: input.state || undefined,
@@ -215,9 +229,20 @@ export async function createChurch(input: ChurchInput) {
     observations: input.observations || undefined,
     lat: typeof input.lat === 'number' ? input.lat : undefined,
     lng: typeof input.lng === 'number' ? input.lng : undefined,
-    createdAt: Timestamp.now(),
+    createdAt: includeCreatedAt ? Timestamp.now() : undefined,
     updatedAt: Timestamp.now()
   });
+}
+
+export async function ensureItalianReferenceChurches() {
+  await Promise.all(ITALIAN_REFERENCE_CHURCHES.map(church => {
+    const payload = buildChurchFirestorePayload(church, false);
+    return setDoc(doc(churchesRef, church.id), payload as Record<string, unknown>, { merge: true });
+  }));
+}
+
+export async function createChurch(input: ChurchInput) {
+  const payload = buildChurchFirestorePayload(input);
 
   return addDoc(churchesRef, payload as Record<string, unknown>);
 }

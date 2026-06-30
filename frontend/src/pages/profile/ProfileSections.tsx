@@ -1,5 +1,17 @@
 import { useRef, type ReactNode } from 'react';
 
+import {
+  birthPlaceOptions,
+  countryName,
+  countryOptions,
+  findCountryCode,
+  findLocationCode,
+  ITALIAN_REFERENCE_CHURCHES,
+  MAX_DOCTRINE_ROLES,
+  optionName,
+  provinceOptions,
+  type ProfileLocale
+} from '../../lib/profileCatalog';
 import type { ChurchInfo } from '../../lib/works';
 import { PROFILE_BIRTH_DATE_PICKER_START, avatarFallback, isValidOptionalEmail, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
 
@@ -14,6 +26,8 @@ function RequiredMark() {
 type ChurchesProps = {
   churches?: ChurchInfo[];
 };
+
+const ADD_CHURCH_VALUE = '__add_church__';
 
 type BaseSectionProps = {
   copy: ProfileSectionsCopy;
@@ -51,12 +65,27 @@ export type ProfileSectionsCopy = {
   sex: string;
   sexFemale: string;
   sexMale: string;
+  sexIntersex: string;
+  sexPreferNotToSay: string;
+  sexHint: string;
+  gender: string;
+  genderMan: string;
+  genderWoman: string;
+  genderNonBinary: string;
+  genderSelfDescribe: string;
+  genderPreferNotToSay: string;
+  genderSelfDescription: string;
+  genderSelfDescriptionPlaceholder: string;
+  genderHint: string;
   birthDate: string;
   birthDateMonthShortNames: string[];
   birthPlace: string;
   birthProvince: string;
   birthCountry: string;
   citizenship: string;
+  citizenshipAdd: string;
+  citizenshipRemove: string;
+  citizenshipCurrent: string;
   nationality: string;
   address: string;
   postalCode: string;
@@ -86,6 +115,8 @@ export type ProfileSectionsCopy = {
   avatarUrl: string;
   useGooglePhoto: string;
   currentChurchRegistered: string;
+  referenceChurchOrCenter: string;
+  addReferenceChurch: string;
   selectPlaceholder: string;
   currentChurchText: string;
   notRegisteredYet: string;
@@ -109,12 +140,23 @@ export type ProfileSectionsCopy = {
   roles: string;
   rolesPlaceholder: string;
   rolesHint: string;
+  roleSelectPlaceholder: string;
+  roleCustomLabel: string;
+  roleCustomPlaceholder: string;
+  roleAdd: string;
+  roleRemove: string;
+  roleLimitReached: string;
+  doctrineRoleOptions: Array<{ value: string; label: string }>;
   icefluOnlyNote: string;
   nationalityQuestion: string;
   nationalityItalian: string;
   nationalityNonItalian: string;
   nationalityHint: string;
   information: string;
+  privacyDocumentLink: string;
+  privacyDocumentUrl: string;
+  statuteDocumentLink: string;
+  statuteDocumentUrl: string;
   privacyLabel: string;
   privacyText: string;
   declarationLabel: string;
@@ -125,6 +167,18 @@ export type ProfileSectionsCopy = {
 
 function selectChurchName(churches: ChurchInfo[] | undefined, id: string) {
   return churches?.find(church => church.id === id)?.name ?? '';
+}
+
+function InfoIcon({ title }: { title: string }) {
+  return <span className="ml-1 cursor-help text-slate-400 hover:text-slate-600" title={title}>ⓘ</span>;
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
+}
+
+function isItalianReferenceChurch(church: ChurchInfo) {
+  return ITALIAN_REFERENCE_CHURCHES.some(reference => reference.id === church.id || reference.name === church.name);
 }
 
 function formatDateWithShortMonth(value: string, monthShortNames: string[]) {
@@ -228,6 +282,189 @@ function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & {
         }}
       />
     </label>
+  );
+}
+
+function CountrySelect<K extends TextProfileField>({
+  codeField,
+  field,
+  form,
+  label,
+  locale,
+  required,
+  setField,
+  copy
+}: BaseSectionProps & {
+  codeField: TextProfileField;
+  field: K;
+  label: string;
+  locale: ProfileLocale;
+  required: boolean;
+}) {
+  const selectedCode = form[codeField] || findCountryCode(form[field], locale);
+  const selectedValue = selectedCode || (form[field] ? '__current__' : '');
+
+  return (
+    <label className="text-sm text-slate-700">
+      {label}
+      {required ? <RequiredMark /> : null}
+      <select
+        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        value={selectedValue}
+        onChange={event => {
+          const code = event.target.value;
+          if (code === '__current__') return;
+          setField(codeField, code);
+          setField(field, (code ? countryName(code, locale) : '') as ProfileFormState[K]);
+          if (field === 'birthCountry') {
+            setField('birthProvinceCode', '');
+            setField('birthPlaceCode', '');
+          }
+          if (field === 'country') {
+            setField('province', '');
+          }
+        }}
+      >
+        <option value="">{copy.selectPlaceholder}</option>
+        {form[field] && !selectedCode ? (
+          <option value="__current__">{form[field]}</option>
+        ) : null}
+        {countryOptions(locale).map(option => (
+          <option key={option.code} value={option.code}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function BirthProvinceInput({ copy, form, locale, required, setField }: BaseSectionProps & { locale: ProfileLocale; required: boolean }) {
+  const birthCountryCode = form.birthCountryCode || findCountryCode(form.birthCountry, locale);
+  const options = provinceOptions(birthCountryCode);
+  const selectedCode = form.birthProvinceCode || findLocationCode(form.birthProvince, options);
+  const selectedValue = selectedCode || (form.birthProvince ? '__current__' : '');
+
+  if (!options.length) {
+    // Free text once a country with no preset list is chosen; disabled until then.
+    const hasCountry = Boolean(birthCountryCode || form.birthCountry.trim());
+    return <TextInput copy={copy} field="birthProvince" form={form} label={copy.birthProvince} setField={setField} disabled={!hasCountry} required={required} />;
+  }
+
+  return (
+    <label className="text-sm text-slate-700">
+      {copy.birthProvince}
+      {required ? <RequiredMark /> : null}
+      <select
+        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        value={selectedValue}
+        onChange={event => {
+          const code = event.target.value;
+          if (code === '__current__') return;
+          setField('birthProvinceCode', code);
+          setField('birthProvince', optionName(code, options));
+          setField('birthPlaceCode', '');
+        }}
+      >
+        <option value="">{copy.selectPlaceholder}</option>
+        {form.birthProvince && !selectedCode ? (
+          <option value="__current__">
+            {form.birthProvince}
+          </option>
+        ) : null}
+        {options.map(option => (
+          <option key={option.code} value={option.code}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function BirthPlaceInput({ copy, form, locale, required, setField }: BaseSectionProps & { locale: ProfileLocale; required: boolean }) {
+  const birthCountryCode = form.birthCountryCode || findCountryCode(form.birthCountry, locale);
+  const provinceCode = form.birthProvinceCode || findLocationCode(form.birthProvince, provinceOptions(birthCountryCode));
+  const options = birthPlaceOptions(birthCountryCode, provinceCode);
+  const listId = `birth-place-options-${birthCountryCode || 'free'}-${provinceCode || 'all'}`;
+
+  return (
+    <label className="text-sm text-slate-700">
+      {copy.birthPlace}
+      {required ? <RequiredMark /> : null}
+      <input
+        list={options.length ? listId : undefined}
+        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        value={form.birthPlace}
+        onChange={event => {
+          const value = event.target.value;
+          setField('birthPlace', value);
+          setField('birthPlaceCode', findLocationCode(value, options));
+        }}
+      />
+      {options.length ? (
+        <datalist id={listId}>
+          {options.map(option => (
+            <option key={`${option.provinceCode}-${option.code}`} value={option.name} />
+          ))}
+        </datalist>
+      ) : null}
+    </label>
+  );
+}
+
+function CitizenshipSelector({ copy, form, locale, setField }: BaseSectionProps & { locale: ProfileLocale }) {
+  const selectedCodes = form.citizenshipCountryCodes;
+
+  const syncCitizenship = (codes: string[]) => {
+    const nextCodes = uniqueStrings(codes);
+    setField('citizenshipCountryCodes', nextCodes);
+    setField('citizenship', nextCodes.map(code => countryName(code, locale)).join(', '));
+  };
+
+  return (
+    <div className="space-y-2 text-sm text-slate-700">
+      <label>
+        {copy.citizenship}
+        <RequiredMark />
+        <select
+          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          value=""
+          onChange={event => {
+            const code = event.target.value;
+            if (!code) return;
+            syncCitizenship([...selectedCodes, code]);
+          }}
+        >
+          <option value="">{copy.selectPlaceholder}</option>
+          {countryOptions(locale).map(option => (
+            <option key={option.code} value={option.code} disabled={selectedCodes.includes(option.code)}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {form.citizenship && selectedCodes.length === 0 ? (
+        <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          {copy.citizenshipCurrent}: {form.citizenship}
+        </p>
+      ) : null}
+      {selectedCodes.length ? (
+        <div className="flex flex-wrap gap-2">
+          {selectedCodes.map(code => (
+            <button
+              key={code}
+              type="button"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+              onClick={() => syncCitizenship(selectedCodes.filter(item => item !== code))}
+              title={copy.citizenshipRemove}
+            >
+              {countryName(code, locale)} ×
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -392,8 +629,8 @@ export function ProfilePersonalSection({
   );
 }
 
-export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProps) {
-  // Italian form: "Sesso" + "Città Nascita". Non-Italian form: "Birth's country", no sex.
+export function ProfileIdentitySection({ copy, form, locale, setField }: BaseSectionProps & { locale: ProfileLocale }) {
+  // Some fields are optional depending on the nationality mode, but still editable.
   const required = new Set(requiredProfileTextFields(form.isItalian));
   const sexRequired = required.has('sex');
   return (
@@ -408,34 +645,111 @@ export function ProfileIdentitySection({ copy, form, setField }: BaseSectionProp
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <TextInput copy={copy} field="fiscalCode" form={form} label={copy.fiscalCode} setField={setField} required={required.has('fiscalCode')} />
-        <label className={`text-sm ${sexRequired ? 'text-slate-700' : 'text-slate-400'}`}>
+        <label className="text-sm text-slate-700">
           {copy.sex}
           {sexRequired ? <RequiredMark /> : null}
+          <InfoIcon title={copy.sexHint} />
           <select
-            disabled={!sexRequired}
-            className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${sexRequired ? '' : disabledFieldClass}`}
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
             value={form.sex}
             onChange={event => setField('sex', event.target.value)}
           >
             <option value="">{copy.selectPlaceholder}</option>
-            <option value="F">{copy.sexFemale}</option>
             <option value="M">{copy.sexMale}</option>
+            <option value="F">{copy.sexFemale}</option>
+            <option value="intersex">{copy.sexIntersex}</option>
+            <option value="prefer-not-to-say">{copy.sexPreferNotToSay}</option>
           </select>
         </label>
+        <label className="text-sm text-slate-700">
+          {copy.gender}
+          <InfoIcon title={copy.genderHint} />
+          <select
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            value={form.gender}
+            onChange={event => {
+              const value = event.target.value;
+              setField('gender', value);
+              if (value !== 'self-describe') setField('genderSelfDescription', '');
+            }}
+          >
+            <option value="">{copy.selectPlaceholder}</option>
+            <option value="man">{copy.genderMan}</option>
+            <option value="woman">{copy.genderWoman}</option>
+            <option value="non-binary">{copy.genderNonBinary}</option>
+            <option value="self-describe">{copy.genderSelfDescribe}</option>
+            <option value="prefer-not-to-say">{copy.genderPreferNotToSay}</option>
+          </select>
+        </label>
+        {form.gender === 'self-describe' ? (
+          <TextInput
+            copy={copy}
+            field="genderSelfDescription"
+            form={form}
+            label={copy.genderSelfDescription}
+            placeholder={copy.genderSelfDescriptionPlaceholder}
+            setField={setField}
+            required
+          />
+        ) : null}
         <BirthDateInput copy={copy} form={form} setField={setField} required={required.has('birthDate')} />
-        <TextInput copy={copy} field="birthPlace" form={form} label={copy.birthPlace} setField={setField} required={required.has('birthPlace')} />
-        <TextInput copy={copy} field="birthProvince" form={form} label={copy.birthProvince} setField={setField} required={required.has('birthProvince')} />
-        <TextInput copy={copy} field="birthCountry" form={form} label={copy.birthCountry} setField={setField} required={required.has('birthCountry')} />
-        <TextInput copy={copy} field="citizenship" form={form} label={copy.citizenship} setField={setField} required={required.has('citizenship')} />
-        <TextInput copy={copy} field="nationality" form={form} label={copy.nationality} setField={setField} required={required.has('nationality')} />
+        <CountrySelect copy={copy} codeField="birthCountryCode" field="birthCountry" form={form} label={copy.birthCountry} locale={locale} setField={setField} required={required.has('birthCountry')} />
+        <BirthProvinceInput copy={copy} form={form} locale={locale} setField={setField} required={required.has('birthProvince')} />
+        <BirthPlaceInput copy={copy} form={form} locale={locale} setField={setField} required={required.has('birthPlace')} />
+        <CitizenshipSelector copy={copy} form={form} locale={locale} setField={setField} />
         <TextInput copy={copy} field="profession" form={form} label={copy.profession} setField={setField} required={required.has('profession')} />
       </div>
     </section>
   );
 }
 
-export function ProfileResidenceSection({ copy, form, setField }: BaseSectionProps) {
-  // "Provincia Residenza" only appears on the Italian form.
+/**
+ * Single residence subdivision field. Like the Identity card's birth province,
+ * it becomes a dropdown when the residence country has known options (Italy or
+ * Brazil) and a free-text input otherwise. Labelled "Provincia" for Italy and
+ * "State" for every other country, and always stored in `province`.
+ */
+function ResidenceProvinceInput({ copy, form, locale, required, setField }: BaseSectionProps & { locale: ProfileLocale; required: boolean }) {
+  const countryCode = form.countryCode || findCountryCode(form.country, locale);
+  const options = provinceOptions(countryCode);
+  const label = countryCode === 'IT' ? copy.province : copy.state;
+  const hasCountry = Boolean(countryCode || form.country.trim());
+
+  if (!options.length) {
+    return <TextInput copy={copy} field="province" form={form} label={label} setField={setField} disabled={!hasCountry} required={required} />;
+  }
+
+  const selectedCode = findLocationCode(form.province, options);
+  const selectedValue = selectedCode || (form.province ? '__current__' : '');
+
+  return (
+    <label className="text-sm text-slate-700">
+      {label}
+      {required ? <RequiredMark /> : null}
+      <select
+        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        value={selectedValue}
+        onChange={event => {
+          const code = event.target.value;
+          if (code === '__current__') return;
+          setField('province', optionName(code, options));
+        }}
+      >
+        <option value="">{copy.selectPlaceholder}</option>
+        {form.province && !selectedCode ? (
+          <option value="__current__">{form.province}</option>
+        ) : null}
+        {options.map(option => (
+          <option key={option.code} value={option.code}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export function ProfileResidenceSection({ copy, form, locale, setField }: BaseSectionProps & { locale: ProfileLocale }) {
   const required = new Set(requiredProfileTextFields(form.isItalian));
   return (
     <section className="space-y-3 rounded-lg bg-slate-100 p-3">
@@ -446,10 +760,8 @@ export function ProfileResidenceSection({ copy, form, setField }: BaseSectionPro
         </div>
         <TextInput copy={copy} field="postalCode" form={form} label={copy.postalCode} setField={setField} required={required.has('postalCode')} />
         <TextInput copy={copy} field="city" form={form} label={copy.city} setField={setField} required={required.has('city')} />
-        <TextInput copy={copy} field="province" form={form} label={copy.province} setField={setField} required={required.has('province')} />
-        <TextInput copy={copy} field="state" form={form} label={copy.state} setField={setField} required={required.has('state')} />
-        <TextInput copy={copy} field="region" form={form} label={copy.region} setField={setField} required={required.has('region')} />
-        <TextInput copy={copy} field="country" form={form} label={copy.country} setField={setField} required={required.has('country')} />
+        <CountrySelect copy={copy} codeField="countryCode" field="country" form={form} label={copy.country} locale={locale} setField={setField} required={required.has('country')} />
+        <ResidenceProvinceInput copy={copy} form={form} locale={locale} setField={setField} required={required.has('province')} />
       </div>
     </section>
   );
@@ -479,51 +791,51 @@ export function ProfileAssociationSection({ copy, form, setField }: BaseSectionP
   );
 }
 
-export function ProfileChurchesSection({ copy, form, churches, setField }: BaseSectionProps & ChurchesProps) {
+export function ProfileChurchesSection({
+  copy,
+  form,
+  churches,
+  onRequestCreateChurch,
+  setField
+}: BaseSectionProps & ChurchesProps & {
+  onRequestCreateChurch: (onCreated: (churchId: string, churchName?: string) => void) => void;
+}) {
+  const churchOptions = (churches ?? []).filter(church => !form.isItalian || isItalianReferenceChurch(church));
+  const selectedChurch = form.currentChurchId ? churches?.find(church => church.id === form.currentChurchId) : null;
+  const visibleChurches = selectedChurch && !churchOptions.some(church => church.id === selectedChurch.id)
+    ? [...churchOptions, selectedChurch]
+    : churchOptions;
+
   return (
-    <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
-      <div className="space-y-3">
-        <label className="text-sm text-slate-700">
-          {copy.currentChurchRegistered}
-          <select
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.currentChurchId}
-            onChange={event => {
-              const currentChurchId = event.target.value;
-              setField('currentChurchId', currentChurchId);
-              setField('currentChurchName', selectChurchName(churches, currentChurchId));
-            }}
-          >
-            <option value="">{copy.selectPlaceholder}</option>
-            {churches?.map(church => (
-              <option key={church.id} value={church.id}>
-                {church.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm text-slate-700">
-          {copy.currentChurchText}
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.currentChurchName}
-            onChange={event => setField('currentChurchName', event.target.value)}
-            placeholder={copy.notRegisteredYet}
-          />
-        </label>
-      </div>
-      <div className="space-y-3">
-        <label className="text-sm text-slate-700">
-          {copy.originChurchText}
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.originChurchName}
-            onChange={event => setField('originChurchName', event.target.value)}
-            placeholder={copy.originChurchPlaceholder}
-          />
-        </label>
-      </div>
-    </div>
+    <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+      <label className="text-sm text-slate-700">
+        {copy.referenceChurchOrCenter}
+        <select
+          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          value={form.currentChurchId}
+          onChange={event => {
+            const currentChurchId = event.target.value;
+            if (currentChurchId === ADD_CHURCH_VALUE) {
+              onRequestCreateChurch((churchId, churchName) => {
+                setField('currentChurchId', churchId);
+                setField('currentChurchName', churchName || selectChurchName(churches, churchId));
+              });
+              return;
+            }
+            setField('currentChurchId', currentChurchId);
+            setField('currentChurchName', selectChurchName(churches, currentChurchId));
+          }}
+        >
+          <option value="">{copy.selectPlaceholder}</option>
+          {visibleChurches.map(church => (
+            <option key={church.id} value={church.id}>
+              {church.name}
+            </option>
+          ))}
+          <option value={ADD_CHURCH_VALUE}>+ {copy.addReferenceChurch}</option>
+        </select>
+      </label>
+    </section>
   );
 }
 
@@ -536,6 +848,14 @@ export function ProfileConsentsSection({ copy, form, setField }: BaseSectionProp
   return (
     <section className="space-y-4 rounded-lg bg-slate-100 p-3">
       <h2 className="text-sm font-semibold text-slate-900">{copy.information}</h2>
+      <div className="flex flex-wrap gap-3 text-sm">
+        <a className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2" href={copy.privacyDocumentUrl} target="_blank" rel="noreferrer">
+          {copy.privacyDocumentLink}
+        </a>
+        <a className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2" href={copy.statuteDocumentUrl} target="_blank" rel="noreferrer">
+          {copy.statuteDocumentLink}
+        </a>
+      </div>
       {items.map(item => (
         <div key={item.field} className="space-y-2">
           <h3 className="text-sm font-semibold text-slate-800">
@@ -609,17 +929,6 @@ export function ProfileInitiationSection({ copy, form, churches, setField }: Bas
             }}
           />
           {copy.iAmInitiated}
-        </label>
-        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
-          <input
-            id="isSponsor"
-            type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-slate-900"
-            checked={form.isSponsor}
-            disabled={!form.isInitiated}
-            onChange={event => setField('isSponsor', event.target.checked)}
-          />
-          {copy.iAmSponsor}
         </label>
       </div>
 
@@ -695,39 +1004,6 @@ export function ProfileInitiationSection({ copy, form, churches, setField }: Bas
               </label>
             </div>
           </div>
-
-          {form.isSponsor ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-sm text-slate-700">
-                {copy.sponsorChurchesRegistered}
-                <select
-                  multiple
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.sponsorChurchIds}
-                  onChange={event => {
-                    const selected = Array.from(event.target.selectedOptions).map(option => option.value);
-                    setField('sponsorChurchIds', selected);
-                  }}
-                  size={Math.min(churches?.length ?? 4, 6)}
-                >
-                  {churches?.map(church => (
-                    <option key={church.id} value={church.id}>
-                      {church.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm text-slate-700">
-                {copy.sponsorChurchesText}
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.sponsorChurchesText}
-                  onChange={event => setField('sponsorChurchesText', event.target.value)}
-                  placeholder={copy.sponsorChurchesPlaceholder}
-                />
-              </label>
-            </div>
-          ) : null}
         </>
       ) : null}
     </div>
@@ -735,20 +1011,89 @@ export function ProfileInitiationSection({ copy, form, churches, setField }: Bas
 }
 
 export function ProfileRolesSection({ copy, form, setField }: BaseSectionProps) {
+  const selectedRoles = form.doctrineRoles;
+  const draftIsCustom = form.doctrineRoleDraft === 'other';
+  const roleLimitReached = selectedRoles.length >= MAX_DOCTRINE_ROLES;
+
+  const addRole = (role: string) => {
+    const nextRole = role.trim();
+    if (!nextRole || selectedRoles.includes(nextRole) || roleLimitReached) return;
+    setField('doctrineRoles', [...selectedRoles, nextRole]);
+    setField('doctrineRoleDraft', '');
+  };
+
+  const roleLabel = (role: string) => copy.doctrineRoleOptions.find(option => option.value === role)?.label ?? role;
+
   return (
-    <div className="space-y-2">
-      <label className="text-sm text-slate-700">
-        {copy.roles}
-        <input
-          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          value={form.doctrineRolesText}
-          onChange={event => setField('doctrineRolesText', event.target.value)}
-          placeholder={copy.rolesPlaceholder}
-        />
-      </label>
+    <section className="space-y-3 rounded-lg bg-slate-100 p-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm text-slate-700">
+          {copy.roles}
+          <select
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            value={form.doctrineRoleDraft}
+            disabled={roleLimitReached}
+            onChange={event => {
+              const value = event.target.value;
+              if (!value) return;
+              if (value === 'other') {
+                setField('doctrineRoleDraft', value);
+                return;
+              }
+              addRole(value);
+            }}
+          >
+            <option value="">{copy.roleSelectPlaceholder}</option>
+            {copy.doctrineRoleOptions.map(option => (
+              <option key={option.value} value={option.value} disabled={selectedRoles.includes(option.value)}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {draftIsCustom ? (
+          <label className="text-sm text-slate-700">
+            {copy.roleCustomLabel}
+            <div className="mt-1 flex gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.doctrineRolesText}
+                onChange={event => setField('doctrineRolesText', event.target.value)}
+                placeholder={copy.roleCustomPlaceholder}
+              />
+              <button
+                type="button"
+                className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                disabled={roleLimitReached || !form.doctrineRolesText.trim()}
+                onClick={() => {
+                  addRole(form.doctrineRolesText);
+                  setField('doctrineRolesText', '');
+                }}
+              >
+                {copy.roleAdd}
+              </button>
+            </div>
+          </label>
+        ) : null}
+      </div>
+      {selectedRoles.length ? (
+        <div className="flex flex-wrap gap-2">
+          {selectedRoles.map(role => (
+            <button
+              key={role}
+              type="button"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+              onClick={() => setField('doctrineRoles', selectedRoles.filter(item => item !== role))}
+              title={copy.roleRemove}
+            >
+              {roleLabel(role)} ×
+            </button>
+          ))}
+        </div>
+      ) : null}
       <p className="text-xs text-slate-500">
-        {copy.rolesHint}
+        {roleLimitReached ? copy.roleLimitReached : copy.rolesHint}
       </p>
-    </div>
+    </section>
   );
 }

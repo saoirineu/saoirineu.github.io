@@ -1,6 +1,7 @@
 import type { User } from 'firebase/auth';
 
 import type { MemberRecord } from '../../lib/members';
+import { MAX_DOCTRINE_ROLES } from '../../lib/profileCatalog';
 import type { PreferredCommunicationEmail, UserProfile } from '../../lib/users';
 
 export type ProfileFormState = {
@@ -20,11 +21,17 @@ export type ProfileFormState = {
   fullName: string;
   fiscalCode: string;
   sex: string;
+  gender: string;
+  genderSelfDescription: string;
   birthDate: string;
   birthPlace: string;
+  birthPlaceCode: string;
   birthProvince: string;
+  birthProvinceCode: string;
   birthCountry: string;
+  birthCountryCode: string;
   citizenship: string;
+  citizenshipCountryCodes: string[];
   nationality: string;
   address: string;
   postalCode: string;
@@ -33,6 +40,7 @@ export type ProfileFormState = {
   province: string;
   region: string;
   country: string;
+  countryCode: string;
   profession: string;
   memberCode: string;
   memberStatus: string;
@@ -65,6 +73,8 @@ export type ProfileFormState = {
   isSponsor: boolean;
   sponsorChurchIds: string[];
   sponsorChurchesText: string;
+  doctrineRoles: string[];
+  doctrineRoleDraft: string;
   doctrineRolesText: string;
   observations: string;
 };
@@ -91,11 +101,17 @@ export const initialProfileForm: ProfileFormState = {
   fullName: '',
   fiscalCode: '',
   sex: '',
+  gender: '',
+  genderSelfDescription: '',
   birthDate: '',
   birthPlace: '',
+  birthPlaceCode: '',
   birthProvince: '',
+  birthProvinceCode: '',
   birthCountry: '',
+  birthCountryCode: '',
   citizenship: '',
+  citizenshipCountryCodes: [],
   nationality: '',
   address: '',
   postalCode: '',
@@ -104,6 +120,7 @@ export const initialProfileForm: ProfileFormState = {
   province: '',
   region: '',
   country: '',
+  countryCode: '',
   profession: '',
   memberCode: '',
   memberStatus: '',
@@ -136,6 +153,8 @@ export const initialProfileForm: ProfileFormState = {
   isSponsor: false,
   sponsorChurchIds: [],
   sponsorChurchesText: '',
+  doctrineRoles: [],
+  doctrineRoleDraft: '',
   doctrineRolesText: '',
   observations: ''
 };
@@ -165,8 +184,8 @@ export function avatarFallback(name?: string, email?: string) {
 
 /** Text fields the ICEFLU form requires, depending on the Italian / non-Italian variant. */
 const REQUIRED_TEXT_FIELDS_COMMON: Array<keyof ProfileFormState> = [
-  'firstName', 'surname', 'birthDate', 'citizenship', 'fiscalCode',
-  'address', 'postalCode', 'city', 'country', 'email', 'profession'
+  'firstName', 'surname', 'birthDate', 'birthCountry', 'birthProvince', 'citizenship', 'fiscalCode',
+  'address', 'postalCode', 'city', 'province', 'country', 'email', 'profession'
 ];
 
 /**
@@ -178,7 +197,7 @@ export function requiredProfileTextFields(isItalian: boolean): Array<keyof Profi
   return [
     ...REQUIRED_TEXT_FIELDS_COMMON,
     'mobile',
-    ...(isItalian ? (['sex', 'birthPlace', 'province'] as Array<keyof ProfileFormState>) : (['birthCountry'] as Array<keyof ProfileFormState>))
+    ...(isItalian ? (['sex', 'birthPlace'] as Array<keyof ProfileFormState>) : [])
   ];
 }
 
@@ -187,6 +206,9 @@ export function missingRequiredProfileFields(form: ProfileFormState, hasSelected
   const missing: string[] = requiredProfileTextFields(form.isItalian).filter(field => !hasText(form[field] as string));
   if (!isValidOptionalEmail(form.email2)) {
     missing.push('email2');
+  }
+  if (form.gender === 'self-describe' && !hasText(form.genderSelfDescription)) {
+    missing.push('genderSelfDescription');
   }
   if (!hasText(form.identityDocumentPrimaryPath) && !hasSelectedIdentityDocument) {
     missing.push('identityDocumentPrimary');
@@ -223,11 +245,17 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     fullName: profile?.fullName || '',
     fiscalCode: profile?.fiscalCode || '',
     sex: profile?.sex || '',
+    gender: profile?.gender || '',
+    genderSelfDescription: profile?.genderSelfDescription || '',
     birthDate: profile?.birthDate || '',
     birthPlace: profile?.birthPlace || '',
+    birthPlaceCode: profile?.birthPlaceCode || '',
     birthProvince: profile?.birthProvince || '',
+    birthProvinceCode: profile?.birthProvinceCode || '',
     birthCountry: profile?.birthCountry || '',
+    birthCountryCode: profile?.birthCountryCode || '',
     citizenship: profile?.citizenship || '',
+    citizenshipCountryCodes: profile?.citizenshipCountryCodes || [],
     nationality: profile?.nationality || '',
     address: profile?.address || '',
     postalCode: profile?.postalCode || '',
@@ -236,6 +264,7 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     province: profile?.province || '',
     region: profile?.region || '',
     country: profile?.country || '',
+    countryCode: profile?.countryCode || '',
     profession: profile?.profession || '',
     memberCode: profile?.memberCode || '',
     memberStatus: profile?.memberStatus || '',
@@ -268,6 +297,8 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     isSponsor: profile?.isSponsor || false,
     sponsorChurchIds: profile?.sponsorChurchIds || [],
     sponsorChurchesText: profile?.sponsorChurchNames?.join(', ') || '',
+    doctrineRoles: profile?.doctrineRoles || [],
+    doctrineRoleDraft: '',
     doctrineRolesText: profile?.doctrineRoles?.join(', ') || '',
     observations: profile?.observations || ''
   };
@@ -318,14 +349,16 @@ export function applyAuthFallback(form: ProfileFormState, user: User): ProfileFo
 
 export function buildUserPayload(user: User, form: ProfileFormState): Partial<UserProfile> {
   const isInitiated = form.isInitiated;
-  const isSponsor = isInitiated && form.isSponsor;
-  const sponsorChurchNames = splitCommaValues(form.sponsorChurchesText);
-  const doctrineRoles = splitCommaValues(form.doctrineRolesText);
+  const uniqueDoctrineRoles = Array.from(new Set([
+    ...form.doctrineRoles,
+    ...splitCommaValues(form.doctrineRolesText)
+  ].map(role => role.trim()).filter(Boolean))).slice(0, MAX_DOCTRINE_ROLES);
   const secondaryEmail = form.email2.trim();
   const acceptedSecondaryEmail = secondaryEmail && isValidOptionalEmail(secondaryEmail) ? secondaryEmail : '';
   const preferredCommunicationEmail = form.preferredCommunicationEmail === 'secondary' && acceptedSecondaryEmail
     ? 'secondary'
     : 'login';
+  const genderSelfDescription = form.gender === 'self-describe' ? form.genderSelfDescription.trim() : '';
 
   return {
     uid: user.uid,
@@ -345,11 +378,17 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     fullName: form.fullName || undefined,
     fiscalCode: form.fiscalCode || undefined,
     sex: form.sex || undefined,
+    gender: form.gender || undefined,
+    genderSelfDescription: genderSelfDescription || undefined,
     birthDate: form.birthDate || undefined,
     birthPlace: form.birthPlace || undefined,
+    birthPlaceCode: form.birthPlaceCode || undefined,
     birthProvince: form.birthProvince || undefined,
+    birthProvinceCode: form.birthProvinceCode || undefined,
     birthCountry: form.birthCountry || undefined,
+    birthCountryCode: form.birthCountryCode || undefined,
     citizenship: form.citizenship || undefined,
+    citizenshipCountryCodes: form.citizenshipCountryCodes.length ? form.citizenshipCountryCodes : undefined,
     nationality: form.nationality || undefined,
     address: form.address || undefined,
     postalCode: form.postalCode || undefined,
@@ -358,6 +397,7 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     province: form.province || undefined,
     region: form.region || undefined,
     country: form.country || undefined,
+    countryCode: form.countryCode || undefined,
     profession: form.profession || undefined,
     memberCode: form.memberCode || undefined,
     memberStatus: form.memberStatus || undefined,
@@ -387,10 +427,10 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     initiationChurchName: isInitiated ? form.initiationChurchName || undefined : undefined,
     initiatorName: isInitiated ? form.initiatorName || undefined : undefined,
     initiatedWith: isInitiated ? form.initiatedWith || undefined : undefined,
-    isSponsor,
-    sponsorChurchIds: isSponsor ? form.sponsorChurchIds.filter(Boolean) : undefined,
-    sponsorChurchNames: isSponsor ? sponsorChurchNames : undefined,
-    doctrineRoles: doctrineRoles.length ? doctrineRoles : undefined,
+    isSponsor: false,
+    sponsorChurchIds: undefined,
+    sponsorChurchNames: undefined,
+    doctrineRoles: uniqueDoctrineRoles.length ? uniqueDoctrineRoles : undefined,
     observations: form.observations || undefined
   };
 }

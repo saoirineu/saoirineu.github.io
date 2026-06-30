@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   createChurch,
   deleteChurch,
+  ensureItalianReferenceChurches,
   fetchChurches,
   fetchWorks,
   updateChurch
@@ -31,6 +32,13 @@ export default function ChurchesPage() {
 
   const [form, setForm] = useState<ChurchFormState>(initialChurchForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    ensureItalianReferenceChurches()
+      .then(() => qc.invalidateQueries({ queryKey: ['churches'] }))
+      .catch(() => undefined);
+  }, [qc, user]);
 
   const copyByLocale: Record<'pt' | 'en' | 'es' | 'it', {
     title: string;

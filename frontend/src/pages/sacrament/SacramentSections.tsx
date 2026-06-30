@@ -50,7 +50,7 @@ import {
 } from './form';
 
 export type AddChurchModalState = {
-  onCreated: (churchId: string) => void;
+  onCreated: (churchId: string, churchName?: string) => void;
 };
 
 // ─── AddChurchModal ────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ type AddChurchModalProps = {
   copy: ChurchesCopy;
   loginToCreate: string;
   onClose: () => void;
-  onCreated: (churchId: string) => void;
+  onCreated: (churchId: string, churchName?: string) => void;
   requiredName: string;
   userPresent: boolean;
 };
@@ -82,7 +82,7 @@ export function AddChurchModal({ copy, loginToCreate, onClose, onCreated, requir
     },
     onSuccess: async churchId => {
       await qc.invalidateQueries({ queryKey: ['churches'] });
-      onCreated(churchId);
+      onCreated(churchId, form.name.trim());
       onClose();
     },
   });

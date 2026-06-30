@@ -43,16 +43,23 @@ export type UserProfile = {
   fullName?: string;
   fiscalCode?: string;
   sex?: string;
+  gender?: string;
+  genderSelfDescription?: string;
   birthDate?: string;
   birthPlace?: string;
+  birthPlaceCode?: string;
   birthProvince?: string;
+  birthProvinceCode?: string;
   birthCountry?: string;
+  birthCountryCode?: string;
   city?: string;
   state?: string;
   province?: string;
   region?: string;
   country?: string;
+  countryCode?: string;
   citizenship?: string;
+  citizenshipCountryCodes?: string[];
   nationality?: string;
   address?: string;
   postalCode?: string;
@@ -151,16 +158,23 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     fullName: asOptionalString(data.fullName),
     fiscalCode: asOptionalString(data.fiscalCode),
     sex: asOptionalString(data.sex),
+    gender: asOptionalString(data.gender),
+    genderSelfDescription: asOptionalString(data.genderSelfDescription),
     birthDate: asOptionalString(data.birthDate),
     birthPlace: asOptionalString(data.birthPlace),
+    birthPlaceCode: asOptionalString(data.birthPlaceCode),
     birthProvince: asOptionalString(data.birthProvince),
+    birthProvinceCode: asOptionalString(data.birthProvinceCode),
     birthCountry: asOptionalString(data.birthCountry),
+    birthCountryCode: asOptionalString(data.birthCountryCode),
     city: asOptionalString(data.city),
     state: asOptionalString(data.state),
     province: asOptionalString(data.province),
     region: asOptionalString(data.region),
     country: asOptionalString(data.country),
+    countryCode: asOptionalString(data.countryCode),
     citizenship: asOptionalString(data.citizenship),
+    citizenshipCountryCodes: asStringArray(data.citizenshipCountryCodes),
     nationality: asOptionalString(data.nationality),
     address: asOptionalString(data.address),
     postalCode: asOptionalString(data.postalCode),
@@ -254,16 +268,23 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     fullName: data.fullName,
     fiscalCode: data.fiscalCode,
     sex: data.sex,
+    gender: hasOwnField(data, 'gender') ? data.gender ?? deleteField() : undefined,
+    genderSelfDescription: hasOwnField(data, 'genderSelfDescription') ? data.genderSelfDescription ?? deleteField() : undefined,
     birthDate: data.birthDate,
     birthPlace: data.birthPlace,
+    birthPlaceCode: hasOwnField(data, 'birthPlaceCode') ? data.birthPlaceCode ?? deleteField() : undefined,
     birthProvince: data.birthProvince,
+    birthProvinceCode: hasOwnField(data, 'birthProvinceCode') ? data.birthProvinceCode ?? deleteField() : undefined,
     birthCountry: data.birthCountry,
+    birthCountryCode: hasOwnField(data, 'birthCountryCode') ? data.birthCountryCode ?? deleteField() : undefined,
     city: data.city,
     state: data.state,
     province: data.province,
     region: data.region,
     country: data.country,
+    countryCode: hasOwnField(data, 'countryCode') ? data.countryCode ?? deleteField() : undefined,
     citizenship: data.citizenship,
+    citizenshipCountryCodes: hasOwnField(data, 'citizenshipCountryCodes') ? data.citizenshipCountryCodes ?? deleteField() : undefined,
     nationality: data.nationality,
     address: data.address,
     postalCode: data.postalCode,
@@ -286,9 +307,9 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     identityDocumentSecondaryName: data.identityDocumentSecondaryName,
     identityDocumentSecondaryPath: data.identityDocumentSecondaryPath,
     membershipFeeAmount: data.membershipFeeAmount,
-    currentChurchId: data.currentChurchId,
-    currentChurchName: data.currentChurchName,
-    originChurchName: data.originChurchName,
+    currentChurchId: hasOwnField(data, 'currentChurchId') ? data.currentChurchId ?? deleteField() : undefined,
+    currentChurchName: hasOwnField(data, 'currentChurchName') ? data.currentChurchName ?? deleteField() : undefined,
+    originChurchName: hasOwnField(data, 'originChurchName') ? data.originChurchName ?? deleteField() : undefined,
     isInitiated: data.isInitiated,
     initiationDate: data.initiationDate,
     initiationVenue: data.initiationVenue,
@@ -297,9 +318,9 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     initiatorName: data.initiatorName,
     initiatedWith: data.initiatedWith,
     isSponsor: data.isSponsor,
-    sponsorChurchIds: data.sponsorChurchIds,
-    sponsorChurchNames: data.sponsorChurchNames,
-    doctrineRoles: data.doctrineRoles,
+    sponsorChurchIds: hasOwnField(data, 'sponsorChurchIds') ? data.sponsorChurchIds ?? deleteField() : undefined,
+    sponsorChurchNames: hasOwnField(data, 'sponsorChurchNames') ? data.sponsorChurchNames ?? deleteField() : undefined,
+    doctrineRoles: hasOwnField(data, 'doctrineRoles') ? data.doctrineRoles ?? deleteField() : undefined,
     observations: data.observations,
     adminNote: data.adminNote,
     updatedAt: Timestamp.now()
@@ -351,10 +372,15 @@ export type ApprovedProfileSnapshot = {
   fullName?: string;
   fiscalCode?: string;
   sex?: string;
+  gender?: string;
+  genderSelfDescription?: string;
   birthDate?: string;
   birthPlace?: string;
+  birthPlaceCode?: string;
   birthCountry?: string;
+  birthCountryCode?: string;
   citizenship?: string;
+  citizenshipCountryCodes?: string[];
   nationality?: string;
   address?: string;
   postalCode?: string;
@@ -392,10 +418,15 @@ function mapApprovedSnapshot(id: string, value: unknown): ApprovedProfileSnapsho
     fullName: asOptionalString(data.fullName),
     fiscalCode: asOptionalString(data.fiscalCode),
     sex: asOptionalString(data.sex),
+    gender: asOptionalString(data.gender),
+    genderSelfDescription: asOptionalString(data.genderSelfDescription),
     birthDate: asOptionalString(data.birthDate),
     birthPlace: asOptionalString(data.birthPlace),
+    birthPlaceCode: asOptionalString(data.birthPlaceCode),
     birthCountry: asOptionalString(data.birthCountry),
+    birthCountryCode: asOptionalString(data.birthCountryCode),
     citizenship: asOptionalString(data.citizenship),
+    citizenshipCountryCodes: asStringArray(data.citizenshipCountryCodes),
     nationality: asOptionalString(data.nationality),
     address: asOptionalString(data.address),
     postalCode: asOptionalString(data.postalCode),
@@ -428,10 +459,15 @@ export async function createApprovedSnapshot(uid: string, profile: UserProfile, 
     fullName: profile.fullName,
     fiscalCode: profile.fiscalCode,
     sex: profile.sex,
+    gender: profile.gender,
+    genderSelfDescription: profile.genderSelfDescription,
     birthDate: profile.birthDate,
     birthPlace: profile.birthPlace,
+    birthPlaceCode: profile.birthPlaceCode,
     birthCountry: profile.birthCountry,
+    birthCountryCode: profile.birthCountryCode,
     citizenship: profile.citizenship,
+    citizenshipCountryCodes: profile.citizenshipCountryCodes,
     nationality: profile.nationality,
     address: profile.address,
     postalCode: profile.postalCode,

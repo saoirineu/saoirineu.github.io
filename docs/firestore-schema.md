@@ -23,8 +23,8 @@
 - approvalSubmittedAt, approvalApprovedAt, approvalApprovedBy
 - displayName, email, email2, preferredCommunicationEmail (`login` | `secondary`), phone, mobile, avatarUrl
 - memberId: id do documento em `members` usado para preencher o perfil quando o e-mail de login coincide
-- identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex, birthDate, birthPlace, birthProvince, birthCountry, citizenship, nationality, profession
-- residencia Cloud32/socio: address, postalCode, city, province, state, region, country
+- identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex, gender, genderSelfDescription, birthDate, birthPlace, birthPlaceCode, birthProvince, birthProvinceCode, birthCountry, birthCountryCode, citizenship, citizenshipCountryCodes, nationality, profession
+- residencia Cloud32/socio: address, postalCode, city, province, state, region, country, countryCode
 - associacao Cloud32/socio: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, registrationRequestDate, registrationDate, renewalDate, cancellationDate, firstWorkDate, identityDocumentPrimaryName, identityDocumentPrimaryPath, identityDocumentSecondaryName, identityDocumentSecondaryPath, membershipFeeAmount
 - doutrina: isInitiated, initiationDate, initiationVenue, initiationChurchId, initiationChurchName, initiatorName, initiatedWith, isSponsor, sponsorChurchIds, sponsorChurchNames, currentChurchId, currentChurchName, originChurchName, doctrineRoles, observations
 - createdAt, updatedAt
@@ -42,6 +42,7 @@
 - localizacao: { cidade, uf, pais?, coords? }
 - linhagem?
 - leaderName?, leaderEmail?, churchEmail?
+- centros ICEFLU Italia catalogados no frontend e persistidos quando possivel: Casa Regina della Pace, Stella Azzurra, Casa Maria delle Rose, Luce di Misericordia, Estrela d'Oriente, Leone Bianco, Céu do Panda
 - responsaveis: ref[](pessoas)
 - contatos
 - createdAt, updatedAt
