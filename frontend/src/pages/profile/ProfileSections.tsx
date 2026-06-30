@@ -131,15 +131,17 @@ function TextInput<K extends TextProfileField>({
   placeholder,
   setField,
   type = 'text',
-  required
+  required,
+  disabled: disabledProp
 }: BaseSectionProps & {
   field: K;
   label: string;
   placeholder?: string;
   type?: 'date' | 'email' | 'number' | 'text';
   required: boolean;
+  disabled?: boolean;
 }) {
-  const disabled = !required;
+  const disabled = disabledProp ?? !required;
   return (
     <label className={`text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
       {label}
@@ -234,7 +236,7 @@ export function ProfilePersonalSection({
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <TextInput copy={copy} field="email2" form={form} label={copy.email2} setField={setField} type="email" required={required.has('email2')} />
-          <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} required={required.has('phone')} />
+          <TextInput copy={copy} field="phone" form={form} label={copy.phone} placeholder={copy.optional} setField={setField} disabled={false} required={required.has('phone')} />
           <TextInput copy={copy} field="mobile" form={form} label={copy.mobile} setField={setField} required={required.has('mobile')} />
         </div>
       </div>
