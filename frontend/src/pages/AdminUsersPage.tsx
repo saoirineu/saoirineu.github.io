@@ -9,6 +9,12 @@ import {
   type SystemRole
 } from '../lib/systemRole';
 import {
+  BASELINE_NOTIFY_EMAILS,
+  fetchNotificationSettings,
+  updateNotificationSettings,
+  type NotificationSettings
+} from '../lib/notificationSettings';
+import {
   createApprovedSnapshot,
   fetchApprovedSnapshots,
   fetchUsers,
@@ -46,6 +52,16 @@ const copyByLocale = {
       pending: 'Pendente',
       approved: 'Aprovado',
       'needs-info': 'Precisa de ajuste'
+    },
+    notify: {
+      title: 'Destinatários de notificações',
+      subtitle: 'Escolha quem recebe o e-mail quando uma nova inscrição ICEFLU é enviada. Os endereços base recebem sempre.',
+      baseline: 'Sempre notificados',
+      column: 'Notificar',
+      extraLabel: 'E-mails adicionais',
+      extraPlaceholder: 'nome@exemplo.com',
+      extraAdd: 'Adicionar',
+      invalidEmail: 'Informe um e-mail válido.'
     },
     profileLabels: {
       title: 'Perfil do candidato',
@@ -114,6 +130,16 @@ const copyByLocale = {
       approved: 'Approved',
       'needs-info': 'Needs update'
     },
+    notify: {
+      title: 'Notification recipients',
+      subtitle: 'Choose who receives the email when a new ICEFLU registration is submitted. The baseline addresses always receive it.',
+      baseline: 'Always notified',
+      column: 'Notify',
+      extraLabel: 'Additional emails',
+      extraPlaceholder: 'name@example.com',
+      extraAdd: 'Add',
+      invalidEmail: 'Enter a valid email.'
+    },
     profileLabels: {
       title: 'Applicant profile',
       submittedAt: 'Submitted at',
@@ -180,6 +206,16 @@ const copyByLocale = {
       pending: 'Pendiente',
       approved: 'Aprobado',
       'needs-info': 'Necesita ajuste'
+    },
+    notify: {
+      title: 'Destinatarios de notificaciones',
+      subtitle: 'Elija quién recibe el correo cuando se envía una nueva inscripción ICEFLU. Las direcciones base siempre lo reciben.',
+      baseline: 'Siempre notificados',
+      column: 'Notificar',
+      extraLabel: 'Correos adicionales',
+      extraPlaceholder: 'nombre@ejemplo.com',
+      extraAdd: 'Añadir',
+      invalidEmail: 'Introduzca un correo válido.'
     },
     profileLabels: {
       title: 'Perfil del candidato',
@@ -248,6 +284,16 @@ const copyByLocale = {
       approved: 'Approvato',
       'needs-info': 'Da aggiornare'
     },
+    notify: {
+      title: 'Destinatari delle notifiche',
+      subtitle: 'Scegli chi riceve l\'email quando viene inviata una nuova iscrizione ICEFLU. Gli indirizzi base la ricevono sempre.',
+      baseline: 'Sempre notificati',
+      column: 'Notifica',
+      extraLabel: 'Email aggiuntive',
+      extraPlaceholder: 'nome@esempio.com',
+      extraAdd: 'Aggiungi',
+      invalidEmail: 'Inserisci un\'email valida.'
+    },
     profileLabels: {
       title: 'Profilo del candidato',
       submittedAt: 'Inviato il',
@@ -304,6 +350,7 @@ export default function AdminUsersPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [reviewUid, setReviewUid] = useState<string | null>(null);
+  const [extraEmailDraft, setExtraEmailDraft] = useState('');
   const canManagePrivileges = hasRequiredRole(role, 'superadmin');
   const canApproveUsers = hasRequiredRole(role, 'useradmin');
 
@@ -311,6 +358,59 @@ export default function AdminUsersPage() {
     queryKey: ['users'],
     queryFn: fetchUsers
   });
+
+  const notificationSettingsQuery = useQuery({
+    queryKey: ['notificationSettings'],
+    queryFn: fetchNotificationSettings,
+    enabled: canApproveUsers
+  });
+  const notificationSettings = notificationSettingsQuery.data ?? { recipientUserIds: [], extraEmails: [] };
+
+  const notificationMutation = useMutation({
+    mutationFn: async (next: NotificationSettings) => {
+      setErrorMessage('');
+      return updateNotificationSettings(next);
+    },
+    onMutate: async (next: NotificationSettings) => {
+      await queryClient.cancelQueries({ queryKey: ['notificationSettings'] });
+      const previous = queryClient.getQueryData<NotificationSettings>(['notificationSettings']);
+      queryClient.setQueryData(['notificationSettings'], next);
+      return { previous };
+    },
+    onError: (error, _next, context) => {
+      if (context?.previous) queryClient.setQueryData(['notificationSettings'], context.previous);
+      setErrorMessage(error instanceof Error ? error.message : copy.updateError);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['notificationSettings'] });
+    }
+  });
+
+  const toggleRecipient = (uid: string) => {
+    const selected = new Set(notificationSettings.recipientUserIds);
+    if (selected.has(uid)) selected.delete(uid);
+    else selected.add(uid);
+    notificationMutation.mutate({ ...notificationSettings, recipientUserIds: Array.from(selected) });
+  };
+
+  const addExtraEmail = () => {
+    const email = extraEmailDraft.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrorMessage(copy.notify.invalidEmail);
+      return;
+    }
+    setExtraEmailDraft('');
+    if (notificationSettings.extraEmails.includes(email)) return;
+    notificationMutation.mutate({ ...notificationSettings, extraEmails: [...notificationSettings.extraEmails, email] });
+  };
+
+  const removeExtraEmail = (email: string) => {
+    notificationMutation.mutate({
+      ...notificationSettings,
+      extraEmails: notificationSettings.extraEmails.filter(item => item !== email)
+    });
+  };
 
   const roleMutation = useMutation({
     mutationFn: async ({ systemRoles, uid }: { uid: string; systemRoles: SystemRole[] }) => {
@@ -399,6 +499,64 @@ export default function AdminUsersPage() {
       {usersQuery.isLoading ? <div className="text-sm text-slate-600">{copy.loading}</div> : null}
       {usersQuery.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{copy.loadError}</div> : null}
 
+      {canApproveUsers ? (
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">{copy.notify.title}</h2>
+            <p className="text-sm text-slate-600">{copy.notify.subtitle}</p>
+          </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{copy.notify.baseline}</div>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {BASELINE_NOTIFY_EMAILS.map(email => (
+                <span key={email} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{email}</span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{copy.notify.extraLabel}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {notificationSettings.extraEmails.map(email => (
+                <span key={email} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700">
+                  {email}
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-red-600 disabled:opacity-50"
+                    disabled={notificationMutation.isPending}
+                    onClick={() => removeExtraEmail(email)}
+                    aria-label={`${copy.notify.extraLabel}: ${email}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <form
+                className="inline-flex items-center gap-2"
+                onSubmit={event => {
+                  event.preventDefault();
+                  addExtraEmail();
+                }}
+              >
+                <input
+                  type="email"
+                  value={extraEmailDraft}
+                  onChange={event => setExtraEmailDraft(event.target.value)}
+                  placeholder={copy.notify.extraPlaceholder}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  disabled={notificationMutation.isPending || !extraEmailDraft.trim()}
+                >
+                  {copy.notify.extraAdd}
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
@@ -407,6 +565,7 @@ export default function AdminUsersPage() {
               <th className="px-4 py-3 font-medium">{copy.name}</th>
               <th className="px-4 py-3 font-medium">{copy.email}</th>
               <th className="px-4 py-3 font-medium">{copy.approval}</th>
+              {canApproveUsers ? <th className="px-4 py-3 font-medium">{copy.notify.column}</th> : null}
               <th className="px-4 py-3 font-medium">{copy.privileges}</th>
             </tr>
           </thead>
@@ -435,6 +594,18 @@ export default function AdminUsersPage() {
                       </span>
                     )}
                   </td>
+                  {canApproveUsers ? (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 disabled:opacity-50"
+                        checked={notificationSettings.recipientUserIds.includes(user.uid)}
+                        disabled={notificationMutation.isPending || !user.email}
+                        title={user.email ?? copy.noEmail}
+                        onChange={() => toggleRecipient(user.uid)}
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       {privilegedSystemRoleOptions.map(option => (

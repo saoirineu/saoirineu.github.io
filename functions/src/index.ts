@@ -16,7 +16,9 @@ const smtpPass = defineSecret('SMTP_PASS');
 const leaderTokenSecret = defineSecret('LEADER_TOKEN_SECRET');
 const appBaseUrl = defineString('APP_BASE_URL', { default: 'https://saoirineu.github.io' });
 
-const NOTIFY_TO = 'renato@junto.space'; // TODO: change to international.secretariat@stellazzurra.org before production
+// Always-on recipients of the "new ICEFLU registration pending" admin notice.
+// Admins can add more via the settings/notifications doc (see loadNotificationRecipients).
+const BASELINE_NOTIFY = ['renato@junto.space', 'international.secretariat@stellazzurra.org'];
 
 type LeaderComment = {
   text: string;
@@ -77,28 +79,29 @@ function createTransporter() {
   });
 }
 
-async function loadUserAdminEmails() {
+// Recipients of the admin "registration pending" notice: the always-on baseline
+// plus the users and extra emails admins configure in settings/notifications
+// (managed from the /admin/users panel).
+async function loadNotificationRecipients() {
   const db = admin.firestore();
-  const snapshots = await Promise.all([
-    db.collection('users').where('systemRoles', 'array-contains', 'useradmin').get(),
-    db.collection('users').where('systemRoles', 'array-contains', 'superadmin').get(),
-    db.collection('users').where('systemRole', '==', 'useradmin').get(),
-    db.collection('users').where('systemRole', '==', 'superadmin').get(),
-  ]);
-  const emails = new Set<string>();
+  const emails = new Set<string>(BASELINE_NOTIFY);
 
-  snapshots.forEach(snapshot => {
-    snapshot.docs.forEach(doc => {
-      const email = doc.data().email;
-      if (typeof email === 'string' && email.trim()) {
-        emails.add(email.trim());
-      }
-    });
+  const settings = (await db.doc('settings/notifications').get()).data() ?? {};
+
+  const extraEmails = Array.isArray(settings.extraEmails) ? settings.extraEmails : [];
+  extraEmails.forEach((email: unknown) => {
+    if (typeof email === 'string' && email.trim()) emails.add(email.trim());
   });
 
-  if (emails.size === 0) {
-    emails.add(NOTIFY_TO);
-  }
+  const recipientUserIds = (Array.isArray(settings.recipientUserIds) ? settings.recipientUserIds : [])
+    .filter((id: unknown): id is string => typeof id === 'string' && !!id.trim());
+  const userDocs = await Promise.all(
+    recipientUserIds.map((id: string) => db.collection('users').doc(id).get())
+  );
+  userDocs.forEach(doc => {
+    const email = doc.data()?.email;
+    if (typeof email === 'string' && email.trim()) emails.add(email.trim());
+  });
 
   return Array.from(emails);
 }
@@ -157,6 +160,118 @@ function buildUserApprovalEmailBody(args: { uid: string; data: FirebaseFirestore
   ].join('\n');
 }
 
+function profileDisplayName(data: FirebaseFirestore.DocumentData): string {
+  const composed = `${data.firstName ?? ''} ${data.surname ?? ''}`.trim();
+  const name = data.fullName ?? data.displayName ?? composed;
+  return typeof name === 'string' ? name.trim() : '';
+}
+
+function buildUserApprovedEmailText(name: string): string {
+  const hi = name ? ` ${name}` : '';
+  return [
+    'São Irineu',
+    '',
+    '────────────────────────────────',
+    `Olá${hi},`,
+    '',
+    'A sua inscrição no ICEFLU foi aprovada. O seu perfil de associado está agora activo. Obrigado!',
+    '',
+    '────────────────────────────────',
+    `Hello${hi},`,
+    '',
+    'Your ICEFLU membership has been approved. Your member profile is now active. Thank you!',
+    '',
+    '────────────────────────────────',
+    `Hola${hi},`,
+    '',
+    'Su inscripción en ICEFLU ha sido aprobada. Su perfil de socio ya está activo. ¡Gracias!',
+    '',
+    '────────────────────────────────',
+    `Ciao${hi},`,
+    '',
+    'La tua iscrizione a ICEFLU è stata approvata. Il tuo profilo socio è ora attivo. Grazie!',
+  ].join('\n');
+}
+
+function buildUserNeedsInfoEmailText(name: string, note: string, profileUrl: string): string {
+  const hi = name ? ` ${name}` : '';
+  const noteBlock = (label: string) => (note ? ['', `${label}: ${note}`] : []);
+  return [
+    'São Irineu',
+    '',
+    '────────────────────────────────',
+    `Olá${hi},`,
+    '',
+    'A sua inscrição no ICEFLU precisa de revisão antes de poder ser aprovada. Por favor, actualize o seu perfil e envie-o novamente para aprovação:',
+    profileUrl,
+    ...noteBlock('Nota da administração'),
+    '',
+    '────────────────────────────────',
+    `Hello${hi},`,
+    '',
+    'Your ICEFLU membership needs revision before it can be approved. Please update your profile and submit it again for approval:',
+    profileUrl,
+    ...noteBlock('Note from the administration'),
+    '',
+    '────────────────────────────────',
+    `Hola${hi},`,
+    '',
+    'Su inscripción en ICEFLU necesita revisión antes de poder ser aprobada. Actualice su perfil y vuelva a enviarlo para aprobación:',
+    profileUrl,
+    ...noteBlock('Nota de la administración'),
+    '',
+    '────────────────────────────────',
+    `Ciao${hi},`,
+    '',
+    "La tua iscrizione a ICEFLU necessita di revisione prima di poter essere approvata. Aggiorna il tuo profilo e invialo di nuovo per l'approvazione:",
+    profileUrl,
+    ...noteBlock("Nota dell'amministrazione"),
+  ].join('\n');
+}
+
+// Emails the user when an admin decides on their ICEFLU profile: an approval
+// confirmation, or a revision request (with the admin's note) for needs-info.
+export const onUserApprovalDecision = onDocumentWritten(
+  {
+    document: 'users/{uid}',
+    secrets: [smtpHost, smtpPort, smtpUser, smtpPass],
+  },
+  async event => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!after) return;
+
+    const afterStatus = after.approvalStatus;
+    if (afterStatus === before?.approvalStatus) return;
+    if (afterStatus !== 'approved' && afterStatus !== 'needs-info') return;
+
+    const email = typeof after.email === 'string' ? after.email.trim() : '';
+    if (!email) return;
+
+    const name = profileDisplayName(after);
+    const transporter = createTransporter();
+
+    if (afterStatus === 'approved') {
+      await transporter.sendMail({
+        from: smtpUser.value(),
+        to: email,
+        subject: 'Your ICEFLU membership has been approved — São Irineu',
+        text: buildUserApprovedEmailText(name),
+      });
+      return;
+    }
+
+    const note = typeof after.adminNote === 'string' ? after.adminNote.trim() : '';
+    const profileUrl = `${appBaseUrl.value().replace(/\/$/, '')}/profile`;
+    await transporter.sendMail({
+      from: smtpUser.value(),
+      to: email,
+      subject: 'Your ICEFLU membership needs revision — São Irineu',
+      text: buildUserNeedsInfoEmailText(name, note, profileUrl),
+    });
+  }
+);
+
 export const onUserApprovalPending = onDocumentWritten(
   {
     document: 'users/{uid}',
@@ -171,7 +286,7 @@ export const onUserApprovalPending = onDocumentWritten(
     const base = appBaseUrl.value().replace(/\/$/, '');
     const reviewUrl = `${base}/admin/users`;
     const transporter = createTransporter();
-    const recipients = await loadUserAdminEmails();
+    const recipients = await loadNotificationRecipients();
 
     await transporter.sendMail({
       from: smtpUser.value(),

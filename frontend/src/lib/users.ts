@@ -235,6 +235,17 @@ export async function fetchUsers(): Promise<UserProfile[]> {
   return snapshot.docs.map(docSnap => mapUserProfile(docSnap.id, docSnap.data()));
 }
 
+/** Distinct, non-empty "who initiated me" names already entered by any user. */
+export async function fetchInitiatorNames(): Promise<string[]> {
+  const snapshot = await getDocs(usersRef);
+  const names = new Set<string>();
+  snapshot.docs.forEach(docSnap => {
+    const name = docSnap.data().initiatorName;
+    if (typeof name === 'string' && name.trim()) names.add(name.trim());
+  });
+  return Array.from(names).sort((left, right) => left.localeCompare(right));
+}
+
 export async function fetchUser(uid: string): Promise<UserProfile | null> {
   const snap = await getDoc(doc(usersRef, uid));
   if (!snap.exists()) return null;

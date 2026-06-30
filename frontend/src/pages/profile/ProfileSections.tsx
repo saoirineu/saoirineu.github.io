@@ -131,6 +131,7 @@ export type ProfileSectionsCopy = {
   whoInitiatedMe: string;
   whoInitiatedMePlaceholder: string;
   initiationChurchRegistered: string;
+  initiationChurchOrCenter: string;
   initiationChurchText: string;
   withWhomIWasInitiated: string;
   withWhomIWasInitiatedPlaceholder: string;
@@ -231,15 +232,29 @@ function TextInput<K extends TextProfileField>({
   );
 }
 
-function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & { required: boolean }) {
+/** Date field shown as DD/MMM/YYYY, backed by a hidden native date picker. */
+function MonthNameDateInput({
+  label,
+  value,
+  monthShortNames,
+  onChange,
+  required = false,
+  disabled = false
+}: {
+  label: ReactNode;
+  value: string;
+  monthShortNames: string[];
+  onChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+}) {
   const dateInputRef = useRef<HTMLInputElement>(null);
-  const displayValue = formatDateWithShortMonth(form.birthDate, copy.birthDateMonthShortNames);
-  const disabled = !required;
+  const displayValue = formatDateWithShortMonth(value, monthShortNames);
 
   const openPicker = () => {
     const input = dateInputRef.current;
     if (!input || disabled) return;
-    if (!form.birthDate) input.value = PROFILE_BIRTH_DATE_PICKER_START;
+    if (!value) input.value = PROFILE_BIRTH_DATE_PICKER_START;
     const picker = input as HTMLInputElement & { showPicker?: () => void };
     if (typeof picker.showPicker === 'function') {
       picker.showPicker();
@@ -250,7 +265,7 @@ function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & {
 
   return (
     <label className={`relative text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
-      {copy.birthDate}
+      {label}
       {required ? <RequiredMark /> : null}
       <input
         type="text"
@@ -273,15 +288,28 @@ function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & {
         tabIndex={-1}
         aria-hidden="true"
         className="absolute bottom-0 right-0 h-px w-px opacity-0"
-        value={form.birthDate}
-        onChange={event => setField('birthDate', event.target.value)}
+        value={value}
+        onChange={event => onChange(event.target.value)}
         onBlur={event => {
-          if (!form.birthDate && event.currentTarget.value === PROFILE_BIRTH_DATE_PICKER_START) {
+          if (!value && event.currentTarget.value === PROFILE_BIRTH_DATE_PICKER_START) {
             event.currentTarget.value = '';
           }
         }}
       />
     </label>
+  );
+}
+
+function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & { required: boolean }) {
+  return (
+    <MonthNameDateInput
+      label={copy.birthDate}
+      value={form.birthDate}
+      monthShortNames={copy.birthDateMonthShortNames}
+      required={required}
+      disabled={!required}
+      onChange={value => setField('birthDate', value)}
+    />
   );
 }
 
@@ -908,7 +936,22 @@ export function ProfileNotesSection({ copy, form, setField }: BaseSectionProps) 
   );
 }
 
-export function ProfileInitiationSection({ copy, form, churches, setField }: BaseSectionProps & ChurchesProps) {
+export function ProfileInitiationSection({
+  copy,
+  form,
+  churches,
+  initiatorNames = [],
+  onRequestCreateChurch,
+  setField
+}: BaseSectionProps & ChurchesProps & {
+  initiatorNames?: string[];
+  onRequestCreateChurch: (onCreated: (churchId: string, churchName?: string) => void) => void;
+}) {
+  // Unlike the reference church, the Fardamento church/center is not restricted
+  // to Italian reference churches for Italian users.
+  const selectedChurch = form.initiationChurchId ? churches?.find(church => church.id === form.initiationChurchId) : null;
+  const initiatorListId = 'initiator-name-options';
+
   return (
     <div className="space-y-3 rounded-lg bg-slate-100 p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -933,78 +976,61 @@ export function ProfileInitiationSection({ copy, form, churches, setField }: Bas
       </div>
 
       {form.isInitiated ? (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-3">
-              <label className="text-sm text-slate-700">
-                {copy.initiationDate}
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.initiationDate}
-                  onChange={event => setField('initiationDate', event.target.value)}
-                />
-              </label>
-              <label className="text-sm text-slate-700">
-                {copy.initiationPlace}
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.initiationVenue}
-                  onChange={event => setField('initiationVenue', event.target.value)}
-                  placeholder={copy.initiationPlacePlaceholder}
-                />
-              </label>
-              <label className="text-sm text-slate-700">
-                {copy.whoInitiatedMe}
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.initiatorName}
-                  onChange={event => setField('initiatorName', event.target.value)}
-                  placeholder={copy.whoInitiatedMePlaceholder}
-                />
-              </label>
-            </div>
-            <div className="space-y-3">
-              <label className="text-sm text-slate-700">
-                {copy.initiationChurchRegistered}
-                <select
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.initiationChurchId}
-                  onChange={event => {
-                    const initiationChurchId = event.target.value;
-                    setField('initiationChurchId', initiationChurchId);
-                    setField('initiationChurchName', selectChurchName(churches, initiationChurchId));
-                  }}
-                >
-                  <option value="">{copy.selectPlaceholder}</option>
-                  {churches?.map(church => (
-                    <option key={church.id} value={church.id}>
-                      {church.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm text-slate-700">
-                {copy.initiationChurchText}
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.initiationChurchName}
-                  onChange={event => setField('initiationChurchName', event.target.value)}
-                  placeholder={copy.notRegisteredYet}
-                />
-              </label>
-              <label className="text-sm text-slate-700">
-                {copy.withWhomIWasInitiated}
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  value={form.initiatedWith}
-                  onChange={event => setField('initiatedWith', event.target.value)}
-                  placeholder={copy.withWhomIWasInitiatedPlaceholder}
-                />
-              </label>
-            </div>
-          </div>
-        </>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MonthNameDateInput
+            label={copy.initiationDate}
+            value={form.initiationDate}
+            monthShortNames={copy.birthDateMonthShortNames}
+            onChange={value => setField('initiationDate', value)}
+          />
+          <label className="text-sm text-slate-700">
+            {copy.initiationChurchOrCenter}
+            <select
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              value={form.initiationChurchId}
+              onChange={event => {
+                const initiationChurchId = event.target.value;
+                if (initiationChurchId === ADD_CHURCH_VALUE) {
+                  onRequestCreateChurch((churchId, churchName) => {
+                    setField('initiationChurchId', churchId);
+                    setField('initiationChurchName', churchName || selectChurchName(churches, churchId));
+                  });
+                  return;
+                }
+                setField('initiationChurchId', initiationChurchId);
+                setField('initiationChurchName', selectChurchName(churches, initiationChurchId));
+              }}
+            >
+              <option value="">{copy.selectPlaceholder}</option>
+              {churches?.map(church => (
+                <option key={church.id} value={church.id}>
+                  {church.name}
+                </option>
+              ))}
+              {selectedChurch && !churches?.some(church => church.id === selectedChurch.id) ? (
+                <option value={selectedChurch.id}>{selectedChurch.name}</option>
+              ) : null}
+              <option value={ADD_CHURCH_VALUE}>+ {copy.addReferenceChurch}</option>
+            </select>
+          </label>
+          <label className="text-sm text-slate-700">
+            {copy.whoInitiatedMe}
+            <input
+              list={initiatorNames.length ? initiatorListId : undefined}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              value={form.initiatorName}
+              onChange={event => setField('initiatorName', event.target.value)}
+              placeholder={copy.whoInitiatedMePlaceholder}
+            />
+            {initiatorNames.length ? (
+              <datalist id={initiatorListId}>
+                {initiatorNames.map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            ) : null}
+          </label>
+        </div>
       ) : null}
     </div>
   );

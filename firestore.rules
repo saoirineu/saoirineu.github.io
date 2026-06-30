@@ -331,6 +331,14 @@ service cloud.firestore {
       }
     }
 
+    // App settings managed by user admins (e.g. settings/notifications:
+    // recipientUserIds + extraEmails for the registration-pending notice).
+    // Cloud Functions read via the admin SDK and bypass these rules.
+    match /settings/{doc} {
+      allow read: if isUserAdmin();
+      allow write: if isUserAdmin();
+    }
+
     match /pessoas/{id} {
       allow read: if true;
       allow write: if isSignedIn();
