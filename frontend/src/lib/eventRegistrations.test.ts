@@ -145,13 +145,13 @@ describe('validateEventRegistration', () => {
     selectedWorks: ['fri'],
     needsExtraLinen: false
   };
-  const someDocs = { identityDocument: new File([''], 'id.pdf'), paymentProof: new File([''], 'pay.pdf'), consentDocument: null };
-  const noDocs = { identityDocument: null, paymentProof: null, consentDocument: null };
+  const someDocs = { paymentProof: new File([''], 'pay.pdf'), consentDocument: null };
+  const noDocs = { paymentProof: null, consentDocument: null };
 
   it('flags the first missing field', () => {
     expect(validateEventRegistration({ ...filled, firstName: '' }, someDocs, {})).toBe('firstName');
     expect(validateEventRegistration({ ...filled, checkOut: '2026-09-24' }, someDocs, {})).toBe('checkOut');
-    expect(validateEventRegistration(filled, noDocs, {})).toBe('identityDocument');
+    expect(validateEventRegistration(filled, noDocs, {})).toBe('paymentProof');
   });
 
   it('requires consent for novices or when aging requires it', () => {

@@ -14,6 +14,7 @@ const EventsAdminPage = lazy(() => import('./pages/EventsAdminPage'));
 const EventRegistrationsAdminPage = lazy(() => import('./pages/EventRegistrationsAdminPage'));
 const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
 const LeaderReviewPage = lazy(() => import('./pages/LeaderReviewPage'));
+const PaymentReviewPage = lazy(() => import('./pages/PaymentReviewPage'));
 const HymnsPage = lazy(() => import('./pages/HymnsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MembersPage = lazy(() => import('./pages/MembersPage'));
@@ -66,6 +67,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/european-gathering" element={<Navigate to="/events/encontro-europeu-2026" replace />} />
         <Route path="/leader-review/:id" element={<LeaderReviewPage />} />
+        <Route path="/payment-review/:id" element={<PaymentReviewPage />} />
         <Route element={<AuthGate />}>
           <Route element={<Shell />}>
             <Route index element={<DashboardPage />} />

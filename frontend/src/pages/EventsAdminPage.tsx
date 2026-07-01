@@ -184,6 +184,12 @@ export default function EventsAdminPage() {
               </select>
             </label>
           </div>
+          <label className="text-sm text-slate-700">Consentimento informado assinado
+            <select className={inputClass} value={form.consentPolicy} onChange={e => set('consentPolicy', e.target.value as EventFormValues['consentPolicy'])}>
+              <option value="standard">Padrão — exigido se não houver consentimento válido (ou &gt; 12 meses) ou primeira participação</option>
+              <option value="noviceOnly">Somente primeira participação — exigido apenas quando "Primeira participação" está marcada</option>
+            </select>
+          </label>
         </div>
 
         <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">

@@ -54,7 +54,14 @@ export type EventInput = {
   resources?: EventResources;
   checkInSuggested?: string;
   checkOutSuggested?: string;
+  // How the signed informed consent is required:
+  // 'standard' (default) — required when the user has no valid consent on file
+  //   or the latest approved one is older than CONSENT_VALIDITY_MONTHS.
+  // 'noviceOnly' — required only for first-time participants (isNovice).
+  consentPolicy?: EventConsentPolicy;
 };
+
+export type EventConsentPolicy = 'standard' | 'noviceOnly';
 
 export type EventRecord = EventInput & {
   id: string;
@@ -186,6 +193,7 @@ function mapEvent(id: string, value: unknown): EventRecord {
     resources: mapResources(data.resources),
     checkInSuggested: asOptionalString(data.checkInSuggested),
     checkOutSuggested: asOptionalString(data.checkOutSuggested),
+    consentPolicy: data.consentPolicy === 'noviceOnly' ? 'noviceOnly' : 'standard',
     createdBy: asOptionalString(data.createdBy),
     createdAt: createdAt instanceof Timestamp ? createdAt.toDate() : null,
     updatedAt: updatedAt instanceof Timestamp ? updatedAt.toDate() : null

@@ -76,6 +76,24 @@ export function consentRequired(
   return latestApproved < cutoff.getTime();
 }
 
+/**
+ * Whether the signed informed consent must be provided for an event registration.
+ *
+ * - 'standard' (default): required for first-time participants OR when the user has
+ *   no valid consent on file (see {@link consentRequired}).
+ * - 'noviceOnly': required only for first-time participants; the 12-month rule does
+ *   not apply. Used by the European Gathering.
+ */
+export function eventConsentNeeded(
+  policy: 'standard' | 'noviceOnly' | undefined,
+  isNovice: boolean,
+  consents: ReadonlyArray<Pick<ConsentRecord, 'status' | 'approvedAt'>>,
+  now: Date = new Date()
+): boolean {
+  if (policy === 'noviceOnly') return isNovice;
+  return isNovice || consentRequired(consents, now);
+}
+
 export async function fetchUserConsents(uid: string): Promise<ConsentRecord[]> {
   const snapshot = await getDocs(query(consentsRef(uid), orderBy('uploadedAt', 'desc')));
   return snapshot.docs.map(docSnap => mapConsent(docSnap.id, docSnap.data()));

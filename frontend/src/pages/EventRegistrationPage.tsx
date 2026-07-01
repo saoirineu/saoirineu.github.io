@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { FileUploadField } from '../components/FileUploadField';
 import { InfoTooltip } from '../components/InfoTooltip';
-import { consentRequired, fetchUserConsents } from '../lib/consents';
+import { eventConsentNeeded, fetchUserConsents } from '../lib/consents';
 import { fetchEvent, type EventLocale } from '../lib/events';
 import {
   calculateEventCautionDeposit,
@@ -23,9 +23,10 @@ import {
 import { uploadAccept } from '../lib/uploads';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
+import { useSystemRole } from '../providers/useSystemRole';
 import { registrationCopyByLocale } from './events/registrationCopy';
 
-type DocumentState = { identityDocument: File | null; paymentProof: File | null; consentDocument: File | null };
+type DocumentState = { paymentProof: File | null; consentDocument: File | null };
 
 const initialValues: EventRegistrationFormValues = {
   firstName: '',
@@ -69,13 +70,14 @@ export default function EventRegistrationPage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const { locale } = useSiteLocale();
   const { user } = useAuth();
+  const { profile, loading: profileLoading } = useSystemRole();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const copy = registrationCopyByLocale[locale];
 
   const [values, setValues] = useState<EventRegistrationFormValues>(initialValues);
-  const [documents, setDocuments] = useState<DocumentState>({ identityDocument: null, paymentProof: null, consentDocument: null });
-  const [existingDocUrls, setExistingDocUrls] = useState<{ identityDocument?: string; paymentProof?: string; consentDocument?: string }>({});
+  const [documents, setDocuments] = useState<DocumentState>({ paymentProof: null, consentDocument: null });
+  const [existingDocUrls, setExistingDocUrls] = useState<{ paymentProof?: string; consentDocument?: string }>({});
   const [removedDocs, setRemovedDocs] = useState<Set<string>>(new Set());
   const [submitError, setSubmitError] = useState('');
   const [successState, setSuccessState] = useState<{ registrationId: string; total: number } | null>(null);
@@ -109,9 +111,26 @@ export default function EventRegistrationPage() {
   const setField = <K extends keyof EventRegistrationFormValues>(key: K, value: EventRegistrationFormValues[K]) =>
     setValues(current => ({ ...current, [key]: value }));
 
+  // Prefill from the approved profile — only fields still at their empty/default,
+  // so a loaded registration or saved draft is never overwritten.
   useEffect(() => {
-    if (user?.email) setValues(prev => (prev.email ? prev : { ...prev, email: user.email! }));
-  }, [user?.email]);
+    if (existing) return;
+    setValues(prev => {
+      const next = { ...prev };
+      const fillText = (key: 'firstName' | 'lastName' | 'email' | 'phone' | 'country' | 'church', value: string | undefined) => {
+        if (!next[key] && value) next[key] = value;
+      };
+      fillText('firstName', profile?.firstName);
+      fillText('lastName', profile?.surname);
+      fillText('email', profile?.email ?? user?.email ?? undefined);
+      fillText('phone', profile?.phone ?? profile?.mobile);
+      fillText('country', profile?.country);
+      fillText('church', profile?.currentChurchName ?? profile?.originChurchName);
+      if (!prev.isInitiated && profile?.isInitiated) next.isInitiated = true;
+      if (!prev.isIcefluMember && profile?.approvalStatus === 'approved') next.isIcefluMember = true;
+      return next;
+    });
+  }, [profile, user?.email, existing]);
 
   useEffect(() => {
     if (!event || existing) return;
@@ -164,7 +183,7 @@ export default function EventRegistrationPage() {
       needsExtraLinen: existing.needsExtraLinen
     });
     setRemovedDocs(new Set());
-    const paths = { identityDocument: existing.identityDocumentPath, paymentProof: existing.paymentProofPath, consentDocument: existing.consentDocumentPath };
+    const paths = { paymentProof: existing.paymentProofPath, consentDocument: existing.consentDocumentPath };
     const entries = Object.entries(paths).filter((e): e is [string, string] => !!e[1]);
     Promise.all(
       entries.map(async ([key, path]) => {
@@ -178,7 +197,7 @@ export default function EventRegistrationPage() {
   }, [existing]);
 
   const contribution = useMemo(() => (event ? calculateEventContribution(event, values) : null), [event, values]);
-  const consentNeeded = values.isNovice || consentRequired(consentsQuery.data ?? []);
+  const consentNeeded = eventConsentNeeded(event?.consentPolicy, values.isNovice, consentsQuery.data ?? []);
   const capacity = capacityQuery.data ?? (event ? [{ id: 'total', capacity: totalEventCapacity(event), reserved: 0, available: totalEventCapacity(event) }] : []);
   const slotsAvailable = totalEventSlotsAvailable(capacity);
   const slotCapacity = event ? totalEventCapacity(event) : 0;
@@ -186,12 +205,10 @@ export default function EventRegistrationPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!event) throw new Error(copy.notFound);
-      const keptIdentity = !removedDocs.has('identityDocument') ? existing?.identityDocumentPath : undefined;
       const keptPayment = !removedDocs.has('paymentProof') ? existing?.paymentProofPath : undefined;
       const keptConsent = !removedDocs.has('consentDocument') ? existing?.consentDocumentPath : undefined;
 
       const validation = validateEventRegistration(values, documents, {
-        identityDocumentPath: keptIdentity,
         paymentProofPath: keptPayment,
         consentDocumentPath: keptConsent
       }, consentNeeded);
@@ -216,8 +233,10 @@ export default function EventRegistrationPage() {
         phone: values.phone.trim() || undefined,
         email: values.email.trim() || undefined,
         contribution: contribution!,
-        identityDocumentName: keptIdentity ? existing?.identityDocumentName : undefined,
-        identityDocumentPath: keptIdentity,
+        // Identity document is no longer collected here (it is captured in the ICEFLU
+        // subscription). Any document on an older registration is carried through unchanged.
+        identityDocumentName: existing?.identityDocumentName,
+        identityDocumentPath: existing?.identityDocumentPath,
         paymentProofName: keptPayment ? existing?.paymentProofName : undefined,
         paymentProofPath: keptPayment,
         consentDocumentName: keptConsent ? existing?.consentDocumentName : undefined,
@@ -251,30 +270,31 @@ export default function EventRegistrationPage() {
   if (!event) return <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{copy.notFound}</div>;
   if (event.status !== 'published') return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{copy.closed}</div>;
 
+  // Registration is gated to approved ICEFLU members. Members who already have a
+  // registration keep access to view/update it. Wait for the profile to load
+  // before deciding, so an approved member never sees a flash of the block.
+  const isApprovedMember = profile?.approvalStatus === 'approved';
+  if (!isApprovedMember && !existing) {
+    if (profileLoading || registrationQuery.isPending) return <div className="text-sm text-slate-600">…</div>;
+    return (
+      <div className="mx-auto max-w-2xl">
+        <section className="space-y-4 rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-slate-900">{copy.approvalRequiredTitle}</h2>
+          <p className="text-sm leading-6 text-slate-600">{copy.approvalRequiredBody}</p>
+          <button type="button" onClick={() => navigate('/profile')} className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+            {copy.approvalRequiredCta}
+          </button>
+        </section>
+      </div>
+    );
+  }
+
   if (successState) {
-    const deposit = calculateEventCautionDeposit(event, successState.total);
     return (
       <div className="mx-auto max-w-2xl">
         <section className="space-y-4 rounded-[28px] border border-emerald-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">OK</p>
           <h2 className="text-2xl font-semibold text-slate-900">{copy.successTitle}</h2>
           <p className="text-sm leading-6 text-slate-600">{copy.successIntro}</p>
-          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-            <div className="font-medium text-slate-900">{copy.registrationId}</div>
-            <div className="mt-1 break-all">{successState.registrationId}</div>
-          </div>
-          <div className="rounded-[24px] bg-slate-950 p-6 text-slate-50">
-            <h3 className="text-lg font-semibold">{copy.paymentInfoButton}</h3>
-            <dl className="mt-4 space-y-3 text-sm">
-              {event.payment.beneficiary ? <div><dt className="text-slate-400">{copy.paymentBeneficiary}</dt><dd className="mt-1 font-medium text-white">{event.payment.beneficiary}</dd></div> : null}
-              {event.payment.iban ? <div><dt className="text-slate-400">IBAN</dt><dd className="mt-1 font-mono font-medium text-white">{event.payment.iban}</dd></div> : null}
-              {event.payment.swift ? <div><dt className="text-slate-400">SWIFT</dt><dd className="mt-1 font-mono font-medium text-white">{event.payment.swift}</dd></div> : null}
-              {event.payment.causale ? <div><dt className="text-slate-400">{copy.paymentCausale}</dt><dd className="mt-1 font-medium text-white">{event.payment.causale}</dd></div> : null}
-              <div><dt className="text-slate-400">{copy.total}</dt><dd className="mt-1 text-xl font-semibold text-amber-300">{formatCurrency(successState.total)}</dd></div>
-              <div><dt className="text-slate-400">{copy.cautionDeposit} ({Math.round(event.cautionDepositRate * 100)}%)</dt><dd className="mt-1 font-medium text-amber-200">{formatCurrency(deposit)}</dd></div>
-            </dl>
-            <p className="mt-4 text-xs leading-5 text-slate-300">{copy.paymentNote}</p>
-          </div>
           <button type="button" onClick={() => navigate('/')} className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">{copy.backHome}</button>
         </section>
       </div>
@@ -311,12 +331,32 @@ export default function EventRegistrationPage() {
     useCompressedLabel: copy.fileApproveCompressed
   });
 
+  const leaderOutcome = existing?.leaderApproval;
+  const paymentOutcome = existing?.paymentApproval;
+  const outcomeBanner = (() => {
+    if (!existing) return null;
+    // Fully approved: both the reference church and the administration signed off.
+    if (existing.status === 'approved') return { text: copy.outcomeFullyApproved, className: 'border-emerald-200 bg-emerald-50 text-emerald-900' };
+    if (leaderOutcome === 'rejected' || paymentOutcome === 'rejected') return { text: copy.outcomeRejected, className: 'border-rose-200 bg-rose-50 text-rose-900' };
+    if (leaderOutcome === 'approved-interview' || leaderOutcome === 'approved-psychologist') return { text: copy.outcomeInterview, className: 'border-amber-200 bg-amber-50 text-amber-900' };
+    // Leader approved; still awaiting the administration's payment verification.
+    if (leaderOutcome === 'approved') return { text: copy.outcomeAwaitingPayment, className: 'border-amber-200 bg-amber-50 text-amber-900' };
+    return null;
+  })();
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-slate-900">{localized(event.title, locale)}</h1>
         <p className="text-sm text-slate-600">{copy.loggedIntro}</p>
       </header>
+
+      {outcomeBanner ? (
+        <div className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${outcomeBanner.className}`}>
+          <div className="font-semibold">{copy.outcomeStatusTitle}</div>
+          <p className="mt-1">{outcomeBanner.text}</p>
+        </div>
+      ) : null}
 
       <form
         className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]"
@@ -428,7 +468,6 @@ export default function EventRegistrationPage() {
               <InfoTooltip body={copy.fileInfoBody} title={copy.fileInfoTitle} />
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <FileUploadField {...fileProps('identityDocument', copy.identityDocument)} />
               <FileUploadField {...fileProps('paymentProof', <span className="inline-flex items-center gap-2"><span>{copy.paymentProof}</span><InfoTooltip compact body={copy.paymentTooltip} title={copy.paymentProof} /></span>)} />
               {consentNeeded ? (
                 <div className="sm:col-span-2 space-y-2">
@@ -444,6 +483,55 @@ export default function EventRegistrationPage() {
                   </p>
                 </div>
               ) : null}
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">{copy.priceTableTitle}</h2>
+            <div className="mt-4 space-y-5 text-sm">
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">{copy.priceTableWorksHeading}</h3>
+                <div className="overflow-hidden rounded-2xl border border-slate-200">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-600">
+                        <th className="px-3 py-2 text-left font-medium"></th>
+                        <th className="px-3 py-2 text-right font-medium">{copy.priceTierStandard}</th>
+                        <th className="px-3 py-2 text-right font-medium">{copy.priceTierFardado}</th>
+                        <th className="px-3 py-2 text-right font-medium">{copy.priceTierIceflu}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {event.pricing.worksByCount.anyone.slice(1).map((_, index) => {
+                        const count = index + 1;
+                        return (
+                          <tr key={count} className="border-t border-slate-100">
+                            <td className="px-3 py-2 text-slate-600">{copy.priceTableWorksCount.replace('{count}', String(count))}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.anyone[count] ?? 0)}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.initiated[count] ?? 0)}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.iceflu[count] ?? 0)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">{copy.priceTableStayHeading}</h3>
+                <dl className="grid gap-2">
+                  {[
+                    [copy.priceTableLodging, `${formatCurrency(event.pricing.lodgingNightRate)} / ${copy.priceTablePerNight}`],
+                    [copy.priceTableMeals, `${formatCurrency(event.pricing.mealsNightRate)} / ${copy.priceTablePerNight}`],
+                    [copy.priceTableExtraLinen, formatCurrency(event.pricing.extraLinen)]
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2.5">
+                      <dt className="text-slate-600">{k}</dt>
+                      <dd className="font-semibold text-slate-900">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
             </div>
           </section>
 

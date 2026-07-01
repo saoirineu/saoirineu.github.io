@@ -9,6 +9,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  updateDoc,
   where
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -151,14 +152,13 @@ export type EventRegistrationValidationError =
   | 'selectedWorks'
   | 'checkIn'
   | 'checkOut'
-  | 'identityDocument'
   | 'paymentProof'
   | 'consentDocument';
 
 export function validateEventRegistration(
   values: EventRegistrationFormValues,
-  docs: { identityDocument: File | null; paymentProof: File | null; consentDocument: File | null },
-  existingPaths: { identityDocumentPath?: string; paymentProofPath?: string; consentDocumentPath?: string },
+  docs: { paymentProof: File | null; consentDocument: File | null },
+  existingPaths: { paymentProofPath?: string; consentDocumentPath?: string },
   requireConsent = false
 ): EventRegistrationValidationError | null {
   if (!values.firstName.trim()) return 'firstName';
@@ -177,7 +177,6 @@ export function validateEventRegistration(
     if (calculateEventNightCount(values.checkIn, values.checkOut) <= 0) return 'checkOut';
   }
 
-  if (!docs.identityDocument && !existingPaths.identityDocumentPath) return 'identityDocument';
   if (!docs.paymentProof && !existingPaths.paymentProofPath) return 'paymentProof';
   if ((values.isNovice || requireConsent) && !docs.consentDocument && !existingPaths.consentDocumentPath) {
     return 'consentDocument';
@@ -236,6 +235,7 @@ export type EventRegistrationRecord = Omit<EventRegistrationInput, 'status'> & {
   submittedAt?: Date | null;
   userId?: string;
   leaderApproval?: LeaderApprovalDecision;
+  paymentApproval?: 'approved' | 'rejected';
   interview?: RegistrationInterview;
 };
 
@@ -379,8 +379,13 @@ function mapEventRegistration(id: string, eventId: string, value: unknown): Even
     submittedAt: submittedAt instanceof Timestamp ? submittedAt.toDate() : null,
     userId: asOptionalString(data.userId),
     leaderApproval: mapEventLeaderApproval(data.leaderApproval),
+    paymentApproval: mapEventPaymentApproval(data.paymentApproval),
     interview: mapEventInterview(data.interview)
   };
+}
+
+function mapEventPaymentApproval(value: unknown): 'approved' | 'rejected' | undefined {
+  return value === 'approved' || value === 'rejected' ? value : undefined;
 }
 
 export async function createEventRegistration(args: {
@@ -519,6 +524,20 @@ export async function updateEventRegistrationStatus(args: { event: EventRecord; 
     }
 
     transaction.update(registrationDocRef, { status: args.status });
+  });
+}
+
+// Administration (payment) approval, written from the authenticated eventadmin panel.
+// The both-approved → status:'approved' + user email is handled by the onRegistrationBothApproved trigger.
+export async function updateEventRegistrationPaymentApproval(args: {
+  event: EventRecord;
+  id: string;
+  paymentApproval: 'approved' | 'rejected';
+}) {
+  const registrationDocRef = doc(registrationsRef(args.event.id), args.id);
+  await updateDoc(registrationDocRef, {
+    paymentApproval: args.paymentApproval,
+    paymentApprovalRespondedAt: serverTimestamp()
   });
 }
 

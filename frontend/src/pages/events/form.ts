@@ -1,6 +1,7 @@
 import {
   slugify,
   type CapacityMode,
+  type EventConsentPolicy,
   type EventInput,
   type EventKind,
   type EventRecord,
@@ -46,6 +47,7 @@ export type EventFormValues = {
   resources: { programUrl: LocalizedText; directionsUrl: LocalizedText; consentFormUrl: LocalizedText };
   checkInSuggested: string;
   checkOutSuggested: string;
+  consentPolicy: EventConsentPolicy;
 };
 
 export const initialEventForm: EventFormValues = {
@@ -73,7 +75,8 @@ export const initialEventForm: EventFormValues = {
   worksIceflu: '',
   resources: { programUrl: emptyLocalized(), directionsUrl: emptyLocalized(), consentFormUrl: emptyLocalized() },
   checkInSuggested: '',
-  checkOutSuggested: ''
+  checkOutSuggested: '',
+  consentPolicy: 'standard'
 };
 
 function cleanLocalized(text: LocalizedText): LocalizedText | undefined {
@@ -149,7 +152,8 @@ export function buildEventInput(values: EventFormValues): EventInput {
     },
     resources: buildResources(values.resources),
     checkInSuggested: values.checkInSuggested.trim() || undefined,
-    checkOutSuggested: values.checkOutSuggested.trim() || undefined
+    checkOutSuggested: values.checkOutSuggested.trim() || undefined,
+    consentPolicy: values.consentPolicy
   };
 }
 
@@ -192,6 +196,7 @@ export function prefillEventForm(record: EventRecord): EventFormValues {
       consentFormUrl: record.resources?.consentFormUrl ?? emptyLocalized()
     },
     checkInSuggested: record.checkInSuggested ?? '',
-    checkOutSuggested: record.checkOutSuggested ?? ''
+    checkOutSuggested: record.checkOutSuggested ?? '',
+    consentPolicy: record.consentPolicy ?? 'standard'
   };
 }

@@ -32,6 +32,7 @@ type LeaderCopy = {
   icefluMember: string;
   firstTime: string;
   returning: string;
+  instructions: string;
   yourDecision: string;
   decApproved: string;
   decApprovedInterview: string;
@@ -75,16 +76,22 @@ const copyByLocale: Record<SiteLocale, LeaderCopy> = {
     participation: 'Participação', mode: 'Modalidade', stay: 'Permanência', selectedWorks: 'Trabalhos selecionados',
     contribution: 'Contribuição', status: 'Situação', modeLodging: 'Hospedagem e alimentação',
     modeMeals: 'Somente alimentação', modeSpiritual: 'Somente trabalhos', initiated: 'Fardado',
-    icefluMember: 'Membro ICEFLU', firstTime: 'Primeira vez', returning: 'Retornando', yourDecision: 'Sua decisão',
-    decApproved: 'Aprovado', decApprovedInterview: 'Aprovado — entrevista a seguir',
-    decApprovedPsychologist: 'Aprovado — entrevista com psicólogo a seguir', decRejected: 'Rejeitado', decPending: 'Pendente',
+    icefluMember: 'Membro ICEFLU', firstTime: 'Primeira vez', returning: 'Retornando',
+    instructions:
+      'A pessoa indicada acima pediu para participar do Encontro Europeu e declarou fazer referência à sua igreja/centro.\n' +
+      'Se você conhece esta pessoa e assume a responsabilidade de fazê-la participar do evento, pode clicar em "Aprovar".\n' +
+      'Se acha mais oportuno não a fazer participar, pode clicar em "Rejeitar".\n' +
+      'Se for a primeira vez que ela participa de um trabalho espiritual ou você não a conhece, pode indicar-lhe que faça uma entrevista de conhecimento com alguém de referência da sua igreja para depois decidir se a faz participar ou não. Nesse caso, clique em "Necessária entrevista de conhecimento" e indique nos comentários como fazer essa entrevista.',
+    yourDecision: 'Sua decisão',
+    decApproved: 'Aprovado', decApprovedInterview: 'Aprovado — entrevista necessária na primeira vez',
+    decApprovedPsychologist: 'Aprovado — entrevista com psicólogo necessária', decRejected: 'Rejeitado', decPending: 'Pendente',
     lastDecision: 'Última decisão registrada em {date}.', interviewWord: 'Entrevista',
     interviewPsychologist: 'Entrevista com psicólogo', awaitingConfirmation: 'aguardando confirmação',
     confirmedApproved: 'confirmado: aprovado', confirmedRejected: 'confirmado: rejeitado', resolved: 'Resolvido em {date}.',
     recordOutcome: 'Registre o resultado da adesão após a entrevista:', confirmApproval: 'Confirmar aprovação',
     confirming: 'Confirmando…', rejectAfterInterview: 'Rejeitar após entrevista', rejecting: 'Rejeitando…',
-    approve: 'Aprovar', approving: 'Aprovando…', approveInterview: 'Aprovar, entrevista depois',
-    approvePsychologist: 'Aprovar, entrevista com psicólogo', reject: 'Rejeitar', saving: 'Salvando…',
+    approve: 'Aprovar', approving: 'Aprovando…', approveInterview: 'Necessária entrevista de conhecimento',
+    approvePsychologist: 'Necessária entrevista com psicólogo.', reject: 'Rejeitar', saving: 'Salvando…',
     commentsTitle: 'Comentários / observações', noComments: 'Nenhum comentário ainda.',
     addCommentLabel: 'Adicionar um comentário', addComment: 'Adicionar comentário',
     respRecorded: 'Resposta registrada: {x}.', outcomeRecorded: 'Resultado pós-entrevista registrado: {x}.',
@@ -97,16 +104,22 @@ const copyByLocale: Record<SiteLocale, LeaderCopy> = {
     participation: 'Participation', mode: 'Mode', stay: 'Stay', selectedWorks: 'Selected works',
     contribution: 'Contribution', status: 'Status', modeLodging: 'Lodging and meals', modeMeals: 'Meals only',
     modeSpiritual: 'Spiritual works only', initiated: 'Initiated', icefluMember: 'ICEFLU member', firstTime: 'First time',
-    returning: 'Returning', yourDecision: 'Your decision', decApproved: 'Approved',
-    decApprovedInterview: 'Approved — interview to follow', decApprovedPsychologist: 'Approved — psychologist interview to follow',
+    returning: 'Returning',
+    instructions:
+      'The person indicated above has asked to take part in the Encontro Europeu and has declared that they refer to your church/center.\n' +
+      'If you know this person and take responsibility for having them attend the event, you can click "Approve".\n' +
+      'If you think it is more appropriate not to have them attend, you can click "Reject".\n' +
+      'If it is their first time taking part in a spiritual work, or you do not know them, you can ask them to have an introductory interview with a reference person from your church before deciding whether to have them attend. In that case, click "Introductory interview required" and indicate in the comments how to arrange this interview.',
+    yourDecision: 'Your decision', decApproved: 'Approved',
+    decApprovedInterview: 'Approved — interview required for first-timers', decApprovedPsychologist: 'Approved — psychologist interview required',
     decRejected: 'Rejected', decPending: 'Pending', lastDecision: 'Last decision recorded {date}.',
     interviewWord: 'Interview', interviewPsychologist: 'Interview with a psychologist',
     awaitingConfirmation: 'awaiting confirmation', confirmedApproved: 'confirmed: approved',
     confirmedRejected: 'confirmed: rejected', resolved: 'Resolved {date}.',
     recordOutcome: 'Record the membership outcome after the interview:', confirmApproval: 'Confirm approval',
     confirming: 'Confirming…', rejectAfterInterview: 'Reject after interview', rejecting: 'Rejecting…',
-    approve: 'Approve', approving: 'Approving…', approveInterview: 'Approve, interview after',
-    approvePsychologist: 'Approve, psychologist interview', reject: 'Reject', saving: 'Saving…',
+    approve: 'Approve', approving: 'Approving…', approveInterview: 'Introductory interview required',
+    approvePsychologist: 'Interview with a psychologist required.', reject: 'Reject', saving: 'Saving…',
     commentsTitle: 'Comments / observations', noComments: 'No comments yet.', addCommentLabel: 'Add a comment',
     addComment: 'Add comment', respRecorded: 'Response recorded: {x}.',
     outcomeRecorded: 'Post-interview outcome recorded: {x}.', commentRecorded: 'Comment recorded.'
@@ -118,16 +131,22 @@ const copyByLocale: Record<SiteLocale, LeaderCopy> = {
     participation: 'Participación', mode: 'Modalidad', stay: 'Estancia', selectedWorks: 'Trabajos seleccionados',
     contribution: 'Contribución', status: 'Situación', modeLodging: 'Alojamiento y comidas', modeMeals: 'Solo comidas',
     modeSpiritual: 'Solo trabajos', initiated: 'Fardado', icefluMember: 'Miembro ICEFLU', firstTime: 'Primera vez',
-    returning: 'Recurrente', yourDecision: 'Tu decisión', decApproved: 'Aprobado',
-    decApprovedInterview: 'Aprobado — entrevista a continuación',
-    decApprovedPsychologist: 'Aprobado — entrevista con psicólogo a continuación', decRejected: 'Rechazado',
+    returning: 'Recurrente',
+    instructions:
+      'La persona indicada arriba ha pedido participar en el Encontro Europeu y ha declarado que hace referencia a tu iglesia/centro.\n' +
+      'Si conoces a esta persona y asumes la responsabilidad de hacerla participar en el evento, puedes hacer clic en "Aprobar".\n' +
+      'Si crees que es más oportuno no hacerla participar, puedes hacer clic en "Rechazar".\n' +
+      'Si es la primera vez que participa en un trabajo espiritual o no la conoces, puedes indicarle que haga una entrevista de conocimiento con alguien de referencia de tu iglesia para luego decidir si la haces participar o no. En ese caso, haz clic en "Entrevista de conocimiento requerida" e indica en los comentarios cómo hacer esta entrevista.',
+    yourDecision: 'Tu decisión', decApproved: 'Aprobado',
+    decApprovedInterview: 'Aprobado — entrevista requerida la primera vez',
+    decApprovedPsychologist: 'Aprobado — entrevista con psicólogo requerida', decRejected: 'Rechazado',
     decPending: 'Pendiente', lastDecision: 'Última decisión registrada el {date}.', interviewWord: 'Entrevista',
     interviewPsychologist: 'Entrevista con psicólogo', awaitingConfirmation: 'esperando confirmación',
     confirmedApproved: 'confirmado: aprobado', confirmedRejected: 'confirmado: rechazado', resolved: 'Resuelto el {date}.',
     recordOutcome: 'Registra el resultado de la adhesión tras la entrevista:', confirmApproval: 'Confirmar aprobación',
     confirming: 'Confirmando…', rejectAfterInterview: 'Rechazar tras entrevista', rejecting: 'Rechazando…',
-    approve: 'Aprobar', approving: 'Aprobando…', approveInterview: 'Aprobar, entrevista después',
-    approvePsychologist: 'Aprobar, entrevista con psicólogo', reject: 'Rechazar', saving: 'Guardando…',
+    approve: 'Aprobar', approving: 'Aprobando…', approveInterview: 'Entrevista de conocimiento requerida',
+    approvePsychologist: 'Se requiere entrevista con psicólogo.', reject: 'Rechazar', saving: 'Guardando…',
     commentsTitle: 'Comentarios / observaciones', noComments: 'Aún no hay comentarios.',
     addCommentLabel: 'Añadir un comentario', addComment: 'Añadir comentario', respRecorded: 'Respuesta registrada: {x}.',
     outcomeRecorded: 'Resultado tras la entrevista registrado: {x}.', commentRecorded: 'Comentario registrado.'
@@ -139,16 +158,22 @@ const copyByLocale: Record<SiteLocale, LeaderCopy> = {
     participation: 'Partecipazione', mode: 'Modalità', stay: 'Permanenza', selectedWorks: 'Lavori selezionati',
     contribution: 'Contributo', status: 'Stato', modeLodging: 'Alloggio e vitto', modeMeals: 'Solo vitto',
     modeSpiritual: 'Solo lavori', initiated: 'Fardado', icefluMember: 'Membro ICEFLU', firstTime: 'Prima volta',
-    returning: 'Di ritorno', yourDecision: 'La tua decisione', decApproved: 'Approvato',
-    decApprovedInterview: 'Approvato — colloquio a seguire',
-    decApprovedPsychologist: 'Approvato — colloquio con psicologo a seguire', decRejected: 'Rifiutato', decPending: 'In sospeso',
+    returning: 'Di ritorno',
+    instructions:
+      'La persona sopra indicata ha chiesto di partecipare all\'Encontro Europeu e ha dichiarato di fare riferimento alla vostra chiesa/centro.\n' +
+      'Se conosci questa persona e ti assumi la responsabilità di farla partecipare all\'evento puoi cliccare su "Approva".\n' +
+      'Se credi sia più opportuno non farla partecipare puoi cliccare su "Rifiuta".\n' +
+      'Se è la prima volta che partecipa a un lavoro spirituale o non la conosci, puoi indicarle di fare un colloquio conoscitivo con qualcuno di riferimento della tua chiesa per poi decidere se farla partecipare o meno. In questo caso, clicca su "Necessario colloquio conoscitivo" e indica nei commenti come fare questo colloquio.',
+    yourDecision: 'La tua decisione', decApproved: 'Approvato',
+    decApprovedInterview: 'Approvato — colloquio necessario la prima volta',
+    decApprovedPsychologist: 'Approvato — colloquio con psicologo necessario', decRejected: 'Rifiutato', decPending: 'In sospeso',
     lastDecision: 'Ultima decisione registrata il {date}.', interviewWord: 'Colloquio',
     interviewPsychologist: 'Colloquio con psicologo', awaitingConfirmation: 'in attesa di conferma',
     confirmedApproved: 'confermato: approvato', confirmedRejected: 'confermato: rifiutato', resolved: 'Risolto il {date}.',
     recordOutcome: "Registra l'esito dell'adesione dopo il colloquio:", confirmApproval: 'Conferma approvazione',
     confirming: 'Conferma…', rejectAfterInterview: 'Rifiuta dopo il colloquio', rejecting: 'Rifiuto…',
-    approve: 'Approva', approving: 'Approvazione…', approveInterview: 'Approva, colloquio dopo',
-    approvePsychologist: 'Approva, colloquio con psicologo', reject: 'Rifiuta', saving: 'Salvataggio…',
+    approve: 'Approva', approving: 'Approvazione…', approveInterview: 'Necessario colloquio conoscitivo',
+    approvePsychologist: 'Necessario colloquio con psicologo.', reject: 'Rifiuta', saving: 'Salvataggio…',
     commentsTitle: 'Commenti / osservazioni', noComments: 'Nessun commento ancora.',
     addCommentLabel: 'Aggiungi un commento', addComment: 'Aggiungi commento', respRecorded: 'Risposta registrata: {x}.',
     outcomeRecorded: 'Esito post-colloquio registrato: {x}.', commentRecorded: 'Commento registrato.'
@@ -341,6 +366,12 @@ export default function LeaderReviewPage() {
           <p className="text-xs text-slate-500">{copy.lastDecision.replace('{date}', formatDateTime(data.leaderApprovalRespondedAt, tag))}</p>
         ) : null}
 
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+          {copy.instructions.split('\n').map((line, index) => (
+            <p key={index}>{line}</p>
+          ))}
+        </div>
+
         {data.interview ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             <div className="font-medium">
@@ -395,14 +426,6 @@ export default function LeaderReviewPage() {
               onClick={() => handleSubmit('approved-interview', { decision: 'approved-interview' })}
             >
               {submitting === 'approved-interview' ? copy.saving : copy.approveInterview}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-              disabled={submitting !== null}
-              onClick={() => handleSubmit('approved-psychologist', { decision: 'approved-psychologist' })}
-            >
-              {submitting === 'approved-psychologist' ? copy.saving : copy.approvePsychologist}
             </button>
             <button
               type="button"

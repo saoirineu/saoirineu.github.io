@@ -34,7 +34,7 @@ const event = {
     pt: 'Encontro Europeu 2026',
     en: 'European Gathering 2026',
     es: 'Encuentro Europeo 2026',
-    it: 'Incontro Europeo 2026'
+    it: 'Incontro Europeo 2026',
   },
   slug: SLUG,
   status: 'published',
@@ -46,49 +46,49 @@ const event = {
     beneficiary: 'STELLA AZZURRA ETS',
     iban: 'IT43W0306909606100000133653',
     swift: 'BCITITMM',
-    causale: 'Encontro Europeu 2026'
+    causale: 'Encontro Europeu 2026',
   },
   works: [
     {
       id: 'fri-25-19',
       dateTime: '2026-09-25T19:00',
       label: {
-        pt: 'Sexta-feira, 25 de setembro, 19:00',
-        en: 'Friday, September 25, 19:00',
-        es: 'Viernes 25 de septiembre, 19:00',
-        it: 'Venerdì 25 settembre, ore 19:00'
-      }
+        pt: 'Sexta-feira, 25 de setembro, 19:00 — Trabalho de São Miguel',
+        en: 'Friday, September 25, 19:00 — Trabalho de São Miguel',
+        es: 'Viernes 25 de septiembre, 19:00 — Trabalho de São Miguel',
+        it: 'Venerdì 25 settembre, ore 19:00 — Trabalho de São Miguel',
+      },
     },
     {
       id: 'sat-26-19',
       dateTime: '2026-09-26T19:00',
       label: {
-        pt: 'Sábado, 26 de setembro, 19:00',
-        en: 'Saturday, September 26, 19:00',
-        es: 'Sábado 26 de septiembre, 19:00',
-        it: 'Sabato 26 settembre, ore 19:00'
-      }
+        pt: 'Sábado, 26 de setembro, 19:00 — segunda parte de O Justiceiro e Nova Jerusalém',
+        en: 'Saturday, September 26, 19:00 — second part of O Justiceiro and Nova Jerusalém',
+        es: 'Sábado 26 de septiembre, 19:00 — segunda parte de O Justiceiro y Nova Jerusalém',
+        it: 'Sabato 26 settembre, ore 19:00 — seconda parte di O Justiceiro e Nova Jerusalém',
+      },
     },
     {
       id: 'mon-28-19',
       dateTime: '2026-09-28T19:00',
       label: {
-        pt: 'Segunda-feira, 28 de setembro, 19:00',
-        en: 'Monday, September 28, 19:00',
-        es: 'Lunes 28 de septiembre, 19:00',
-        it: 'Lunedì 28 settembre, ore 19:00'
-      }
+        pt: 'Segunda-feira, 28 de setembro, 19:00 — Festa para o dia de São Miguel',
+        en: 'Monday, September 28, 19:00 — Feast for the day of São Miguel',
+        es: 'Lunes 28 de septiembre, 19:00 — Fiesta del día de São Miguel',
+        it: 'Lunedì 28 settembre, ore 19:00 — Festa del giorno di São Miguel',
+      },
     },
     {
       id: 'wed-30-19',
       dateTime: '2026-09-30T19:00',
       label: {
-        pt: 'Quarta-feira, 30 de setembro, 19:00',
-        en: 'Wednesday, September 30, 19:00',
-        es: 'Miércoles 30 de septiembre, 19:00',
-        it: 'Mercoledì 30 settembre, ore 19:00'
-      }
-    }
+        pt: 'Quarta-feira, 30 de setembro, 19:00 — Concentração e Nova Dimensão',
+        en: 'Wednesday, September 30, 19:00 — Concentration and Nova Dimensão',
+        es: 'Miércoles 30 de septiembre, 19:00 — Concentración y Nova Dimensão',
+        it: 'Mercoledì 30 settembre, ore 19:00 — Concentrazione e Nova Dimensão',
+      },
+    },
   ],
   pricing: {
     lodgingNightRate: 70,
@@ -97,31 +97,31 @@ const event = {
     worksByCount: {
       anyone: [0, 100, 180, 240, 300],
       initiated: [0, 80, 150, 210, 260],
-      iceflu: [0, 60, 110, 150, 190]
-    }
+      iceflu: [0, 60, 110, 150, 190],
+    },
   },
   resources: {
     programUrl: {
       pt: '/encontro-europeu/programa-geral-pt.pdf',
       en: '/encontro-europeu/programa-geral-en.pdf',
       es: '/encontro-europeu/programa-geral-es.pdf',
-      it: '/encontro-europeu/programa-geral-it.pdf'
+      it: '/encontro-europeu/programa-geral-it.pdf',
     },
     directionsUrl: {
       pt: '/encontro-europeu/como-chegar-pt.pdf',
       en: '/encontro-europeu/como-chegar-en.pdf',
       es: '/encontro-europeu/como-chegar-es.pdf',
-      it: '/encontro-europeu/como-chegar-it.pdf'
+      it: '/encontro-europeu/como-chegar-it.pdf',
     },
     consentFormUrl: {
       pt: '/encontro-europeu/consenso-informado-pt.pdf',
       en: '/encontro-europeu/consenso-informado-en.pdf',
       es: '/encontro-europeu/consenso-informado-es.pdf',
-      it: '/encontro-europeu/consenso-informado-it.pdf'
-    }
+      it: '/encontro-europeu/consenso-informado-it.pdf',
+    },
   },
   checkInSuggested: '2026-09-24',
-  checkOutSuggested: '2026-10-01'
+  checkOutSuggested: '2026-10-01',
 };
 
 function initFirebase() {

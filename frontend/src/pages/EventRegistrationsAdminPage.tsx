@@ -9,6 +9,7 @@ import {
   resolveEventDocumentUrl,
   totalEventCapacity,
   totalEventSlotsAvailable,
+  updateEventRegistrationPaymentApproval,
   updateEventRegistrationStatus,
   type EventRegistrationRecord,
   type EventRegistrationStatus
@@ -58,6 +59,16 @@ function leaderBadge(registration: EventRegistrationRecord) {
   return <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${cls}`}>{label}{interviewText}</span>;
 }
 
+function paymentBadge(registration: EventRegistrationRecord) {
+  const { paymentApproval } = registration;
+  if (!paymentApproval) return null;
+  const label = paymentApproval === 'approved' ? 'Pagamento: aprovado' : 'Pagamento: rejeitado';
+  const cls = paymentApproval === 'approved'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : 'border-rose-200 bg-rose-50 text-rose-800';
+  return <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${cls}`}>{label}</span>;
+}
+
 async function openDocument(path?: string) {
   if (!path) return;
   const url = await resolveEventDocumentUrl(path);
@@ -84,6 +95,14 @@ export default function EventRegistrationsAdminPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['eventRegistrations', slug] });
       await qc.invalidateQueries({ queryKey: ['eventCapacity', slug] });
+    }
+  });
+
+  const paymentMutation = useMutation({
+    mutationFn: (args: { id: string; paymentApproval: 'approved' | 'rejected' }) =>
+      updateEventRegistrationPaymentApproval({ event: event!, ...args }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['eventRegistrations', slug] });
     }
   });
 
@@ -127,7 +146,7 @@ export default function EventRegistrationsAdminPage() {
                 <p className="mt-1 text-sm text-slate-700">
                   {registration.attendanceMode} · {registration.selectedWorks.length} trabalho(s) · {formatCurrency(registration.contribution.total)}
                 </p>
-                <div className="mt-2">{leaderBadge(registration)}</div>
+                <div className="mt-2 flex flex-wrap gap-2">{leaderBadge(registration)}{paymentBadge(registration)}</div>
               </div>
               <div className="flex flex-col items-start gap-2 sm:items-end">
                 <div className={`inline-flex rounded-xl border px-3 py-2 text-sm ${statusAccent[registration.status]}`}>
@@ -143,6 +162,22 @@ export default function EventRegistrationsAdminPage() {
                   </select>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="rounded border border-emerald-300 px-2 py-1 font-medium text-emerald-700 disabled:opacity-50"
+                    disabled={paymentMutation.isPending || registration.paymentApproval === 'approved'}
+                    onClick={() => paymentMutation.mutate({ id: registration.id, paymentApproval: 'approved' })}
+                  >
+                    Aprovar pagamento
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-rose-300 px-2 py-1 font-medium text-rose-700 disabled:opacity-50"
+                    disabled={paymentMutation.isPending || registration.paymentApproval === 'rejected'}
+                    onClick={() => paymentMutation.mutate({ id: registration.id, paymentApproval: 'rejected' })}
+                  >
+                    Rejeitar pagamento
+                  </button>
                   {registration.identityDocumentPath ? <button type="button" className="rounded border border-slate-300 px-2 py-1 font-medium text-slate-700" onClick={() => openDocument(registration.identityDocumentPath)}>Documento</button> : null}
                   {registration.paymentProofPath ? <button type="button" className="rounded border border-slate-300 px-2 py-1 font-medium text-slate-700" onClick={() => openDocument(registration.paymentProofPath)}>Comprovante</button> : null}
                   {registration.consentDocumentPath ? <button type="button" className="rounded border border-slate-300 px-2 py-1 font-medium text-slate-700" onClick={() => openDocument(registration.consentDocumentPath)}>Consentimento</button> : null}
