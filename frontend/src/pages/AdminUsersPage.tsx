@@ -76,7 +76,6 @@ const copyByLocale = {
       mobile: 'Celular',
       fiscalCode: 'Código fiscal',
       sex: 'Sexo atribuído ao nascer',
-      gender: 'Gênero',
       birthDate: 'Data de nascimento',
       birthPlace: 'Local de nascimento',
       birthCountry: 'País de nascimento',
@@ -87,6 +86,9 @@ const copyByLocale = {
       country: 'País',
       currentChurch: 'Igreja atual',
       originChurch: 'Igreja de origem',
+      firstWorkParticipation: 'Participou de trabalho de Santo Daime',
+      firstWorkDate: 'Data do primeiro trabalho',
+      firstWorkChurch: 'Igreja do primeiro trabalho',
       isInitiated: 'Iniciado',
       initiationDate: 'Data de iniciação',
       initiatorName: 'Nome do iniciador',
@@ -153,7 +155,6 @@ const copyByLocale = {
       mobile: 'Mobile',
       fiscalCode: 'Fiscal code',
       sex: 'Sex assigned at birth',
-      gender: 'Gender',
       birthDate: 'Date of birth',
       birthPlace: 'Place of birth',
       birthCountry: 'Country of birth',
@@ -164,6 +165,9 @@ const copyByLocale = {
       country: 'Country',
       currentChurch: 'Current church',
       originChurch: 'Church of origin',
+      firstWorkParticipation: 'Attended Santo Daime work',
+      firstWorkDate: 'First Work date',
+      firstWorkChurch: 'First Work church',
       isInitiated: 'Initiated',
       initiationDate: 'Initiation date',
       initiatorName: 'Initiator name',
@@ -230,7 +234,6 @@ const copyByLocale = {
       mobile: 'Móvil',
       fiscalCode: 'Código fiscal',
       sex: 'Sexo asignado al nacer',
-      gender: 'Género',
       birthDate: 'Fecha de nacimiento',
       birthPlace: 'Lugar de nacimiento',
       birthCountry: 'País de nacimiento',
@@ -241,6 +244,9 @@ const copyByLocale = {
       country: 'País',
       currentChurch: 'Iglesia actual',
       originChurch: 'Iglesia de origen',
+      firstWorkParticipation: 'Participó en un trabajo de Santo Daime',
+      firstWorkDate: 'Fecha del primer trabajo',
+      firstWorkChurch: 'Iglesia del primer trabajo',
       isInitiated: 'Iniciado',
       initiationDate: 'Fecha de iniciación',
       initiatorName: 'Nombre del iniciador',
@@ -306,8 +312,7 @@ const copyByLocale = {
       phone: 'Telefono',
       mobile: 'Cellulare',
       fiscalCode: 'Codice fiscale',
-      sex: 'Sesso assegnato alla nascita',
-      gender: 'Genere',
+      sex: 'Sesso di nascita',
       birthDate: 'Data di nascita',
       birthPlace: 'Luogo di nascita',
       birthCountry: 'Paese di nascita',
@@ -318,6 +323,9 @@ const copyByLocale = {
       country: 'Paese',
       currentChurch: 'Chiesa attuale',
       originChurch: 'Chiesa di origine',
+      firstWorkParticipation: 'Ha partecipato a un lavoro di Santo Daime',
+      firstWorkDate: 'Data del primo lavoro',
+      firstWorkChurch: 'Chiesa del primo lavoro',
       isInitiated: 'Iniziato',
       initiationDate: 'Data di iniziazione',
       initiatorName: 'Nome dell\'iniziatore',
@@ -795,12 +803,6 @@ function UserProfileReviewModal({
           <ProfileSection>
             {user.fiscalCode ? <ProfileRow label={labels.fiscalCode} value={user.fiscalCode} /> : null}
             {user.sex ? <ProfileRow label={labels.sex} value={user.sex} /> : null}
-            {user.gender ? (
-              <ProfileRow
-                label={labels.gender}
-                value={user.gender === 'self-describe' && user.genderSelfDescription ? user.genderSelfDescription : user.gender}
-              />
-            ) : null}
             {user.birthDate ? <ProfileRow label={labels.birthDate} value={user.birthDate} /> : null}
             {user.birthPlace ? <ProfileRow label={labels.birthPlace} value={user.birthPlace} /> : null}
             {user.birthCountry ? <ProfileRow label={labels.birthCountry} value={user.birthCountry} /> : null}
@@ -817,6 +819,12 @@ function UserProfileReviewModal({
           <ProfileSection>
             {user.currentChurchName ? <ProfileRow label={labels.currentChurch} value={user.currentChurchName} /> : null}
             {user.originChurchName ? <ProfileRow label={labels.originChurch} value={user.originChurchName} /> : null}
+            <ProfileRow
+              label={labels.firstWorkParticipation}
+              value={user.hasParticipatedInSantoDaimeWork === true ? labels.yes : user.hasParticipatedInSantoDaimeWork === false ? labels.no : '—'}
+            />
+            {user.firstWorkDate ? <ProfileRow label={labels.firstWorkDate} value={user.firstWorkDate} /> : null}
+            {user.firstWorkChurchName ? <ProfileRow label={labels.firstWorkChurch} value={user.firstWorkChurchName} /> : null}
             <ProfileRow
               label={labels.isInitiated}
               value={user.isInitiated === true ? labels.yes : user.isInitiated === false ? labels.no : '—'}
@@ -932,6 +940,8 @@ function SnapshotCard({ snapshot, approvedOnLabel, noDocumentLabel }: {
       {snapshot.email ? <div className="text-xs text-slate-600">{snapshot.email}</div> : null}
       {snapshot.birthDate ? <div className="text-xs text-slate-600">{snapshot.birthDate}</div> : null}
       {snapshot.currentChurchName ? <div className="text-xs text-slate-600">{snapshot.currentChurchName}</div> : null}
+      {snapshot.firstWorkDate ? <div className="text-xs text-slate-600">{snapshot.firstWorkDate}</div> : null}
+      {snapshot.firstWorkChurchName ? <div className="text-xs text-slate-600">{snapshot.firstWorkChurchName}</div> : null}
       <div className="pt-1">
         <UserDocumentLink
           name={snapshot.identityDocumentPrimaryName}

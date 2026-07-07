@@ -76,7 +76,10 @@ export type UserProfile = {
   registrationDate?: string;
   renewalDate?: string;
   cancellationDate?: string;
+  hasParticipatedInSantoDaimeWork?: boolean;
   firstWorkDate?: string;
+  firstWorkChurchId?: string;
+  firstWorkChurchName?: string;
   identityDocumentPrimaryName?: string;
   identityDocumentPrimaryPath?: string;
   identityDocumentSecondaryName?: string;
@@ -191,7 +194,10 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     registrationDate: asOptionalString(data.registrationDate),
     renewalDate: asOptionalString(data.renewalDate),
     cancellationDate: asOptionalString(data.cancellationDate),
+    hasParticipatedInSantoDaimeWork: asOptionalBoolean(data.hasParticipatedInSantoDaimeWork),
     firstWorkDate: asOptionalString(data.firstWorkDate),
+    firstWorkChurchId: asOptionalString(data.firstWorkChurchId),
+    firstWorkChurchName: asOptionalString(data.firstWorkChurchName),
     identityDocumentPrimaryName: asOptionalString(data.identityDocumentPrimaryName),
     identityDocumentPrimaryPath: asOptionalString(data.identityDocumentPrimaryPath),
     identityDocumentSecondaryName: asOptionalString(data.identityDocumentSecondaryName),
@@ -312,7 +318,10 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     registrationDate: data.registrationDate,
     renewalDate: data.renewalDate,
     cancellationDate: data.cancellationDate,
-    firstWorkDate: data.firstWorkDate,
+    hasParticipatedInSantoDaimeWork: hasOwnField(data, 'hasParticipatedInSantoDaimeWork') ? data.hasParticipatedInSantoDaimeWork ?? deleteField() : undefined,
+    firstWorkDate: hasOwnField(data, 'firstWorkDate') ? data.firstWorkDate ?? deleteField() : undefined,
+    firstWorkChurchId: hasOwnField(data, 'firstWorkChurchId') ? data.firstWorkChurchId ?? deleteField() : undefined,
+    firstWorkChurchName: hasOwnField(data, 'firstWorkChurchName') ? data.firstWorkChurchName ?? deleteField() : undefined,
     identityDocumentPrimaryName: data.identityDocumentPrimaryName,
     identityDocumentPrimaryPath: data.identityDocumentPrimaryPath,
     identityDocumentSecondaryName: data.identityDocumentSecondaryName,
@@ -400,6 +409,9 @@ export type ApprovedProfileSnapshot = {
   country?: string;
   currentChurchName?: string;
   originChurchName?: string;
+  hasParticipatedInSantoDaimeWork?: boolean;
+  firstWorkDate?: string;
+  firstWorkChurchName?: string;
   isInitiated?: boolean;
   initiationDate?: string;
   initiatorName?: string;
@@ -446,6 +458,9 @@ function mapApprovedSnapshot(id: string, value: unknown): ApprovedProfileSnapsho
     country: asOptionalString(data.country),
     currentChurchName: asOptionalString(data.currentChurchName),
     originChurchName: asOptionalString(data.originChurchName),
+    hasParticipatedInSantoDaimeWork: asOptionalBoolean(data.hasParticipatedInSantoDaimeWork),
+    firstWorkDate: asOptionalString(data.firstWorkDate),
+    firstWorkChurchName: asOptionalString(data.firstWorkChurchName),
     isInitiated: asOptionalBoolean(data.isInitiated),
     initiationDate: asOptionalString(data.initiationDate),
     initiatorName: asOptionalString(data.initiatorName),
@@ -487,6 +502,9 @@ export async function createApprovedSnapshot(uid: string, profile: UserProfile, 
     country: profile.country,
     currentChurchName: profile.currentChurchName,
     originChurchName: profile.originChurchName,
+    hasParticipatedInSantoDaimeWork: profile.hasParticipatedInSantoDaimeWork,
+    firstWorkDate: profile.firstWorkDate,
+    firstWorkChurchName: profile.firstWorkChurchName,
     isInitiated: profile.isInitiated,
     initiationDate: profile.initiationDate,
     initiatorName: profile.initiatorName,

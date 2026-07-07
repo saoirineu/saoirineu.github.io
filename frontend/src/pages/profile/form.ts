@@ -21,8 +21,6 @@ export type ProfileFormState = {
   fullName: string;
   fiscalCode: string;
   sex: string;
-  gender: string;
-  genderSelfDescription: string;
   birthDate: string;
   birthPlace: string;
   birthPlaceCode: string;
@@ -54,7 +52,10 @@ export type ProfileFormState = {
   registrationDate: string;
   renewalDate: string;
   cancellationDate: string;
+  hasParticipatedInSantoDaimeWork: boolean;
   firstWorkDate: string;
+  firstWorkChurchId: string;
+  firstWorkChurchName: string;
   identityDocumentPrimaryName: string;
   identityDocumentPrimaryPath: string;
   identityDocumentSecondaryName: string;
@@ -101,8 +102,6 @@ export const initialProfileForm: ProfileFormState = {
   fullName: '',
   fiscalCode: '',
   sex: '',
-  gender: '',
-  genderSelfDescription: '',
   birthDate: '',
   birthPlace: '',
   birthPlaceCode: '',
@@ -134,7 +133,10 @@ export const initialProfileForm: ProfileFormState = {
   registrationDate: '',
   renewalDate: '',
   cancellationDate: '',
+  hasParticipatedInSantoDaimeWork: false,
   firstWorkDate: '',
+  firstWorkChurchId: '',
+  firstWorkChurchName: '',
   identityDocumentPrimaryName: '',
   identityDocumentPrimaryPath: '',
   identityDocumentSecondaryName: '',
@@ -168,6 +170,13 @@ function splitCommaValues(value: string) {
 
 function hasText(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeBirthSex(value: string | null | undefined) {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'm' || normalized === 'male' || normalized === 'maschio' || normalized === 'masculino') return 'M';
+  if (normalized === 'f' || normalized === 'female' || normalized === 'femmina' || normalized === 'feminino') return 'F';
+  return '';
 }
 
 export const PROFILE_BIRTH_DATE_PICKER_START = '2000-01-01';
@@ -204,11 +213,11 @@ export function requiredProfileTextFields(isItalian: boolean): Array<keyof Profi
 /** Required fields still missing a value (text fields + the primary identity document). */
 export function missingRequiredProfileFields(form: ProfileFormState, hasSelectedIdentityDocument = false): string[] {
   const missing: string[] = requiredProfileTextFields(form.isItalian).filter(field => !hasText(form[field] as string));
+  if (form.isItalian && !normalizeBirthSex(form.sex) && !missing.includes('sex')) {
+    missing.push('sex');
+  }
   if (!isValidOptionalEmail(form.email2)) {
     missing.push('email2');
-  }
-  if (form.gender === 'self-describe' && !hasText(form.genderSelfDescription)) {
-    missing.push('genderSelfDescription');
   }
   if (!hasText(form.identityDocumentPrimaryPath) && !hasSelectedIdentityDocument) {
     missing.push('identityDocumentPrimary');
@@ -227,6 +236,8 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
   const preferredCommunicationEmail = profile?.preferredCommunicationEmail === 'secondary' && profile.email2 && isValidOptionalEmail(profile.email2)
     ? 'secondary'
     : 'login';
+  const hasParticipatedInSantoDaimeWork = profile?.hasParticipatedInSantoDaimeWork
+    ?? Boolean(profile?.firstWorkDate || profile?.firstWorkChurchId || profile?.firstWorkChurchName);
 
   return {
     displayName: profile?.displayName || user.displayName || '',
@@ -244,9 +255,7 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     firstName: profile?.firstName || '',
     fullName: profile?.fullName || '',
     fiscalCode: profile?.fiscalCode || '',
-    sex: profile?.sex || '',
-    gender: profile?.gender || '',
-    genderSelfDescription: profile?.genderSelfDescription || '',
+    sex: normalizeBirthSex(profile?.sex),
     birthDate: profile?.birthDate || '',
     birthPlace: profile?.birthPlace || '',
     birthPlaceCode: profile?.birthPlaceCode || '',
@@ -278,7 +287,10 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     registrationDate: profile?.registrationDate || '',
     renewalDate: profile?.renewalDate || '',
     cancellationDate: profile?.cancellationDate || '',
-    firstWorkDate: profile?.firstWorkDate || '',
+    hasParticipatedInSantoDaimeWork,
+    firstWorkDate: hasParticipatedInSantoDaimeWork ? profile?.firstWorkDate || '' : '',
+    firstWorkChurchId: hasParticipatedInSantoDaimeWork ? profile?.firstWorkChurchId || '' : '',
+    firstWorkChurchName: hasParticipatedInSantoDaimeWork ? profile?.firstWorkChurchName || '' : '',
     identityDocumentPrimaryName: profile?.identityDocumentPrimaryName || '',
     identityDocumentPrimaryPath: profile?.identityDocumentPrimaryPath || '',
     identityDocumentSecondaryName: profile?.identityDocumentSecondaryName || '',
@@ -322,13 +334,18 @@ const MEMBER_PREFILL_FIELDS = [
  * so the user remains free to change everything.
  */
 export function applyMemberPrefill(form: ProfileFormState, member: MemberRecord): ProfileFormState {
+  const wasAlreadyLinked = Boolean(form.memberId);
   const next: ProfileFormState = { ...form, memberId: member.id };
   for (const field of MEMBER_PREFILL_FIELDS) {
-    if (!next[field]) next[field] = member[field] ?? '';
+    if (field === 'firstWorkDate' && wasAlreadyLinked && !next.hasParticipatedInSantoDaimeWork) continue;
+    if (!next[field]) next[field] = field === 'sex' ? normalizeBirthSex(member[field]) : member[field] ?? '';
   }
   if (!next.email) next.email = member.email ?? '';
   if (!next.displayName) {
     next.displayName = member.fullName || [member.surname, member.firstName].filter(Boolean).join(' ');
+  }
+  if (!wasAlreadyLinked && (next.firstWorkDate || next.firstWorkChurchId || next.firstWorkChurchName)) {
+    next.hasParticipatedInSantoDaimeWork = true;
   }
   return next;
 }
@@ -358,7 +375,8 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
   const preferredCommunicationEmail = form.preferredCommunicationEmail === 'secondary' && acceptedSecondaryEmail
     ? 'secondary'
     : 'login';
-  const genderSelfDescription = form.gender === 'self-describe' ? form.genderSelfDescription.trim() : '';
+  const sex = normalizeBirthSex(form.sex);
+  const hasParticipatedInSantoDaimeWork = form.hasParticipatedInSantoDaimeWork;
 
   return {
     uid: user.uid,
@@ -377,9 +395,9 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     firstName: form.firstName || undefined,
     fullName: form.fullName || undefined,
     fiscalCode: form.fiscalCode || undefined,
-    sex: form.sex || undefined,
-    gender: form.gender || undefined,
-    genderSelfDescription: genderSelfDescription || undefined,
+    sex: sex || undefined,
+    gender: undefined,
+    genderSelfDescription: undefined,
     birthDate: form.birthDate || undefined,
     birthPlace: form.birthPlace || undefined,
     birthPlaceCode: form.birthPlaceCode || undefined,
@@ -411,7 +429,10 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     registrationDate: form.registrationDate || undefined,
     renewalDate: form.renewalDate || undefined,
     cancellationDate: form.cancellationDate || undefined,
-    firstWorkDate: form.firstWorkDate || undefined,
+    hasParticipatedInSantoDaimeWork,
+    firstWorkDate: hasParticipatedInSantoDaimeWork ? form.firstWorkDate || undefined : undefined,
+    firstWorkChurchId: hasParticipatedInSantoDaimeWork ? form.firstWorkChurchId || undefined : undefined,
+    firstWorkChurchName: hasParticipatedInSantoDaimeWork ? form.firstWorkChurchName || undefined : undefined,
     identityDocumentPrimaryName: form.identityDocumentPrimaryName || undefined,
     identityDocumentPrimaryPath: form.identityDocumentPrimaryPath || undefined,
     identityDocumentSecondaryName: form.identityDocumentSecondaryName || undefined,

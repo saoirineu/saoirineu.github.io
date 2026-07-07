@@ -65,18 +65,7 @@ export type ProfileSectionsCopy = {
   sex: string;
   sexFemale: string;
   sexMale: string;
-  sexIntersex: string;
-  sexPreferNotToSay: string;
   sexHint: string;
-  gender: string;
-  genderMan: string;
-  genderWoman: string;
-  genderNonBinary: string;
-  genderSelfDescribe: string;
-  genderPreferNotToSay: string;
-  genderSelfDescription: string;
-  genderSelfDescriptionPlaceholder: string;
-  genderHint: string;
   birthDate: string;
   birthDateMonthShortNames: string[];
   birthPlace: string;
@@ -107,7 +96,10 @@ export type ProfileSectionsCopy = {
   registrationDate: string;
   renewalDate: string;
   cancellationDate: string;
+  alreadyParticipatedInSantoDaimeWork: string;
+  neverParticipatedInSantoDaimeWork: string;
   firstWorkDate: string;
+  firstWorkChurchOrCenter: string;
   identityDocumentPrimary: string;
   identityDocumentSecondary: string;
   membershipFeeAmount: string;
@@ -285,6 +277,7 @@ function MonthNameDateInput({
       <input
         ref={dateInputRef}
         type="date"
+        disabled={disabled}
         tabIndex={-1}
         aria-hidden="true"
         className="absolute bottom-0 right-0 h-px w-px opacity-0"
@@ -685,41 +678,8 @@ export function ProfileIdentitySection({ copy, form, locale, setField }: BaseSec
             <option value="">{copy.selectPlaceholder}</option>
             <option value="M">{copy.sexMale}</option>
             <option value="F">{copy.sexFemale}</option>
-            <option value="intersex">{copy.sexIntersex}</option>
-            <option value="prefer-not-to-say">{copy.sexPreferNotToSay}</option>
           </select>
         </label>
-        <label className="text-sm text-slate-700">
-          {copy.gender}
-          <InfoIcon title={copy.genderHint} />
-          <select
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-            value={form.gender}
-            onChange={event => {
-              const value = event.target.value;
-              setField('gender', value);
-              if (value !== 'self-describe') setField('genderSelfDescription', '');
-            }}
-          >
-            <option value="">{copy.selectPlaceholder}</option>
-            <option value="man">{copy.genderMan}</option>
-            <option value="woman">{copy.genderWoman}</option>
-            <option value="non-binary">{copy.genderNonBinary}</option>
-            <option value="self-describe">{copy.genderSelfDescribe}</option>
-            <option value="prefer-not-to-say">{copy.genderPreferNotToSay}</option>
-          </select>
-        </label>
-        {form.gender === 'self-describe' ? (
-          <TextInput
-            copy={copy}
-            field="genderSelfDescription"
-            form={form}
-            label={copy.genderSelfDescription}
-            placeholder={copy.genderSelfDescriptionPlaceholder}
-            setField={setField}
-            required
-          />
-        ) : null}
         <BirthDateInput copy={copy} form={form} setField={setField} required={required.has('birthDate')} />
         <CountrySelect copy={copy} codeField="birthCountryCode" field="birthCountry" form={form} label={copy.birthCountry} locale={locale} setField={setField} required={required.has('birthCountry')} />
         <BirthProvinceInput copy={copy} form={form} locale={locale} setField={setField} required={required.has('birthProvince')} />
@@ -812,7 +772,6 @@ export function ProfileAssociationSection({ copy, form, setField }: BaseSectionP
         <TextInput copy={copy} field="registrationDate" form={form} label={copy.registrationDate} setField={setField} type="date" required={false} />
         <TextInput copy={copy} field="renewalDate" form={form} label={copy.renewalDate} setField={setField} type="date" required={false} />
         <TextInput copy={copy} field="cancellationDate" form={form} label={copy.cancellationDate} setField={setField} type="date" required={false} />
-        <TextInput copy={copy} field="firstWorkDate" form={form} label={copy.firstWorkDate} setField={setField} type="date" required={false} />
         <TextInput copy={copy} field="membershipFeeAmount" form={form} label={copy.membershipFeeAmount} setField={setField} type="number" required={false} />
       </div>
     </section>
@@ -830,6 +789,8 @@ export function ProfileChurchesSection({
 }) {
   const churchOptions = (churches ?? []).filter(church => !form.isItalian || isItalianReferenceChurch(church));
   const selectedChurch = form.currentChurchId ? churches?.find(church => church.id === form.currentChurchId) : null;
+  const selectedFirstWorkChurch = form.firstWorkChurchId ? churches?.find(church => church.id === form.firstWorkChurchId) : null;
+  const firstWorkDisabled = !form.hasParticipatedInSantoDaimeWork;
   const visibleChurches = selectedChurch && !churchOptions.some(church => church.id === selectedChurch.id)
     ? [...churchOptions, selectedChurch]
     : churchOptions;
@@ -863,6 +824,73 @@ export function ProfileChurchesSection({
           <option value={ADD_CHURCH_VALUE}>+ {copy.addReferenceChurch}</option>
         </select>
       </label>
+      <fieldset className="flex flex-col gap-2 border-0 p-0 sm:flex-row sm:items-center sm:gap-4">
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+          <input
+            type="radio"
+            name="hasParticipatedInSantoDaimeWork"
+            className="h-4 w-4 border-slate-300 text-slate-900"
+            checked={form.hasParticipatedInSantoDaimeWork}
+            onChange={() => setField('hasParticipatedInSantoDaimeWork', true)}
+          />
+          {copy.alreadyParticipatedInSantoDaimeWork}
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+          <input
+            type="radio"
+            name="hasParticipatedInSantoDaimeWork"
+            className="h-4 w-4 border-slate-300 text-slate-900"
+            checked={!form.hasParticipatedInSantoDaimeWork}
+            onChange={() => {
+              setField('hasParticipatedInSantoDaimeWork', false);
+              setField('firstWorkDate', '');
+              setField('firstWorkChurchId', '');
+              setField('firstWorkChurchName', '');
+            }}
+          />
+          {copy.neverParticipatedInSantoDaimeWork}
+        </label>
+      </fieldset>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MonthNameDateInput
+          label={copy.firstWorkDate}
+          value={form.firstWorkDate}
+          monthShortNames={copy.birthDateMonthShortNames}
+          onChange={value => setField('firstWorkDate', value)}
+          disabled={firstWorkDisabled}
+        />
+        <label className={`text-sm ${firstWorkDisabled ? 'text-slate-400' : 'text-slate-700'}`}>
+          {copy.firstWorkChurchOrCenter}
+          <select
+            disabled={firstWorkDisabled}
+            className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${firstWorkDisabled ? disabledFieldClass : 'bg-white'}`}
+            value={form.firstWorkChurchId}
+            onChange={event => {
+              const firstWorkChurchId = event.target.value;
+              if (firstWorkChurchId === ADD_CHURCH_VALUE) {
+                onRequestCreateChurch((churchId, churchName) => {
+                  setField('firstWorkChurchId', churchId);
+                  setField('firstWorkChurchName', churchName || selectChurchName(churches, churchId));
+                });
+                return;
+              }
+              setField('firstWorkChurchId', firstWorkChurchId);
+              setField('firstWorkChurchName', selectChurchName(churches, firstWorkChurchId));
+            }}
+          >
+            <option value="">{copy.selectPlaceholder}</option>
+            {churches?.map(church => (
+              <option key={church.id} value={church.id}>
+                {church.name}
+              </option>
+            ))}
+            {selectedFirstWorkChurch && !churches?.some(church => church.id === selectedFirstWorkChurch.id) ? (
+              <option value={selectedFirstWorkChurch.id}>{selectedFirstWorkChurch.name}</option>
+            ) : null}
+            <option value={ADD_CHURCH_VALUE}>+ {copy.addReferenceChurch}</option>
+          </select>
+        </label>
+      </div>
     </section>
   );
 }

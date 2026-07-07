@@ -23,10 +23,11 @@
 - approvalSubmittedAt, approvalApprovedAt, approvalApprovedBy
 - displayName, email, email2, preferredCommunicationEmail (`login` | `secondary`), phone, mobile, avatarUrl
 - memberId: id do documento em `members` usado para preencher o perfil quando o e-mail de login coincide
-- identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex, gender, genderSelfDescription, birthDate, birthPlace, birthPlaceCode, birthProvince, birthProvinceCode, birthCountry, birthCountryCode, citizenship, citizenshipCountryCodes, nationality, profession
+- identidade Cloud32/socio: surname, firstName, fullName, fiscalCode, sex (`M` | `F`), birthDate, birthPlace, birthPlaceCode, birthProvince, birthProvinceCode, birthCountry, birthCountryCode, citizenship, citizenshipCountryCodes, nationality, profession
 - residencia Cloud32/socio: address, postalCode, city, province, state, region, country, countryCode
-- associacao Cloud32/socio: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, registrationRequestDate, registrationDate, renewalDate, cancellationDate, firstWorkDate, identityDocumentPrimaryName, identityDocumentPrimaryPath, identityDocumentSecondaryName, identityDocumentSecondaryPath, membershipFeeAmount
+- associacao Cloud32/socio: memberCode, memberStatus, group, category, cardNumber, cardExpiry, referenceSeat, originSociety, registrationRequestDate, registrationDate, renewalDate, cancellationDate, hasParticipatedInSantoDaimeWork, firstWorkDate, firstWorkChurchId, firstWorkChurchName, identityDocumentPrimaryName, identityDocumentPrimaryPath, identityDocumentSecondaryName, identityDocumentSecondaryPath, membershipFeeAmount
 - doutrina: isInitiated, initiationDate, initiationVenue, initiationChurchId, initiationChurchName, initiatorName, initiatedWith, isSponsor, sponsorChurchIds, sponsorChurchNames, currentChurchId, currentChurchName, originChurchName, doctrineRoles, observations
+- legado: gender, genderSelfDescription ainda podem existir em documentos antigos, mas o formulario nao coleta mais esses campos e os remove no proximo salvamento do perfil.
 - createdAt, updatedAt
 
 ### pessoas (planejado — sem codigo ainda)

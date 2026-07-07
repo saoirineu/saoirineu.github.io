@@ -43,8 +43,6 @@ describe('profile form helpers', () => {
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
-      gender: 'self-describe',
-      genderSelfDescription: 'Agender',
       identityDocumentPrimaryName: 'id.pdf',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
@@ -55,6 +53,9 @@ describe('profile form helpers', () => {
       address: 'Via Roma 1',
       currentChurchId: 'igreja-1',
       currentChurchName: 'Igreja Atual',
+      firstWorkDate: '2023-06-24',
+      firstWorkChurchId: 'igreja-primeiro-trabalho',
+      firstWorkChurchName: 'Céu da Neve',
       sponsorChurchIds: ['i1'],
       sponsorChurchNames: ['Igreja Madrinha'],
       doctrineRoles: ['fiscal', 'apoio']
@@ -66,11 +67,12 @@ describe('profile form helpers', () => {
     expect(form.preferredCommunicationEmail).toBe('secondary');
     expect(form.firstName).toBe('Maria');
     expect(form.fiscalCode).toBe('CF123');
-    expect(form.gender).toBe('self-describe');
-    expect(form.genderSelfDescription).toBe('Agender');
     expect(form.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(form.address).toBe('Via Roma 1');
     expect(form.currentChurchName).toBe('Igreja Atual');
+    expect(form.hasParticipatedInSantoDaimeWork).toBe(true);
+    expect(form.firstWorkDate).toBe('2023-06-24');
+    expect(form.firstWorkChurchName).toBe('Céu da Neve');
     expect(form.sponsorChurchesText).toBe('Igreja Madrinha');
     expect(form.doctrineRolesText).toBe('fiscal, apoio');
   });
@@ -85,8 +87,6 @@ describe('profile form helpers', () => {
       firstName: 'Maria',
       surname: 'Rossi',
       fiscalCode: 'CF123',
-      gender: 'self-describe',
-      genderSelfDescription: 'Agender',
       identityDocumentPrimaryName: 'id.pdf',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
@@ -100,6 +100,10 @@ describe('profile form helpers', () => {
       province: 'RM',
       profession: 'Insegnante',
       isInitiated: true,
+      hasParticipatedInSantoDaimeWork: true,
+      firstWorkDate: '2023-06-24',
+      firstWorkChurchId: 'igreja-primeiro-trabalho',
+      firstWorkChurchName: 'Céu da Neve',
       initiationDate: '2020-01-01',
       initiationChurchId: 'igreja-farda',
       isSponsor: true,
@@ -115,13 +119,17 @@ describe('profile form helpers', () => {
     expect(payload.preferredCommunicationEmail).toBe('secondary');
     expect(payload.firstName).toBe('Maria');
     expect(payload.fiscalCode).toBe('CF123');
-    expect(payload.gender).toBe('self-describe');
-    expect(payload.genderSelfDescription).toBe('Agender');
+    expect(payload.gender).toBeUndefined();
+    expect(payload.genderSelfDescription).toBeUndefined();
     expect(payload.birthCountryCode).toBe('IT');
     expect(payload.birthProvinceCode).toBe('RM');
     expect(payload.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(payload.address).toBe('Via Roma 1');
     expect(payload.province).toBe('RM');
+    expect(payload.hasParticipatedInSantoDaimeWork).toBe(true);
+    expect(payload.firstWorkDate).toBe('2023-06-24');
+    expect(payload.firstWorkChurchId).toBe('igreja-primeiro-trabalho');
+    expect(payload.firstWorkChurchName).toBe('Céu da Neve');
     expect(payload.isInitiated).toBe(true);
     expect(payload.isSponsor).toBe(false);
     expect(payload.sponsorChurchIds).toBeUndefined();
@@ -161,15 +169,28 @@ describe('profile form helpers', () => {
     expect(form.preferredCommunicationEmail).toBe('login');
   });
 
-  it('only keeps gender self-description for the self-describe option', () => {
+  it('clears legacy gender fields from the profile payload', () => {
     const payload = buildUserPayload(user, {
-      ...initialProfileForm,
-      gender: 'woman',
-      genderSelfDescription: 'Should be cleared'
+      ...initialProfileForm
     });
 
-    expect(payload.gender).toBe('woman');
+    expect(payload.gender).toBeUndefined();
     expect(payload.genderSelfDescription).toBeUndefined();
+  });
+
+  it('clears first work details when the user has never attended a Santo Daime work', () => {
+    const payload = buildUserPayload(user, {
+      ...initialProfileForm,
+      hasParticipatedInSantoDaimeWork: false,
+      firstWorkDate: '2023-06-24',
+      firstWorkChurchId: 'igreja-primeiro-trabalho',
+      firstWorkChurchName: 'Céu da Neve'
+    });
+
+    expect(payload.hasParticipatedInSantoDaimeWork).toBe(false);
+    expect(payload.firstWorkDate).toBeUndefined();
+    expect(payload.firstWorkChurchId).toBeUndefined();
+    expect(payload.firstWorkChurchName).toBeUndefined();
   });
 
   it('accepts empty or valid secondary email only', () => {
@@ -226,11 +247,9 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval({ ...italianReady, birthProvince: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, birthCountry: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, mobile: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, sex: 'prefer-not-to-say' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'secondary@example.com' })).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'not-an-email' })).toBe(false);
-    expect(isProfileFormReadyForApproval({ ...italianReady, gender: 'self-describe', genderSelfDescription: '' })).toBe(false);
-    expect(isProfileFormReadyForApproval({ ...italianReady, gender: 'self-describe', genderSelfDescription: 'Agender' })).toBe(true);
-    expect(isProfileFormReadyForApproval({ ...italianReady, gender: 'prefer-not-to-say' })).toBe(true);
     // a freshly selected document file stands in for a stored path
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' }, true)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' })).toBe(false);
@@ -276,10 +295,32 @@ describe('profile form helpers', () => {
     expect(form.surname).toBe('SERRE');
     expect(form.firstName).toBe('MARA');
     expect(form.birthDate).toBe('1974-05-28');
+    expect(form.hasParticipatedInSantoDaimeWork).toBe(true);
     expect(form.firstWorkDate).toBe('1996-10-01');
     expect(form.city).toBe('Bologna'); // saved/typed values always win
     expect(form.email).toBe('auth@example.com');
     expect(form.displayName).toBe('SERRE MARA');
+  });
+
+  it('does not re-enable first work fields from member prefill after a linked user answered never', () => {
+    const member = makeMember({
+      id: 'SRRMRA74E68L219U',
+      surname: 'SERRE',
+      firstName: 'MARA',
+      firstWorkDate: '1996-10-01'
+    });
+
+    const form = applyMemberPrefill(
+      {
+        ...initialProfileForm,
+        memberId: member.id,
+        hasParticipatedInSantoDaimeWork: false
+      },
+      member
+    );
+
+    expect(form.hasParticipatedInSantoDaimeWork).toBe(false);
+    expect(form.firstWorkDate).toBe('');
   });
 
   it('falls back to auth provider data only for fields still empty', () => {

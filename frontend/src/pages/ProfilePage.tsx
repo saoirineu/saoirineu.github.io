@@ -62,18 +62,7 @@ type RegistryCopyKey =
   | 'sex'
   | 'sexFemale'
   | 'sexMale'
-  | 'sexIntersex'
-  | 'sexPreferNotToSay'
   | 'sexHint'
-  | 'gender'
-  | 'genderMan'
-  | 'genderWoman'
-  | 'genderNonBinary'
-  | 'genderSelfDescribe'
-  | 'genderPreferNotToSay'
-  | 'genderSelfDescription'
-  | 'genderSelfDescriptionPlaceholder'
-  | 'genderHint'
   | 'birthDate'
   | 'birthPlace'
   | 'birthProvince'
@@ -109,7 +98,10 @@ type RegistryCopyKey =
   | 'registrationDate'
   | 'renewalDate'
   | 'cancellationDate'
+  | 'alreadyParticipatedInSantoDaimeWork'
+  | 'neverParticipatedInSantoDaimeWork'
   | 'firstWorkDate'
+  | 'firstWorkChurchOrCenter'
   | 'identityDocumentPrimary'
   | 'identityDocumentSecondary'
   | 'membershipFeeAmount';
@@ -192,18 +184,7 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     sex: 'Sexo atribuído ao nascer',
     sexFemale: 'Feminino',
     sexMale: 'Masculino',
-    sexIntersex: 'Intersexo',
-    sexPreferNotToSay: 'Prefiro não dizer',
     sexHint: 'Usado para apoiar a acomodação e a organização ritualística.',
-    gender: 'Gênero',
-    genderMan: 'Homem',
-    genderWoman: 'Mulher',
-    genderNonBinary: 'Não binário',
-    genderSelfDescribe: 'Prefiro me autodescrever',
-    genderPreferNotToSay: 'Prefiro não dizer',
-    genderSelfDescription: 'Autodescrição de gênero',
-    genderSelfDescriptionPlaceholder: 'Descreva seu gênero',
-    genderHint: 'Usado para apoiar a acomodação e a organização ritualística.',
     birthDate: 'Data de nascimento',
     birthPlace: 'Local de nascimento',
     birthProvince: 'Província de nascimento',
@@ -239,7 +220,10 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     registrationDate: 'Data de inscrição',
     renewalDate: 'Data de renovação',
     cancellationDate: 'Data de cancelamento',
-    firstWorkDate: 'Primeiro Trabalho',
+    alreadyParticipatedInSantoDaimeWork: 'Já participei de um trabalho de Santo Daime',
+    neverParticipatedInSantoDaimeWork: 'Nunca participei de um trabalho de Santo Daime',
+    firstWorkDate: 'Data do primeiro trabalho',
+    firstWorkChurchOrCenter: 'Igreja ou centro do primeiro trabalho',
     identityDocumentPrimary: 'Documento de identidade (frente/verso)',
     identityDocumentSecondary: 'Documento de identidade (verso opcional)',
     membershipFeeAmount: 'Quota'
@@ -258,18 +242,7 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     sex: 'Sex Assigned at Birth',
     sexFemale: 'Female',
     sexMale: 'Male',
-    sexIntersex: 'Intersex',
-    sexPreferNotToSay: 'Prefer not to say',
     sexHint: 'Used to support accommodation and ritualistic organization.',
-    gender: 'Gender',
-    genderMan: 'Man',
-    genderWoman: 'Woman',
-    genderNonBinary: 'non-binary',
-    genderSelfDescribe: 'Prefer to self-describe',
-    genderPreferNotToSay: 'Prefer not to say',
-    genderSelfDescription: 'Gender self-description',
-    genderSelfDescriptionPlaceholder: 'Describe your gender',
-    genderHint: 'Used to support accommodation and ritualistic organization.',
     birthDate: 'Birth date',
     birthPlace: 'Birthplace',
     birthProvince: 'Birth province',
@@ -305,7 +278,10 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     registrationDate: 'Registration date',
     renewalDate: 'Renewal date',
     cancellationDate: 'Cancellation date',
-    firstWorkDate: 'First Work',
+    alreadyParticipatedInSantoDaimeWork: 'I have already attended a Santo Daime work',
+    neverParticipatedInSantoDaimeWork: 'I have never attended a Santo Daime work',
+    firstWorkDate: 'First Work date',
+    firstWorkChurchOrCenter: 'First Work church or center',
     identityDocumentPrimary: 'Document (identity card/passport)',
     identityDocumentSecondary: 'Document (optional second side)',
     membershipFeeAmount: 'Amount'
@@ -324,18 +300,7 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     sex: 'Sexo asignado al nacer',
     sexFemale: 'Femenino',
     sexMale: 'Masculino',
-    sexIntersex: 'Intersexual',
-    sexPreferNotToSay: 'Prefiero no decirlo',
     sexHint: 'Se usa para apoyar la acomodación y la organización ritual.',
-    gender: 'Género',
-    genderMan: 'Hombre',
-    genderWoman: 'Mujer',
-    genderNonBinary: 'No binario',
-    genderSelfDescribe: 'Prefiero autodescribirme',
-    genderPreferNotToSay: 'Prefiero no decirlo',
-    genderSelfDescription: 'Autodescripción de género',
-    genderSelfDescriptionPlaceholder: 'Describa su género',
-    genderHint: 'Se usa para apoyar la acomodación y la organización ritual.',
     birthDate: 'Fecha de nacimiento',
     birthPlace: 'Lugar de nacimiento',
     birthProvince: 'Provincia de nacimiento',
@@ -371,7 +336,10 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     registrationDate: 'Fecha de inscripción',
     renewalDate: 'Fecha de renovación',
     cancellationDate: 'Fecha de cancelación',
-    firstWorkDate: 'Primer Trabajo',
+    alreadyParticipatedInSantoDaimeWork: 'Ya participé en un trabajo de Santo Daime',
+    neverParticipatedInSantoDaimeWork: 'Nunca participé en un trabajo de Santo Daime',
+    firstWorkDate: 'Fecha del primer trabajo',
+    firstWorkChurchOrCenter: 'Iglesia o centro del primer trabajo',
     identityDocumentPrimary: 'Documento de identidad/pasaporte',
     identityDocumentSecondary: 'Documento (segunda cara opcional)',
     membershipFeeAmount: 'Cuota'
@@ -387,21 +355,10 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Email secondaria',
     mobile: 'Cellulare',
     fiscalCode: 'Codice Fiscale',
-    sex: 'Sesso assegnato alla nascita',
+    sex: 'Sesso di nascita',
     sexFemale: 'Femmina',
     sexMale: 'Maschio',
-    sexIntersex: 'Intersessuale',
-    sexPreferNotToSay: 'Preferisco non dirlo',
     sexHint: 'Usato per supportare l\'alloggio e l\'organizzazione rituale.',
-    gender: 'Genere',
-    genderMan: 'Uomo',
-    genderWoman: 'Donna',
-    genderNonBinary: 'Non binario',
-    genderSelfDescribe: 'Preferisco autodescrivermi',
-    genderPreferNotToSay: 'Preferisco non dirlo',
-    genderSelfDescription: 'Autodescrizione del genere',
-    genderSelfDescriptionPlaceholder: 'Descrivi il tuo genere',
-    genderHint: 'Usato per supportare l\'alloggio e l\'organizzazione rituale.',
     birthDate: 'Data di nascita',
     birthPlace: 'Luogo di nascita',
     birthProvince: 'Provincia di nascita',
@@ -437,7 +394,10 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     registrationDate: 'Data iscrizione',
     renewalDate: 'Data rinnovo',
     cancellationDate: 'Data cancellazione',
-    firstWorkDate: 'Primo Lavoro',
+    alreadyParticipatedInSantoDaimeWork: 'Ho già partecipato a un lavoro di Santo Daime',
+    neverParticipatedInSantoDaimeWork: 'Non ho mai partecipato a un lavoro di Santo Daime',
+    firstWorkDate: 'Data del primo lavoro',
+    firstWorkChurchOrCenter: 'Chiesa o centro del primo lavoro',
     identityDocumentPrimary: 'Carta di identità (fronte/retro)',
     identityDocumentSecondary: 'Carta identità (eventuale retro)',
     membershipFeeAmount: 'Quota'
@@ -833,6 +793,8 @@ export default function ProfilePage() {
                 </div>
                 {snap.email ? <div className="text-xs text-slate-600">{snap.email}</div> : null}
                 {snap.currentChurchName ? <div className="text-xs text-slate-600">{snap.currentChurchName}</div> : null}
+                {snap.firstWorkDate ? <div className="text-xs text-slate-600">{copy.sections.firstWorkDate}: {snap.firstWorkDate}</div> : null}
+                {snap.firstWorkChurchName ? <div className="text-xs text-slate-600">{snap.firstWorkChurchName}</div> : null}
                 {snap.identityDocumentPrimaryPath ? (
                   <ProfileSnapshotDocumentLink name={snap.identityDocumentPrimaryName} path={snap.identityDocumentPrimaryPath} />
                 ) : null}
