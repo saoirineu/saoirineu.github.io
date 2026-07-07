@@ -39,3 +39,5 @@ scripts/node_modules/
 
 # Internal notes
 TODO.md
+
+firebase-debug.log
