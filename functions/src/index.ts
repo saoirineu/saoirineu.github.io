@@ -331,7 +331,7 @@ function profileDisplayName(data: FirebaseFirestore.DocumentData): string {
   return typeof name === 'string' ? name.trim() : '';
 }
 
-function buildUserApprovedEmailText(name: string): string {
+function buildUserApprovedEmailText(name: string, portalUrl: string): string {
   const hi = name ? ` ${name}` : '';
   return [
     'São Irineu',
@@ -341,20 +341,32 @@ function buildUserApprovedEmailText(name: string): string {
     '',
     'A sua inscrição no ICEFLU foi aprovada. O seu perfil de associado está agora activo. Obrigado!',
     '',
+    'Aceda à plataforma São Irineu:',
+    portalUrl,
+    '',
     '────────────────────────────────',
     `Hello${hi},`,
     '',
     'Your ICEFLU membership has been approved. Your member profile is now active. Thank you!',
+    '',
+    'Access the São Irineu platform:',
+    portalUrl,
     '',
     '────────────────────────────────',
     `Hola${hi},`,
     '',
     'Su inscripción en ICEFLU ha sido aprobada. Su perfil de socio ya está activo. ¡Gracias!',
     '',
+    'Acceda a la plataforma São Irineu:',
+    portalUrl,
+    '',
     '────────────────────────────────',
     `Ciao${hi},`,
     '',
     'La tua iscrizione a ICEFLU è stata approvata. Il tuo profilo socio è ora attivo. Grazie!',
+    '',
+    'Accedi alla piattaforma São Irineu:',
+    portalUrl,
   ].join('\n');
 }
 
@@ -415,19 +427,20 @@ export const onUserApprovalDecision = onDocumentWritten(
 
     const name = profileDisplayName(after);
     const transporter = createTransporter();
+    const portalUrl = appBaseUrl.value().replace(/\/$/, '');
 
     if (afterStatus === 'approved') {
       await transporter.sendMail({
         from: mailFrom(),
         to: email,
         subject: 'Your ICEFLU membership has been approved — São Irineu',
-        text: buildUserApprovedEmailText(name),
+        text: buildUserApprovedEmailText(name, portalUrl),
       });
       return;
     }
 
     const note = typeof after.adminNote === 'string' ? after.adminNote.trim() : '';
-    const profileUrl = `${appBaseUrl.value().replace(/\/$/, '')}/profile`;
+    const profileUrl = `${portalUrl}/profile`;
     await transporter.sendMail({
       from: mailFrom(),
       to: email,
