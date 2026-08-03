@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { fetchPublishedEvents } from '../lib/events';
 import { hasRequiredRole } from '../lib/systemRole';
+import { ConsentCard } from './dashboard/ConsentCard';
 import { useDevMode } from '../providers/useDevMode';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
@@ -43,7 +44,7 @@ const copyByLocale = {
     membershipStatus: {
       'needs-profile': 'Formulário não enviado',
       pending: 'Aguardando aprovação',
-      approved: 'Membro aprovado',
+      approved: 'Membro ICEFLU aprovado',
       'needs-info': 'Atualização solicitada'
     }
   },
@@ -82,7 +83,7 @@ const copyByLocale = {
     membershipStatus: {
       'needs-profile': 'Member form not submitted',
       pending: 'Awaiting membership approval',
-      approved: 'Approved member',
+      approved: 'Approved ICEFLU member',
       'needs-info': 'Profile update requested'
     }
   },
@@ -121,7 +122,7 @@ const copyByLocale = {
     membershipStatus: {
       'needs-profile': 'Formulario no enviado',
       pending: 'Esperando aprobación',
-      approved: 'Miembro aprobado',
+      approved: 'Miembro ICEFLU aprobado',
       'needs-info': 'Actualización solicitada'
     }
   },
@@ -160,7 +161,7 @@ const copyByLocale = {
     membershipStatus: {
       'needs-profile': 'Modulo non inviato',
       pending: 'In attesa di approvazione',
-      approved: 'Membro approvato',
+      approved: 'Membro ICEFLU approvato',
       'needs-info': 'Aggiornamento richiesto'
     }
   }
@@ -235,6 +236,10 @@ export function DashboardPage() {
           <p className="text-sm text-slate-600">{copy.devIntro}</p>
           <p className="mt-2 text-xs text-amber-700">{copy.devHint}</p>
         </div>
+      ) : null}
+
+      {!devModeEnabled && approvalStatus === 'approved' && profile?.uid ? (
+        <ConsentCard uid={profile.uid} locale={locale} />
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">

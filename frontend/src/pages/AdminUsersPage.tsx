@@ -27,7 +27,9 @@ import {
   type UserProfile
 } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
+import { ConsentsPanel } from './admin/ConsentsPanel';
 import { useSiteLocale } from '../providers/useSiteLocale';
+import type { SiteLocale } from '../lib/siteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
 
 const copyByLocale = {
@@ -655,6 +657,7 @@ export default function AdminUsersPage() {
           <UserProfileReviewModal
             user={reviewUser}
             labels={copy.profileLabels}
+            locale={locale}
             statusLabel={copy.approvalStatus[reviewUser.approvalStatus ?? 'needs-profile']}
             isBusy={approvalMutation.isPending || noteMutation.isPending || requestReviewMutation.isPending}
             onApprove={() => approvalMutation.mutate({ uid: reviewUser.uid, status: 'approved', profile: reviewUser })}
@@ -721,6 +724,7 @@ function UserDocumentLink({ name, path, fallback }: { name?: string; path?: stri
 function UserProfileReviewModal({
   user,
   labels,
+  locale,
   statusLabel,
   isBusy,
   onApprove,
@@ -731,6 +735,7 @@ function UserProfileReviewModal({
 }: {
   user: UserProfile;
   labels: ProfileLabels;
+  locale: SiteLocale;
   statusLabel: string;
   isBusy: boolean;
   onApprove: () => void;
@@ -882,6 +887,8 @@ function UserProfileReviewModal({
             </div>
           </ProfileSection>
         </div>
+
+        <ConsentsPanel uid={user.uid} locale={locale} />
 
         {/* Approved snapshot history */}
         <div className="border-t border-slate-100 px-6 py-4">

@@ -59,7 +59,10 @@ service firebase.storage {
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && isAllowedDocument()
-        && fileName.matches('identityDocument-.*');
+        // consentDocument-*: the signed informed consent members send from the
+        // home page, feeding the same users/{uid}/consents ledger the event
+        // registration writes to.
+        && fileName.matches('(identityDocument|consentDocument)-.*');
       allow delete: if isUserAdmin() || (isSignedIn() && request.auth.uid == uid);
       allow update: if false;
     }
