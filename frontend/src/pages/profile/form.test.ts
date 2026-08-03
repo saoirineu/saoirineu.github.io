@@ -42,7 +42,7 @@ describe('profile form helpers', () => {
       preferredCommunicationEmail: 'secondary',
       firstName: 'Maria',
       surname: 'Rossi',
-      fiscalCode: 'CF123',
+      fiscalCode: 'RSSMRA85M01H501Q',
       identityDocumentPrimaryName: 'id.pdf',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
@@ -66,7 +66,7 @@ describe('profile form helpers', () => {
     expect(form.email2).toBe('secondary@example.com');
     expect(form.preferredCommunicationEmail).toBe('secondary');
     expect(form.firstName).toBe('Maria');
-    expect(form.fiscalCode).toBe('CF123');
+    expect(form.fiscalCode).toBe('RSSMRA85M01H501Q');
     expect(form.identityDocumentPrimaryPath).toBe('users/user-1/id.pdf');
     expect(form.address).toBe('Via Roma 1');
     expect(form.currentChurchName).toBe('Igreja Atual');
@@ -86,7 +86,7 @@ describe('profile form helpers', () => {
       preferredCommunicationEmail: 'secondary',
       firstName: 'Maria',
       surname: 'Rossi',
-      fiscalCode: 'CF123',
+      fiscalCode: 'RSSMRA85M01H501Q',
       identityDocumentPrimaryName: 'id.pdf',
       identityDocumentPrimaryPath: 'users/user-1/id.pdf',
       birthDate: '1980-01-02',
@@ -118,7 +118,7 @@ describe('profile form helpers', () => {
     expect(payload.email2).toBe('secondary@example.com');
     expect(payload.preferredCommunicationEmail).toBe('secondary');
     expect(payload.firstName).toBe('Maria');
-    expect(payload.fiscalCode).toBe('CF123');
+    expect(payload.fiscalCode).toBe('RSSMRA85M01H501Q');
     expect(payload.gender).toBeUndefined();
     expect(payload.genderSelfDescription).toBeUndefined();
     expect(payload.birthCountryCode).toBe('IT');
@@ -226,7 +226,7 @@ describe('profile form helpers', () => {
       birthProvince: 'Roma',
       birthCountry: 'Italia',
       citizenship: 'Italiana',
-      fiscalCode: 'CF123',
+      fiscalCode: 'RSSMRA85M01H501Q',
       address: 'Via Roma 1',
       postalCode: '00100',
       city: 'Roma',
@@ -250,6 +250,11 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval({ ...italianReady, sex: 'prefer-not-to-say' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'secondary@example.com' })).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, email2: 'not-an-email' })).toBe(false);
+    // A codice fiscale of the wrong shape blocks approval just like a missing one,
+    // but only the shape is checked — the check character is not recomputed.
+    expect(isProfileFormReadyForApproval({ ...italianReady, fiscalCode: 'CF123' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...italianReady, fiscalCode: 'RSSMRA85M01H501A' })).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, fiscalCode: 'rssmra85m01h501q' })).toBe(true);
     // a freshly selected document file stands in for a stored path
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' }, true)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...italianReady, identityDocumentPrimaryPath: '' })).toBe(false);
@@ -258,6 +263,8 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval({ ...italianReady, declarationConsent: 'disagree' })).toBe(false);
 
     // Non-Italian variant: birthCountry + mobile required; sex/birthPlace/province are not.
+    // The fiscal-code field holds an ID document number, so it needs a type but
+    // no particular format.
     const nonItalianReady = {
       ...italianReady,
       isItalian: false,
@@ -267,12 +274,23 @@ describe('profile form helpers', () => {
       birthProvince: 'São Paulo',
       phone: '',
       birthCountry: 'Brasil',
-      mobile: '+5511999999999'
+      mobile: '+5511999999999',
+      fiscalCode: 'FH123456',
+      idType: 'passport'
     };
 
     expect(isProfileFormReadyForApproval(nonItalianReady)).toBe(true);
     expect(isProfileFormReadyForApproval({ ...nonItalianReady, birthCountry: '' })).toBe(false);
     expect(isProfileFormReadyForApproval({ ...nonItalianReady, mobile: '' })).toBe(false);
+    // Any document-number format is accepted for non-Italians.
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, fiscalCode: 'AB-99/0011' })).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, fiscalCode: '' })).toBe(false);
+    // The document type is required, and "other" must say which document.
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, idType: '' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, idType: 'other' })).toBe(false);
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, idType: 'other', idTypeOther: 'Carteira de motorista' })).toBe(true);
+    // Italians are not asked for a document type.
+    expect(isProfileFormReadyForApproval({ ...italianReady, idType: '' })).toBe(true);
   });
 
   it('prefills only empty fields from the linked member and records the link', () => {

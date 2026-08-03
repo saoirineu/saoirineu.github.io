@@ -1,5 +1,6 @@
 import type { User } from 'firebase/auth';
 
+import { isValidFiscalCode } from '../../lib/fiscalCode';
 import type { MemberRecord } from '../../lib/members';
 import { MAX_DOCTRINE_ROLES } from '../../lib/profileCatalog';
 import type { PreferredCommunicationEmail, UserProfile } from '../../lib/users';
@@ -20,6 +21,8 @@ export type ProfileFormState = {
   firstName: string;
   fullName: string;
   fiscalCode: string;
+  idType: string;
+  idTypeOther: string;
   sex: string;
   birthDate: string;
   birthPlace: string;
@@ -101,6 +104,8 @@ export const initialProfileForm: ProfileFormState = {
   firstName: '',
   fullName: '',
   fiscalCode: '',
+  idType: '',
+  idTypeOther: '',
   sex: '',
   birthDate: '',
   birthPlace: '',
@@ -206,9 +211,13 @@ export function requiredProfileTextFields(isItalian: boolean): Array<keyof Profi
   return [
     ...REQUIRED_TEXT_FIELDS_COMMON,
     'mobile',
-    ...(isItalian ? (['sex', 'birthPlace'] as Array<keyof ProfileFormState>) : [])
+    // Italians give a codice fiscale; everyone else gives an ID document, which
+    // needs its type alongside the number.
+    ...(isItalian ? (['sex', 'birthPlace'] as Array<keyof ProfileFormState>) : (['idType'] as Array<keyof ProfileFormState>))
   ];
 }
+
+export const ID_TYPES = ['passport', 'idCard', 'other'] as const;
 
 /** Required fields still missing a value (text fields + the primary identity document). */
 export function missingRequiredProfileFields(form: ProfileFormState, hasSelectedIdentityDocument = false): string[] {
@@ -218,6 +227,16 @@ export function missingRequiredProfileFields(form: ProfileFormState, hasSelected
   }
   if (!isValidOptionalEmail(form.email2)) {
     missing.push('email2');
+  }
+  // Only the Italian codice fiscale has a fixed shape. Non-Italians type an ID
+  // document number, which follows no format this form can know. An empty value
+  // is already reported by the required-field pass above.
+  if (form.isItalian && hasText(form.fiscalCode) && !isValidFiscalCode(form.fiscalCode)) {
+    missing.push('fiscalCode');
+  }
+  // "Other" is only meaningful once the user says what the document is.
+  if (!form.isItalian && form.idType === 'other' && !hasText(form.idTypeOther)) {
+    missing.push('idTypeOther');
   }
   if (!hasText(form.identityDocumentPrimaryPath) && !hasSelectedIdentityDocument) {
     missing.push('identityDocumentPrimary');
@@ -255,6 +274,8 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     firstName: profile?.firstName || '',
     fullName: profile?.fullName || '',
     fiscalCode: profile?.fiscalCode || '',
+    idType: profile?.idType || '',
+    idTypeOther: profile?.idTypeOther || '',
     sex: normalizeBirthSex(profile?.sex),
     birthDate: profile?.birthDate || '',
     birthPlace: profile?.birthPlace || '',
@@ -395,6 +416,10 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     firstName: form.firstName || undefined,
     fullName: form.fullName || undefined,
     fiscalCode: form.fiscalCode || undefined,
+    // The ID document type only applies to the non-Italian variant, where the
+    // fiscal-code field holds a passport / ID card number instead.
+    idType: form.isItalian ? undefined : form.idType || undefined,
+    idTypeOther: !form.isItalian && form.idType === 'other' ? form.idTypeOther || undefined : undefined,
     sex: sex || undefined,
     gender: undefined,
     genderSelfDescription: undefined,

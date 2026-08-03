@@ -25,8 +25,6 @@ import {
   type ProfileFormState
 } from './profile/form';
 import {
-  IcefluDisabledGroup,
-  ProfileAssociationSection,
   ProfileConsentsSection,
   ProfileIdentitySection,
   ProfileNationalityDeclaration,
@@ -59,6 +57,13 @@ type RegistryCopyKey =
   | 'email2'
   | 'mobile'
   | 'fiscalCode'
+  | 'fiscalCodeInvalid'
+  | 'idNumber'
+  | 'idType'
+  | 'idTypePassport'
+  | 'idTypeIdCard'
+  | 'idTypeOther'
+  | 'idTypeOtherSpecify'
   | 'sex'
   | 'sexFemale'
   | 'sexMale'
@@ -181,6 +186,13 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Email secundário',
     mobile: 'Celular',
     fiscalCode: 'Codice Fiscale',
+    fiscalCodeInvalid: 'Codice fiscale inválido — verifique os 16 caracteres.',
+    idNumber: 'Número do documento de identidade',
+    idType: 'Tipo de documento',
+    idTypePassport: 'Passaporte',
+    idTypeIdCard: 'Documento de identidade',
+    idTypeOther: 'Outro',
+    idTypeOtherSpecify: 'Qual documento?',
     sex: 'Sexo atribuído ao nascer',
     sexFemale: 'Feminino',
     sexMale: 'Masculino',
@@ -239,6 +251,13 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Secondary email',
     mobile: 'Mobile',
     fiscalCode: 'Tax code',
+    fiscalCodeInvalid: 'Invalid tax code — check the 16 characters.',
+    idNumber: 'ID number',
+    idType: 'ID type',
+    idTypePassport: 'Passport',
+    idTypeIdCard: 'ID card',
+    idTypeOther: 'Other',
+    idTypeOtherSpecify: 'Which document?',
     sex: 'Sex Assigned at Birth',
     sexFemale: 'Female',
     sexMale: 'Male',
@@ -297,6 +316,13 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Correo secundario',
     mobile: 'Celular',
     fiscalCode: 'Codice Fiscale',
+    fiscalCodeInvalid: 'Codice fiscale inválido — comprueba los 16 caracteres.',
+    idNumber: 'Número de documento de identidad',
+    idType: 'Tipo de documento',
+    idTypePassport: 'Pasaporte',
+    idTypeIdCard: 'Documento de identidad',
+    idTypeOther: 'Otro',
+    idTypeOtherSpecify: '¿Qué documento?',
     sex: 'Sexo asignado al nacer',
     sexFemale: 'Femenino',
     sexMale: 'Masculino',
@@ -355,6 +381,13 @@ const registryCopyByLocale: Record<ProfileLocale, Pick<ProfileSectionsCopy, Regi
     email2: 'Email secondaria',
     mobile: 'Cellulare',
     fiscalCode: 'Codice Fiscale',
+    fiscalCodeInvalid: 'Codice fiscale non valido — controlla i 16 caratteri.',
+    idNumber: 'Numero del documento d\'identità',
+    idType: 'Tipo di documento',
+    idTypePassport: 'Passaporto',
+    idTypeIdCard: 'Carta d\'identità',
+    idTypeOther: 'Altro',
+    idTypeOtherSpecify: 'Quale documento?',
     sex: 'Sesso di nascita',
     sexFemale: 'Femmina',
     sexMale: 'Maschio',
@@ -843,10 +876,6 @@ export default function ProfilePage() {
           <ProfileIdentitySection copy={copy.sections} form={form} locale={locale} setField={setField} />
 
           <ProfileResidenceSection copy={copy.sections} form={form} locale={locale} setField={setField} />
-
-          <IcefluDisabledGroup note={copy.sections.icefluOnlyNote}>
-            <ProfileAssociationSection copy={copy.sections} form={form} setField={setField} />
-          </IcefluDisabledGroup>
 
           <section className="space-y-3 rounded-lg bg-slate-100 p-3">
             <div>

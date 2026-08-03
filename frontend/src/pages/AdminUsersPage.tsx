@@ -75,6 +75,9 @@ const copyByLocale = {
       phone: 'Telefone',
       mobile: 'Celular',
       fiscalCode: 'Código fiscal',
+      idType: 'Tipo de documento',
+      idTypePassport: 'Passaporte',
+      idTypeIdCard: 'Documento de identidade',
       sex: 'Sexo atribuído ao nascer',
       birthDate: 'Data de nascimento',
       birthPlace: 'Local de nascimento',
@@ -154,6 +157,9 @@ const copyByLocale = {
       phone: 'Phone',
       mobile: 'Mobile',
       fiscalCode: 'Fiscal code',
+      idType: 'ID type',
+      idTypePassport: 'Passport',
+      idTypeIdCard: 'ID card',
       sex: 'Sex assigned at birth',
       birthDate: 'Date of birth',
       birthPlace: 'Place of birth',
@@ -233,6 +239,9 @@ const copyByLocale = {
       phone: 'Teléfono',
       mobile: 'Móvil',
       fiscalCode: 'Código fiscal',
+      idType: 'Tipo de documento',
+      idTypePassport: 'Pasaporte',
+      idTypeIdCard: 'Documento de identidad',
       sex: 'Sexo asignado al nacer',
       birthDate: 'Fecha de nacimiento',
       birthPlace: 'Lugar de nacimiento',
@@ -312,6 +321,9 @@ const copyByLocale = {
       phone: 'Telefono',
       mobile: 'Cellulare',
       fiscalCode: 'Codice fiscale',
+      idType: 'Tipo di documento',
+      idTypePassport: 'Passaporto',
+      idTypeIdCard: 'Carta d\'identità',
       sex: 'Sesso di nascita',
       birthDate: 'Data di nascita',
       birthPlace: 'Luogo di nascita',
@@ -802,6 +814,7 @@ function UserProfileReviewModal({
 
           <ProfileSection>
             {user.fiscalCode ? <ProfileRow label={labels.fiscalCode} value={user.fiscalCode} /> : null}
+            {user.idType ? <ProfileRow label={labels.idType} value={idTypeLabel(user.idType, user.idTypeOther, labels)} /> : null}
             {user.sex ? <ProfileRow label={labels.sex} value={user.sex} /> : null}
             {user.birthDate ? <ProfileRow label={labels.birthDate} value={user.birthDate} /> : null}
             {user.birthPlace ? <ProfileRow label={labels.birthPlace} value={user.birthPlace} /> : null}
@@ -955,6 +968,13 @@ function SnapshotCard({ snapshot, approvedOnLabel, noDocumentLabel }: {
 
 function ProfileSection({ children }: { children: ReactNode }) {
   return <div className="py-3 space-y-0.5">{children}</div>;
+}
+
+/** Names the ID document a non-Italian applicant declared; "other" shows their own words. */
+function idTypeLabel(idType: string, idTypeOther: string | undefined, labels: ProfileLabels) {
+  if (idType === 'passport') return labels.idTypePassport;
+  if (idType === 'idCard') return labels.idTypeIdCard;
+  return idTypeOther || idType;
 }
 
 function ProfileRow({ label, value }: { label: string; value?: string }) {

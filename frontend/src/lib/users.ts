@@ -42,6 +42,10 @@ export type UserProfile = {
   firstName?: string;
   fullName?: string;
   fiscalCode?: string;
+  /** Non-Italian variant only: what document fiscalCode holds. */
+  idType?: string;
+  /** Free text when idType is 'other'. */
+  idTypeOther?: string;
   sex?: string;
   gender?: string;
   genderSelfDescription?: string;
@@ -160,6 +164,8 @@ function mapUserProfile(uid: string, value: unknown): UserProfile {
     firstName: asOptionalString(data.firstName),
     fullName: asOptionalString(data.fullName),
     fiscalCode: asOptionalString(data.fiscalCode),
+    idType: asOptionalString(data.idType),
+    idTypeOther: asOptionalString(data.idTypeOther),
     sex: asOptionalString(data.sex),
     gender: asOptionalString(data.gender),
     genderSelfDescription: asOptionalString(data.genderSelfDescription),
@@ -284,6 +290,8 @@ export async function upsertUser(uid: string, data: Partial<UserProfile>) {
     firstName: data.firstName,
     fullName: data.fullName,
     fiscalCode: data.fiscalCode,
+    idType: data.idType,
+    idTypeOther: data.idTypeOther,
     sex: data.sex,
     gender: hasOwnField(data, 'gender') ? data.gender ?? deleteField() : undefined,
     genderSelfDescription: hasOwnField(data, 'genderSelfDescription') ? data.genderSelfDescription ?? deleteField() : undefined,
@@ -391,6 +399,10 @@ export type ApprovedProfileSnapshot = {
   surname?: string;
   fullName?: string;
   fiscalCode?: string;
+  /** Non-Italian variant only: what document fiscalCode holds. */
+  idType?: string;
+  /** Free text when idType is 'other'. */
+  idTypeOther?: string;
   sex?: string;
   gender?: string;
   genderSelfDescription?: string;
@@ -440,6 +452,8 @@ function mapApprovedSnapshot(id: string, value: unknown): ApprovedProfileSnapsho
     surname: asOptionalString(data.surname),
     fullName: asOptionalString(data.fullName),
     fiscalCode: asOptionalString(data.fiscalCode),
+    idType: asOptionalString(data.idType),
+    idTypeOther: asOptionalString(data.idTypeOther),
     sex: asOptionalString(data.sex),
     gender: asOptionalString(data.gender),
     genderSelfDescription: asOptionalString(data.genderSelfDescription),
@@ -484,6 +498,8 @@ export async function createApprovedSnapshot(uid: string, profile: UserProfile, 
     surname: profile.surname,
     fullName: profile.fullName,
     fiscalCode: profile.fiscalCode,
+    idType: profile.idType,
+    idTypeOther: profile.idTypeOther,
     sex: profile.sex,
     gender: profile.gender,
     genderSelfDescription: profile.genderSelfDescription,
