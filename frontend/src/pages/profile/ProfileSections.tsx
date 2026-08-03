@@ -1137,7 +1137,15 @@ export function ProfileRolesSection({ copy, form, setField }: BaseSectionProps) 
           >
             <option value="">{copy.roleSelectPlaceholder}</option>
             {copy.doctrineRoleOptions.map(option => (
-              <option key={option.value} value={option.value} disabled={selectedRoles.includes(option.value)}>
+              <option
+                key={option.value}
+                value={option.value}
+                disabled={selectedRoles.includes(option.value)}
+                // "Describe another role" is an action rather than a role, so it
+                // is set apart. Option styling is honoured by Chrome and Firefox;
+                // Safari draws its own native menu and ignores it.
+                className={option.value === 'other' ? 'font-bold' : undefined}
+              >
                 {option.label}
               </option>
             ))}

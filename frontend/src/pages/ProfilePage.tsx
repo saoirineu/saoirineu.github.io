@@ -111,65 +111,82 @@ type RegistryCopyKey =
   | 'identityDocumentSecondary'
   | 'membershipFeeAmount';
 
+/**
+ * Doctrine roles, sorted alphabetically by label within each locale. "other"
+ * stays pinned last: it is an action, not a role. The `value` of each option is
+ * what gets stored, so those keys must not change — only labels are translated.
+ */
 const doctrineRoleOptionsByLocale: Record<ProfileLocale, ProfileSectionsCopy['doctrineRoleOptions']> = {
   pt: [
-    { value: 'fiscal', label: 'Fiscal' },
-    { value: 'leader', label: 'Dirigente' },
-    { value: 'musician', label: 'Músico' },
-    { value: 'official musician', label: 'Músico oficial' },
-    { value: 'treasurer', label: 'Tesoureiro' },
-    { value: 'secretary', label: 'Secretaria' },
-    { value: 'kitchen', label: 'Cozinha' },
     { value: 'setup', label: 'Arrumação' },
-    { value: 'cleaning', label: 'Limpeza' },
-    { value: 'reception', label: 'Recepção' },
+    { value: 'kitchen', label: 'Cozinha' },
     { value: 'children care', label: 'Cuidado de crianças' },
+    { value: 'leader', label: 'Dirigente' },
+    { value: 'nursing', label: 'Enfermagem/atendimento' },
+    { value: 'feitor', label: 'Feitor(a)' },
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'cleaning', label: 'Limpeza' },
+    { value: 'musician', label: 'Músico' },
     { value: 'organization', label: 'Organização' },
+    { value: 'puxador', label: 'Puxador(a)' },
+    { value: 'reception', label: 'Recepção' },
+    { value: 'secretary', label: 'Secretaria' },
+    { value: 'treasurer', label: 'Tesoureiro' },
+    { value: 'zelador', label: 'Zelador(a)' },
     { value: 'other', label: 'Descrever outro' }
   ],
   en: [
+    { value: 'children care', label: 'Children care' },
+    { value: 'cleaning', label: 'Cleaning' },
+    { value: 'feitor', label: 'Feitor(a)' },
     { value: 'fiscal', label: 'Fiscal' },
+    { value: 'kitchen', label: 'Kitchen' },
     { value: 'leader', label: 'Leader' },
     { value: 'musician', label: 'Musician' },
-    { value: 'official musician', label: 'Official musician' },
-    { value: 'treasurer', label: 'Treasurer' },
-    { value: 'secretary', label: 'Secretary' },
-    { value: 'kitchen', label: 'Kitchen' },
-    { value: 'setup', label: 'Setup' },
-    { value: 'cleaning', label: 'Cleaning' },
-    { value: 'reception', label: 'Reception' },
-    { value: 'children care', label: 'Children care' },
+    { value: 'nursing', label: 'Nursing/care' },
     { value: 'organization', label: 'Organization' },
+    { value: 'puxador', label: 'Puxador(a)' },
+    { value: 'reception', label: 'Reception' },
+    { value: 'secretary', label: 'Secretary' },
+    { value: 'setup', label: 'Setup' },
+    { value: 'treasurer', label: 'Treasurer' },
+    { value: 'zelador', label: 'Zelador(a)' },
     { value: 'other', label: 'Describe another role' }
   ],
   es: [
-    { value: 'fiscal', label: 'Fiscal' },
-    { value: 'leader', label: 'Dirigente' },
-    { value: 'musician', label: 'Músico' },
-    { value: 'official musician', label: 'Músico oficial' },
-    { value: 'treasurer', label: 'Tesorero' },
-    { value: 'secretary', label: 'Secretaría' },
     { value: 'kitchen', label: 'Cocina' },
-    { value: 'setup', label: 'Preparación' },
-    { value: 'cleaning', label: 'Limpieza' },
-    { value: 'reception', label: 'Recepción' },
     { value: 'children care', label: 'Cuidado de niños' },
+    { value: 'leader', label: 'Dirigente' },
+    { value: 'nursing', label: 'Enfermería/atención' },
+    { value: 'feitor', label: 'Feitor(a)' },
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'cleaning', label: 'Limpieza' },
+    { value: 'musician', label: 'Músico' },
     { value: 'organization', label: 'Organización' },
+    { value: 'setup', label: 'Preparación' },
+    { value: 'puxador', label: 'Puxador(a)' },
+    { value: 'reception', label: 'Recepción' },
+    { value: 'secretary', label: 'Secretaría' },
+    { value: 'treasurer', label: 'Tesorero' },
+    { value: 'zelador', label: 'Zelador(a)' },
     { value: 'other', label: 'Describir otro' }
   ],
   it: [
-    { value: 'fiscal', label: 'Fiscal' },
-    { value: 'leader', label: 'Dirigente' },
-    { value: 'musician', label: 'Musicista' },
-    { value: 'official musician', label: 'Musicista ufficiale' },
-    { value: 'treasurer', label: 'Tesoriere' },
-    { value: 'secretary', label: 'Segreteria' },
+    { value: 'reception', label: 'Accoglienza' },
     { value: 'kitchen', label: 'Cucina' },
+    { value: 'children care', label: 'Cura dei bambini' },
+    { value: 'leader', label: 'Dirigente' },
+    { value: 'feitor', label: 'Feitor(a)' },
+    { value: 'fiscal', label: 'Fiscal' },
+    { value: 'nursing', label: 'Infermeria/assistenza' },
+    { value: 'musician', label: 'Musicista' },
+    { value: 'organization', label: 'Organizzazione' },
     { value: 'setup', label: 'Preparazione' },
     { value: 'cleaning', label: 'Pulizia' },
-    { value: 'reception', label: 'Accoglienza' },
-    { value: 'children care', label: 'Cura dei bambini' },
-    { value: 'organization', label: 'Organizzazione' },
+    { value: 'puxador', label: 'Puxador(a)' },
+    { value: 'secretary', label: 'Segreteria' },
+    { value: 'treasurer', label: 'Tesoriere' },
+    { value: 'zelador', label: 'Zelador(a)' },
     { value: 'other', label: 'Descrivere altro' }
   ]
 };
@@ -579,10 +596,10 @@ const copyByLocale: Record<ProfileLocale, {
 };
 
 const roleTitleByLocale: Record<ProfileLocale, string> = {
-  pt: 'Papéis na doutrina',
-  en: 'Roles in the doctrine',
-  es: 'Roles en la doctrina',
-  it: 'Ruoli nella dottrina'
+  pt: 'Papéis na doutrina (opcional)',
+  en: 'Roles in the doctrine (optional)',
+  es: 'Roles en la doctrina (opcional)',
+  it: 'Ruoli nella dottrina (facoltativo)'
 };
 
 const roleHintByLocale: Record<ProfileLocale, string> = {
