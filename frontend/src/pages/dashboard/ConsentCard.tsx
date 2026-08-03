@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  CONSENT_VALIDITY_MONTHS,
   consentValidUntil,
   fetchUserConsents,
   latestConsent,
@@ -25,7 +26,8 @@ const CONSENT_FORM_URL: Record<SiteLocale, string> = {
 const copyByLocale = {
   pt: {
     title: 'Consenso informato',
-    intro: 'Baixe o consenso informato, assine e envie de volta. É o mesmo documento pedido para participar dos eventos.',
+    intro: (months: number) =>
+      `Baixe o consenso informato, assine e envie de volta. É necessário preencher e assinar o documento para participar dos eventos. O documento assinado tem validade de ${months} meses.`,
     download: 'Baixar o documento',
     choose: 'Escolher arquivo assinado',
     send: 'Enviar',
@@ -39,7 +41,8 @@ const copyByLocale = {
   },
   en: {
     title: 'Informed consent',
-    intro: 'Download the informed consent, sign it and send it back. It is the same document required to take part in the events.',
+    intro: (months: number) =>
+      `Download the informed consent, sign it and send it back. You must complete and sign the document in order to take part in the events. A signed document is valid for ${months} months.`,
     download: 'Download the document',
     choose: 'Choose signed file',
     send: 'Send',
@@ -53,7 +56,8 @@ const copyByLocale = {
   },
   es: {
     title: 'Consenso informato',
-    intro: 'Descargue el consentimiento informado, fírmelo y envíelo de vuelta. Es el mismo documento exigido para participar en los eventos.',
+    intro: (months: number) =>
+      `Descargue el consentimiento informado, fírmelo y envíelo de vuelta. Es necesario completar y firmar el documento para participar en los eventos. El documento firmado tiene una validez de ${months} meses.`,
     download: 'Descargar el documento',
     choose: 'Elegir archivo firmado',
     send: 'Enviar',
@@ -67,7 +71,8 @@ const copyByLocale = {
   },
   it: {
     title: 'Consenso informato',
-    intro: 'Scarica il consenso informato, firmalo e invialo. È lo stesso documento richiesto per partecipare agli eventi.',
+    intro: (months: number) =>
+      `Scarica il consenso informato, firmalo e invialo. È necessario compilare e firmare il documento per partecipare agli eventi. Il documento firmato ha validità di ${months} mesi.`,
     download: 'Scarica il documento',
     choose: 'Scegli il file firmato',
     send: 'Invia',
@@ -129,7 +134,7 @@ export function ConsentCard({ uid, locale }: { uid: string; locale: SiteLocale }
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-900">{copy.title}</h2>
-      <p className="mt-1 text-sm text-slate-600">{copy.intro}</p>
+      <p className="mt-1 text-sm text-slate-600">{copy.intro(CONSENT_VALIDITY_MONTHS)}</p>
 
       {consentsQuery.isLoading ? null : <p className={`mt-3 ${statusPillClass(tone)}`}>{text}</p>}
 
