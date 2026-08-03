@@ -28,6 +28,7 @@ import {
 } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { ConsentsPanel } from './admin/ConsentsPanel';
+import { DeleteUserDialog } from './admin/DeleteUserDialog';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import type { SiteLocale } from '../lib/siteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
@@ -41,6 +42,7 @@ const copyByLocale = {
     updateError: 'Erro ao atualizar usuário',
     updateSuccess: 'Privilégios atualizados com sucesso.',
     approvalSuccess: 'Usuário aprovado com sucesso.',
+    remove: { column: 'Remover', action: 'Remover', notSelf: 'Você não pode remover a sua própria conta.' },
     uid: 'UID',
     name: 'Nome',
     email: 'Email',
@@ -123,6 +125,7 @@ const copyByLocale = {
     updateError: 'Failed to update user',
     updateSuccess: 'Privileges updated successfully.',
     approvalSuccess: 'User approved successfully.',
+    remove: { column: 'Remove', action: 'Remove', notSelf: 'You cannot remove your own account.' },
     uid: 'UID',
     name: 'Name',
     email: 'Email',
@@ -205,6 +208,7 @@ const copyByLocale = {
     updateError: 'Error al actualizar usuario',
     updateSuccess: 'Privilegios actualizados con éxito.',
     approvalSuccess: 'Usuario aprobado con éxito.',
+    remove: { column: 'Eliminar', action: 'Eliminar', notSelf: 'No puede eliminar su propia cuenta.' },
     uid: 'UID',
     name: 'Nombre',
     email: 'Correo electrónico',
@@ -287,6 +291,7 @@ const copyByLocale = {
     updateError: 'Errore nell\'aggiornare l\'utente',
     updateSuccess: 'Privilegi aggiornati con successo.',
     approvalSuccess: 'Utente approvato con successo.',
+    remove: { column: 'Rimuovi', action: 'Rimuovi', notSelf: 'Non puoi rimuovere il tuo account.' },
     uid: 'UID',
     name: 'Nome',
     email: 'Email',
@@ -374,6 +379,9 @@ export default function AdminUsersPage() {
   const [reviewUid, setReviewUid] = useState<string | null>(null);
   const [extraEmailDraft, setExtraEmailDraft] = useState('');
   const canManagePrivileges = hasRequiredRole(role, 'superadmin');
+  // Deleting a member is irreversible, so it stays with the narrowest role.
+  const canDeleteUsers = hasRequiredRole(role, 'superadmin');
+  const [deleteUid, setDeleteUid] = useState<string | null>(null);
   const canApproveUsers = hasRequiredRole(role, 'useradmin');
 
   const usersQuery = useQuery({
@@ -589,6 +597,7 @@ export default function AdminUsersPage() {
               <th className="px-4 py-3 font-medium">{copy.approval}</th>
               {canApproveUsers ? <th className="px-4 py-3 font-medium">{copy.notify.column}</th> : null}
               <th className="px-4 py-3 font-medium">{copy.privileges}</th>
+              {canDeleteUsers ? <th className="px-4 py-3 font-medium">{copy.remove.column}</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -644,12 +653,41 @@ export default function AdminUsersPage() {
                       ))}
                     </div>
                   </td>
+                  {canDeleteUsers ? (
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
+                        disabled={user.uid === currentUser?.uid}
+                        title={user.uid === currentUser?.uid ? copy.remove.notSelf : undefined}
+                        onClick={() => setDeleteUid(user.uid)}
+                      >
+                        {copy.remove.action}
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {deleteUid ? (() => {
+        const target = users.find(u => u.uid === deleteUid);
+        return target ? (
+          <DeleteUserDialog
+            user={target}
+            locale={locale}
+            onClose={() => setDeleteUid(null)}
+            onDeleted={() => {
+              setDeleteUid(null);
+              setReviewUid(current => (current === deleteUid ? null : current));
+              void queryClient.invalidateQueries({ queryKey: ['users'] });
+            }}
+          />
+        ) : null;
+      })() : null}
 
       {reviewUid ? (() => {
         const reviewUser = users.find(u => u.uid === reviewUid);

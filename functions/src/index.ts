@@ -875,6 +875,56 @@ export const leaderRespond = onCall(
 // Sends a multilingual email verification to the currently signed-in user.
 // Called from the frontend instead of Firebase's built-in sendEmailVerification so the
 // email body is in all four app languages (pt, en, es, it).
+/** Superadmin check, reading the same fields the Firestore rules do. */
+async function assertCallerIsSuperadmin(uid: string | undefined) {
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+
+  const caller = (await admin.firestore().doc(`users/${uid}`).get()).data() ?? {};
+  const roles = Array.isArray(caller.systemRoles) ? caller.systemRoles : [];
+  if (!roles.includes('superadmin') && caller.systemRole !== 'superadmin') {
+    throw new HttpsError('permission-denied', 'Only a superadmin can delete a user.');
+  }
+}
+
+/**
+ * Wipes a user: profile document and its subcollections, everything they
+ * uploaded, and the Firebase Auth account — so the address is free to sign up
+ * from scratch. Irreversible, and deliberately unavailable to the client SDK
+ * (users/{uid} is `allow delete: if false`); only this function can do it.
+ */
+export const deleteUserAccountCallable = onCall(async request => {
+  const callerUid = request.auth?.uid;
+  await assertCallerIsSuperadmin(callerUid);
+
+  const uid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : '';
+  if (!uid) throw new HttpsError('invalid-argument', 'A uid is required.');
+  if (uid === callerUid) throw new HttpsError('failed-precondition', 'You cannot delete your own account.');
+
+  // Subcollections (consents, approvedSnapshots) go with the document.
+  await admin.firestore().recursiveDelete(admin.firestore().doc(`users/${uid}`));
+
+  // Best effort: a storage failure must not strand the account half-deleted,
+  // with the profile gone but the login still able to sign in.
+  let deletedFiles = 0;
+  try {
+    const [files] = await admin.storage().bucket().getFiles({ prefix: `users/${uid}/` });
+    await Promise.all(files.map(file => file.delete().catch(() => undefined)));
+    deletedFiles = files.length;
+  } catch (error) {
+    console.error(`Failed to delete storage files for ${uid}`, error);
+  }
+
+  // A missing auth account is fine: the profile may outlive a deleted login.
+  try {
+    await admin.auth().deleteUser(uid);
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'auth/user-not-found') throw error;
+  }
+
+  return { deletedFiles };
+});
+
 export const sendVerificationEmailCallable = onCall(
   { secrets: [smtpHost, smtpPort, smtpUser, smtpPass] },
   async request => {

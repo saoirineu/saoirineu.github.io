@@ -1,7 +1,8 @@
 import { addDoc, Timestamp, collection, deleteField, doc, getDoc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-import { db, storage } from './firebase';
+import { db, functions, storage } from './firebase';
 import { getUploadContentType, validateUploadFile } from './uploads';
 import {
   asOptionalBoolean,
@@ -573,4 +574,15 @@ export async function syncUserProfileForLogin(user: AuthProfileUser) {
   }
 
   return upsertUser(user.uid, buildUserProfileLoginPayload(user, existingProfile, matchedMember));
+}
+
+/**
+ * Superadmin-only wipe: the profile with its subcollections, the files the user
+ * uploaded, and the Firebase Auth account. Runs in a Cloud Function because
+ * users/{uid} is `allow delete: if false` for every client.
+ */
+export async function deleteUserAccount(uid: string): Promise<{ deletedFiles: number }> {
+  const callable = httpsCallable<{ uid: string }, { deletedFiles: number }>(functions, 'deleteUserAccountCallable');
+  const result = await callable({ uid });
+  return result.data;
 }
