@@ -43,7 +43,64 @@ const countryAliases: Record<string, string> = {
   italia: 'IT',
   italy: 'IT',
   italien: 'IT',
-  italie: 'IT'
+  italie: 'IT',
+  // Demonyms. The member registry records citizenship as free text, almost
+  // always as an Italian demonym ("Italiana"), which no country-name lookup
+  // matches. These cover every value present in it, plus obvious variants.
+  ita: 'IT',
+  italiana: 'IT',
+  italiano: 'IT',
+  argentina: 'AR',
+  belga: 'BE',
+  belgian: 'BE',
+  brasiliana: 'BR',
+  brasiliano: 'BR',
+  brasileira: 'BR',
+  brasileiro: 'BR',
+  brasilia: 'BR',
+  britanico: 'GB',
+  britannico: 'GB',
+  british: 'GB',
+  inglese: 'GB',
+  english: 'GB',
+  bulgara: 'BG',
+  bulgaro: 'BG',
+  bulgarian: 'BG',
+  canadese: 'CA',
+  canadian: 'CA',
+  cinese: 'CN',
+  chinese: 'CN',
+  croata: 'HR',
+  croato: 'HR',
+  croatian: 'HR',
+  francese: 'FR',
+  francesa: 'FR',
+  francaise: 'FR',
+  french: 'FR',
+  greca: 'GR',
+  greco: 'GR',
+  greek: 'GR',
+  messicana: 'MX',
+  messicano: 'MX',
+  mexicana: 'MX',
+  mexican: 'MX',
+  polacca: 'PL',
+  polacco: 'PL',
+  polish: 'PL',
+  portoghese: 'PT',
+  portuguesa: 'PT',
+  portugues: 'PT',
+  slovacca: 'SK',
+  slovacco: 'SK',
+  slovak: 'SK',
+  slovena: 'SI',
+  sloveno: 'SI',
+  slovenian: 'SI',
+  slovenija: 'SI',
+  spagnola: 'ES',
+  spagnolo: 'ES',
+  svizzera: 'CH',
+  svizzero: 'CH'
 };
 
 function normalizeSearch(value: string) {
@@ -90,6 +147,21 @@ export function findCountryCode(value: string, locale: ProfileLocale): string {
   }
 
   return '';
+}
+
+/**
+ * Turns a free-text citizenship into country codes. Profiles imported from the
+ * member registry carry text such as "Italiana" with no codes, which the
+ * selector cannot show as a chip; resolving it lets an imported profile appear
+ * as a real selection. Values that resolve to nothing are dropped, so genuinely
+ * unparseable text ("no messenger") stays visible as text instead.
+ */
+export function resolveCitizenshipCodes(value: string, locale: ProfileLocale = 'it'): string[] {
+  const parts = value.split(/[,;/&]| e /i);
+  const codes = parts
+    .map(part => findCountryCode(part, locale))
+    .filter((code): code is string => code.length > 0);
+  return Array.from(new Set(codes));
 }
 
 export const BRAZIL_STATES: LocationOption[] = [

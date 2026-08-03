@@ -2,7 +2,7 @@ import type { User } from 'firebase/auth';
 
 import { isValidFiscalCode } from '../../lib/fiscalCode';
 import type { MemberRecord } from '../../lib/members';
-import { MAX_DOCTRINE_ROLES } from '../../lib/profileCatalog';
+import { MAX_DOCTRINE_ROLES, resolveCitizenshipCodes } from '../../lib/profileCatalog';
 import type { PreferredCommunicationEmail, UserProfile } from '../../lib/users';
 
 export type ProfileFormState = {
@@ -285,7 +285,12 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     birthCountry: profile?.birthCountry || '',
     birthCountryCode: profile?.birthCountryCode || '',
     citizenship: profile?.citizenship || '',
-    citizenshipCountryCodes: profile?.citizenshipCountryCodes || [],
+    // Profiles imported from the member registry hold citizenship as free text
+    // with no codes; resolve it so the selector shows a real chip rather than a
+    // stray "current citizenship" line the user cannot act on.
+    citizenshipCountryCodes: profile?.citizenshipCountryCodes?.length
+      ? profile.citizenshipCountryCodes
+      : resolveCitizenshipCodes(profile?.citizenship ?? ''),
     nationality: profile?.nationality || '',
     address: profile?.address || '',
     postalCode: profile?.postalCode || '',
@@ -360,6 +365,11 @@ export function applyMemberPrefill(form: ProfileFormState, member: MemberRecord)
   for (const field of MEMBER_PREFILL_FIELDS) {
     if (field === 'firstWorkDate' && wasAlreadyLinked && !next.hasParticipatedInSantoDaimeWork) continue;
     if (!next[field]) next[field] = field === 'sex' ? normalizeBirthSex(member[field]) : member[field] ?? '';
+  }
+  // The registry stores citizenship as free text ("Italiana"); resolve it to
+  // codes so it lands in the selector instead of beside it.
+  if (next.citizenship && !next.citizenshipCountryCodes.length) {
+    next.citizenshipCountryCodes = resolveCitizenshipCodes(next.citizenship);
   }
   if (!next.email) next.email = member.email ?? '';
   if (!next.displayName) {

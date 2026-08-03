@@ -209,6 +209,21 @@ describe('profile form helpers', () => {
     expect(payload.preferredCommunicationEmail).toBe('login');
   });
 
+  it('resolves free-text citizenship from the registry into country codes', () => {
+    // Registry profiles carry a demonym and no codes; the selector needs codes.
+    expect(buildProfileForm(user, { uid: 'user-1', citizenship: 'Italiana' }).citizenshipCountryCodes).toEqual(['IT']);
+    expect(buildProfileForm(user, { uid: 'user-1', citizenship: 'italiana, Slovena' }).citizenshipCountryCodes).toEqual(['IT', 'SI']);
+    // Stored codes always win over the text.
+    expect(
+      buildProfileForm(user, { uid: 'user-1', citizenship: 'Italiana', citizenshipCountryCodes: ['BR'] }).citizenshipCountryCodes
+    ).toEqual(['BR']);
+    // Unparseable text resolves to nothing and stays visible as text.
+    expect(buildProfileForm(user, { uid: 'user-1', citizenship: 'no messenger' }).citizenshipCountryCodes).toEqual([]);
+
+    const prefilled = applyMemberPrefill(initialProfileForm, makeMember({ citizenship: 'Brasiliana' }));
+    expect(prefilled.citizenshipCountryCodes).toEqual(['BR']);
+  });
+
   it('creates avatar fallback url from name or email', () => {
     expect(avatarFallback('Maria Silva')).toContain('Maria%20Silva');
     expect(avatarFallback(undefined, 'mail@example.com')).toContain('mail%40example.com');

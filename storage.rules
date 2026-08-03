@@ -67,6 +67,15 @@ service firebase.storage {
       allow update: if false;
     }
 
+    // Association documents shown on the membership form: the privacy notice in
+    // four languages and the statute. Public, because an applicant must be able
+    // to read them before signing up. Uploaded with scripts/upload-documents.mjs
+    // by someone holding admin credentials; never writable from a client.
+    match /docs/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

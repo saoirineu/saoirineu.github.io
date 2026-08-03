@@ -83,6 +83,8 @@ export type ProfileSectionsCopy = {
   citizenshipAdd: string;
   citizenshipRemove: string;
   citizenshipCurrent: string;
+  citizenshipSelected: string;
+  citizenshipHint: string;
   nationality: string;
   address: string;
   postalCode: string;
@@ -489,6 +491,7 @@ function CitizenshipSelector({ copy, form, locale, setField }: BaseSectionProps 
       <label>
         {copy.citizenship}
         <RequiredMark />
+        <InfoIcon title={copy.citizenshipHint} />
         <select
           className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
           value=""
@@ -498,7 +501,10 @@ function CitizenshipSelector({ copy, form, locale, setField }: BaseSectionProps 
             syncCitizenship([...selectedCodes, code]);
           }}
         >
-          <option value="">{copy.selectPlaceholder}</option>
+          {/* The select always resets to its placeholder, so once a citizenship
+              is chosen the placeholder says the next one is optional — otherwise
+              it reads as though nothing had been selected. */}
+          <option value="">{selectedCodes.length ? copy.citizenshipAdd : copy.selectPlaceholder}</option>
           {countryOptions(locale).map(option => (
             <option key={option.code} value={option.code} disabled={selectedCodes.includes(option.code)}>
               {option.name}
@@ -512,18 +518,22 @@ function CitizenshipSelector({ copy, form, locale, setField }: BaseSectionProps 
         </p>
       ) : null}
       {selectedCodes.length ? (
-        <div className="flex flex-wrap gap-2">
-          {selectedCodes.map(code => (
-            <button
-              key={code}
-              type="button"
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
-              onClick={() => syncCitizenship(selectedCodes.filter(item => item !== code))}
-              title={copy.citizenshipRemove}
-            >
-              {countryName(code, locale)} ×
-            </button>
-          ))}
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <p className="text-xs font-medium text-slate-500">{copy.citizenshipSelected}</p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {selectedCodes.map(code => (
+              <button
+                key={code}
+                type="button"
+                className="group rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                onClick={() => syncCitizenship(selectedCodes.filter(item => item !== code))}
+                title={copy.citizenshipRemove}
+                aria-label={`${copy.citizenshipRemove}: ${countryName(code, locale)}`}
+              >
+                {countryName(code, locale)} <span className="text-slate-400 group-hover:text-red-600">×</span>
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
