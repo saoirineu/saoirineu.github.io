@@ -14,7 +14,7 @@ export type NotificationSettings = {
 };
 
 /** Always-on recipients, mirrored from functions/src/index.ts BASELINE_NOTIFY. */
-export const BASELINE_NOTIFY_EMAILS = ['renato@junto.space', 'international.secretariat@stellazzurra.org'];
+export const BASELINE_NOTIFY_EMAILS = ['info@santodaime.it', 'stellazzurra@santodaime.it'];
 
 const notificationsDoc = doc(db, 'settings', 'notifications');
 

@@ -18,7 +18,7 @@ const appBaseUrl = defineString('APP_BASE_URL', { default: 'https://saoirineu.gi
 
 // Always-on recipients of the "new ICEFLU registration pending" admin notice.
 // Admins can add more via the settings/notifications doc (see loadNotificationRecipients).
-const BASELINE_NOTIFY = ['renato@junto.space', 'international.secretariat@stellazzurra.org'];
+const BASELINE_NOTIFY = ['info@santodaime.it', 'stellazzurra@santodaime.it'];
 
 // Administration mailbox that verifies the payment for event registrations.
 const PAYMENT_ADMIN_EMAIL = 'amministrazione@stellazzurra.org';
