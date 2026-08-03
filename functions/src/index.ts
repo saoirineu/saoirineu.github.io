@@ -331,10 +331,20 @@ function profileDisplayName(data: FirebaseFirestore.DocumentData): string {
   return typeof name === 'string' ? name.trim() : '';
 }
 
+// Italian first: ICEFLU Italia is an Italian association and most members read
+// it, so it should be the block they see without scrolling.
 function buildUserApprovedEmailText(name: string, portalUrl: string): string {
   const hi = name ? ` ${name}` : '';
   return [
     'São Irineu',
+    '',
+    '────────────────────────────────',
+    `Ciao${hi},`,
+    '',
+    'La tua iscrizione a ICEFLU è stata approvata. Il tuo profilo socio è ora attivo. Grazie!',
+    '',
+    'Accedi alla piattaforma São Irineu:',
+    portalUrl,
     '',
     '────────────────────────────────',
     `Olá${hi},`,
@@ -358,14 +368,6 @@ function buildUserApprovedEmailText(name: string, portalUrl: string): string {
     'Su inscripción en ICEFLU ha sido aprobada. Su perfil de socio ya está activo. ¡Gracias!',
     '',
     'Acceda a la plataforma São Irineu:',
-    portalUrl,
-    '',
-    '────────────────────────────────',
-    `Ciao${hi},`,
-    '',
-    'La tua iscrizione a ICEFLU è stata approvata. Il tuo profilo socio è ora attivo. Grazie!',
-    '',
-    'Accedi alla piattaforma São Irineu:',
     portalUrl,
   ].join('\n');
 }
