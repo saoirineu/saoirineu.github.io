@@ -224,6 +224,14 @@ const finalApprovalEmail: Record<LeaderEmailLocale, { subject: string; body: str
   },
 };
 
+// Every message is sent as the authenticated mailbox (info@santodaime.it), with
+// a display name so it reads as the portal rather than a bare address.
+const MAIL_FROM_NAME = 'São Irineu - ICEFLU Italia';
+
+function mailFrom() {
+  return `"${MAIL_FROM_NAME}" <${smtpUser.value()}>`;
+}
+
 function createTransporter() {
   return nodemailer.createTransport({
     host: smtpHost.value(),
@@ -410,7 +418,7 @@ export const onUserApprovalDecision = onDocumentWritten(
 
     if (afterStatus === 'approved') {
       await transporter.sendMail({
-        from: smtpUser.value(),
+        from: mailFrom(),
         to: email,
         subject: 'Your ICEFLU membership has been approved — São Irineu',
         text: buildUserApprovedEmailText(name),
@@ -421,7 +429,7 @@ export const onUserApprovalDecision = onDocumentWritten(
     const note = typeof after.adminNote === 'string' ? after.adminNote.trim() : '';
     const profileUrl = `${appBaseUrl.value().replace(/\/$/, '')}/profile`;
     await transporter.sendMail({
-      from: smtpUser.value(),
+      from: mailFrom(),
       to: email,
       subject: 'Your ICEFLU membership needs revision — São Irineu',
       text: buildUserNeedsInfoEmailText(name, note, profileUrl),
@@ -455,7 +463,7 @@ export const onRegistrationBothApproved = onDocumentWritten(
     try {
       const transporter = createTransporter();
       await transporter.sendMail({
-        from: smtpUser.value(),
+        from: mailFrom(),
         to: email,
         subject: message.subject,
         text: message.body,
@@ -483,7 +491,7 @@ export const onUserApprovalPending = onDocumentWritten(
     const recipients = await loadNotificationRecipients();
 
     await transporter.sendMail({
-      from: smtpUser.value(),
+      from: mailFrom(),
       to: recipients,
       subject: `ICEFLU portal user approval — ${after.email ?? event.params.uid}`,
       text: buildUserApprovalEmailBody({ uid: event.params.uid, data: after, reviewUrl }),
@@ -514,7 +522,7 @@ export const onEventRegistration = onDocumentCreated(
     const transporter = createTransporter();
 
     await transporter.sendMail({
-      from: smtpUser.value(),
+      from: mailFrom(),
       to: leaderEmail,
       subject: `Registration approval request — ${name}`,
       text: buildLeaderEmailBody({ leaderName: leaderName || 'leader', reviewUrl, locale }),
@@ -817,7 +825,7 @@ export const leaderRespond = onCall(
         try {
           const transporter = createTransporter();
           await transporter.sendMail({
-            from: smtpUser.value(),
+            from: mailFrom(),
             to: applicantEmail,
             subject: message.subject,
             text: message.body,
@@ -836,7 +844,7 @@ export const leaderRespond = onCall(
       try {
         const transporter = createTransporter();
         await transporter.sendMail({
-          from: smtpUser.value(),
+          from: mailFrom(),
           to: PAYMENT_ADMIN_EMAIL,
           subject: `Payment verification — ${applicantName}`,
           text: buildPaymentAdminEmail({ name: applicantName, reviewUrl: paymentReviewUrl }),
@@ -867,7 +875,7 @@ export const sendVerificationEmailCallable = onCall(
 
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: smtpUser.value(),
+      from: mailFrom(),
       to: email,
       subject: 'Confirm your email — São Irineu',
       text: buildVerificationEmailText(link),
