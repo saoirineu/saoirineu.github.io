@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   hasRequiredRole,
   normalizeSystemRoles,
   privilegedSystemRoleOptions,
+  type PrivilegedSystemRole,
   type SystemRole
 } from '../lib/systemRole';
 import {
@@ -15,6 +16,7 @@ import {
 } from '../lib/notificationSettings';
 import {
   createApprovedSnapshot,
+  fetchUnverifiedSignups,
   fetchUsers,
   updateUserAdminNote,
   updateUserApprovalStatus,
@@ -30,7 +32,6 @@ import {
   profileLabelsByLocale
 } from './admin/UserProfileReviewModal';
 import { useSiteLocale } from '../providers/useSiteLocale';
-import type { SiteLocale } from '../lib/siteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
 
 const copyByLocale = {
@@ -67,6 +68,33 @@ const copyByLocale = {
       extraAdd: 'Adicionar',
       invalidEmail: 'Informe um e-mail válido.'
     },
+    filters: {
+      search: 'Buscar',
+      searchPlaceholder: 'Nome, email, UID, código fiscal, cidade...',
+      approvalAll: 'Todas as situações',
+      privilegesAll: 'Todos os privilégios',
+      privilegesNone: 'Sem privilégios',
+      sort: 'Ordenar',
+      sortEmailAsc: 'Email (A-Z)',
+      sortEmailDesc: 'Email (Z-A)',
+      sortNameAsc: 'Nome (A-Z)',
+      sortNameDesc: 'Nome (Z-A)',
+      sortApproval: 'Pendentes primeiro',
+      sortNewest: 'Cadastro mais recente',
+      sortOldest: 'Cadastro mais antigo',
+      count: (shown: number, total: number) => `${shown} de ${total} usuários`,
+      empty: 'Nenhum usuário corresponde aos filtros.'
+    },
+    unverified: {
+      title: 'Cadastros sem email confirmado',
+      subtitle: 'Criaram a conta mas nunca abriram o link de confirmação, por isso ainda não têm perfil no portal.',
+      empty: 'Nenhum cadastro aguardando confirmação.',
+      error: 'Não foi possível carregar os cadastros sem confirmação.',
+      created: 'Cadastro',
+      lastSignIn: 'Último acesso',
+      provider: 'Origem',
+      never: 'Nunca'
+    },
     profileLabels: profileLabelsByLocale.pt
   },
   en: {
@@ -101,6 +129,33 @@ const copyByLocale = {
       extraPlaceholder: 'name@example.com',
       extraAdd: 'Add',
       invalidEmail: 'Enter a valid email.'
+    },
+    filters: {
+      search: 'Search',
+      searchPlaceholder: 'Name, email, UID, fiscal code, city...',
+      approvalAll: 'All approval states',
+      privilegesAll: 'All privileges',
+      privilegesNone: 'No privileges',
+      sort: 'Sort',
+      sortEmailAsc: 'Email (A-Z)',
+      sortEmailDesc: 'Email (Z-A)',
+      sortNameAsc: 'Name (A-Z)',
+      sortNameDesc: 'Name (Z-A)',
+      sortApproval: 'Pending first',
+      sortNewest: 'Newest signup',
+      sortOldest: 'Oldest signup',
+      count: (shown: number, total: number) => `${shown} of ${total} users`,
+      empty: 'No user matches the filters.'
+    },
+    unverified: {
+      title: 'Signups without a confirmed email',
+      subtitle: 'They created an account but never opened the confirmation link, so they have no portal profile yet.',
+      empty: 'No signup is waiting for confirmation.',
+      error: 'Could not load the unconfirmed signups.',
+      created: 'Signed up',
+      lastSignIn: 'Last sign-in',
+      provider: 'Source',
+      never: 'Never'
     },
     profileLabels: profileLabelsByLocale.en
   },
@@ -137,6 +192,33 @@ const copyByLocale = {
       extraAdd: 'Añadir',
       invalidEmail: 'Introduzca un correo válido.'
     },
+    filters: {
+      search: 'Buscar',
+      searchPlaceholder: 'Nombre, correo, UID, código fiscal, ciudad...',
+      approvalAll: 'Todos los estados',
+      privilegesAll: 'Todos los privilegios',
+      privilegesNone: 'Sin privilegios',
+      sort: 'Ordenar',
+      sortEmailAsc: 'Correo (A-Z)',
+      sortEmailDesc: 'Correo (Z-A)',
+      sortNameAsc: 'Nombre (A-Z)',
+      sortNameDesc: 'Nombre (Z-A)',
+      sortApproval: 'Pendientes primero',
+      sortNewest: 'Registro más reciente',
+      sortOldest: 'Registro más antiguo',
+      count: (shown: number, total: number) => `${shown} de ${total} usuarios`,
+      empty: 'Ningún usuario coincide con los filtros.'
+    },
+    unverified: {
+      title: 'Registros sin correo confirmado',
+      subtitle: 'Crearon la cuenta pero nunca abrieron el enlace de confirmación, por eso aún no tienen perfil en el portal.',
+      empty: 'Ningún registro espera confirmación.',
+      error: 'No fue posible cargar los registros sin confirmar.',
+      created: 'Registro',
+      lastSignIn: 'Último acceso',
+      provider: 'Origen',
+      never: 'Nunca'
+    },
     profileLabels: profileLabelsByLocale.es
   },
   it: {
@@ -172,9 +254,106 @@ const copyByLocale = {
       extraAdd: 'Aggiungi',
       invalidEmail: 'Inserisci un\'email valida.'
     },
+    filters: {
+      search: 'Cerca',
+      searchPlaceholder: 'Nome, email, UID, codice fiscale, città...',
+      approvalAll: 'Tutti gli stati',
+      privilegesAll: 'Tutti i privilegi',
+      privilegesNone: 'Senza privilegi',
+      sort: 'Ordina',
+      sortEmailAsc: 'Email (A-Z)',
+      sortEmailDesc: 'Email (Z-A)',
+      sortNameAsc: 'Nome (A-Z)',
+      sortNameDesc: 'Nome (Z-A)',
+      sortApproval: 'Prima le pendenti',
+      sortNewest: 'Iscrizione più recente',
+      sortOldest: 'Iscrizione meno recente',
+      count: (shown: number, total: number) => `${shown} di ${total} utenti`,
+      empty: 'Nessun utente corrisponde ai filtri.'
+    },
+    unverified: {
+      title: 'Iscrizioni senza email confermata',
+      subtitle: 'Hanno creato l\'account ma non hanno mai aperto il link di conferma, quindi non hanno ancora un profilo nel portale.',
+      empty: 'Nessuna iscrizione in attesa di conferma.',
+      error: 'Impossibile caricare le iscrizioni non confermate.',
+      created: 'Iscrizione',
+      lastSignIn: 'Ultimo accesso',
+      provider: 'Origine',
+      never: 'Mai'
+    },
     profileLabels: profileLabelsByLocale.it
   }
 } as const;
+
+type SortKey = 'email-asc' | 'email-desc' | 'name-asc' | 'name-desc' | 'approval' | 'newest' | 'oldest';
+type ApprovalFilter = 'all' | UserApprovalStatus;
+type PrivilegeFilter = 'all' | 'none' | PrivilegedSystemRole;
+
+const approvalStatusOptions: UserApprovalStatus[] = ['needs-profile', 'pending', 'approved', 'needs-info'];
+
+/** Whoever is waiting on the admin comes first; the settled ones sink. */
+const approvalQueueOrder: Record<UserApprovalStatus, number> = {
+  pending: 0,
+  'needs-info': 1,
+  'needs-profile': 2,
+  approved: 3
+};
+
+const searchableFields = [
+  'uid',
+  'displayName',
+  'fullName',
+  'firstName',
+  'surname',
+  'email',
+  'email2',
+  'fiscalCode',
+  'city',
+  'phone',
+  'mobile',
+  'memberCode'
+] as const;
+
+/** Accent-insensitive, so typing "mario" also finds "Mário". */
+function normalizeText(value: string | undefined) {
+  return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+}
+
+function userDisplayName(user: UserProfile) {
+  return user.fullName ?? user.displayName ?? [user.firstName, user.surname].filter(Boolean).join(' ');
+}
+
+function matchesSearch(user: UserProfile, normalizedTerm: string) {
+  if (!normalizedTerm) return true;
+  return searchableFields.some(field => normalizeText(user[field]).includes(normalizedTerm));
+}
+
+function sortUsers(users: UserProfile[], sortKey: SortKey): UserProfile[] {
+  const byEmail = (left: UserProfile, right: UserProfile) => (left.email ?? '').localeCompare(right.email ?? '');
+  const byName = (left: UserProfile, right: UserProfile) => userDisplayName(left).localeCompare(userDisplayName(right));
+  const createdMillis = (user: UserProfile) => user.createdAt?.toMillis() ?? 0;
+  const sorted = [...users];
+
+  switch (sortKey) {
+    case 'email-desc':
+      return sorted.sort((left, right) => byEmail(right, left));
+    case 'name-asc':
+      return sorted.sort(byName);
+    case 'name-desc':
+      return sorted.sort((left, right) => byName(right, left));
+    case 'approval':
+      return sorted.sort((left, right) => {
+        const delta = approvalQueueOrder[left.approvalStatus ?? 'needs-profile'] - approvalQueueOrder[right.approvalStatus ?? 'needs-profile'];
+        return delta !== 0 ? delta : byEmail(left, right);
+      });
+    case 'newest':
+      return sorted.sort((left, right) => createdMillis(right) - createdMillis(left));
+    case 'oldest':
+      return sorted.sort((left, right) => createdMillis(left) - createdMillis(right));
+    default:
+      return sorted.sort(byEmail);
+  }
+}
 
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
@@ -189,12 +368,23 @@ export default function AdminUsersPage() {
   const canManagePrivileges = hasRequiredRole(role, 'superadmin');
   // Deleting a member is irreversible, so it stays with the narrowest role.
   const canDeleteUsers = hasRequiredRole(role, 'superadmin');
-  const [deleteUid, setDeleteUid] = useState<string | null>(null);
+  // An unconfirmed signup has no profile document, so the dialog gets the account itself.
+  const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
   const canApproveUsers = hasRequiredRole(role, 'useradmin');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [approvalFilter, setApprovalFilter] = useState<ApprovalFilter>('all');
+  const [privilegeFilter, setPrivilegeFilter] = useState<PrivilegeFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('email-asc');
 
   const usersQuery = useQuery({
     queryKey: ['users'],
     queryFn: fetchUsers
+  });
+
+  const unverifiedQuery = useQuery({
+    queryKey: ['unverifiedSignups'],
+    queryFn: fetchUnverifiedSignups,
+    enabled: canApproveUsers
   });
 
   const notificationSettingsQuery = useQuery({
@@ -311,11 +501,24 @@ export default function AdminUsersPage() {
     }
   });
 
-  const users = [...(usersQuery.data ?? [])].sort((left, right) => {
-    const leftEmail = left.email ?? '';
-    const rightEmail = right.email ?? '';
-    return leftEmail.localeCompare(rightEmail);
-  });
+  const allUsers = usersQuery.data;
+  const users = useMemo(() => {
+    const normalizedTerm = normalizeText(searchTerm.trim());
+    const filtered = (allUsers ?? []).filter(user => {
+      if (!matchesSearch(user, normalizedTerm)) return false;
+      if (approvalFilter !== 'all' && (user.approvalStatus ?? 'needs-profile') !== approvalFilter) return false;
+      if (privilegeFilter !== 'all') {
+        const roles = normalizeSystemRoles(user.systemRoles, user.systemRole);
+        const isPrivileged = roles.some(item => item !== 'user');
+        if (privilegeFilter === 'none' ? isPrivileged : !roles.includes(privilegeFilter)) return false;
+      }
+      return true;
+    });
+    return sortUsers(filtered, sortKey);
+  }, [allUsers, searchTerm, approvalFilter, privilegeFilter, sortKey]);
+
+  const unverifiedSignups = unverifiedQuery.data ?? [];
+  const formatMoment = (value: string | null) => (value ? new Date(value).toLocaleString(locale) : copy.unverified.never);
 
   const toggleRole = (uid: string, currentRoles: SystemRole[], roleToToggle: SystemRole) => {
     const selected = currentRoles.includes(roleToToggle)
@@ -395,6 +598,123 @@ export default function AdminUsersPage() {
         </section>
       ) : null}
 
+      {canApproveUsers ? (
+        <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {copy.unverified.title}
+              {unverifiedSignups.length ? <span className="ml-2 rounded-full bg-amber-200 px-2 py-0.5 text-xs text-amber-900">{unverifiedSignups.length}</span> : null}
+            </h2>
+            <p className="text-sm text-slate-600">{copy.unverified.subtitle}</p>
+          </div>
+
+          {unverifiedQuery.isLoading ? <p className="text-sm text-slate-600">{copy.loading}</p> : null}
+          {unverifiedQuery.isError ? <p className="text-sm text-red-700">{copy.unverified.error}</p> : null}
+          {unverifiedQuery.isSuccess && !unverifiedSignups.length ? (
+            <p className="text-sm text-slate-600">{copy.unverified.empty}</p>
+          ) : null}
+
+          {unverifiedSignups.length ? (
+            <div className="overflow-x-auto rounded-lg border border-amber-200 bg-white">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50 text-left text-slate-600">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">{copy.email}</th>
+                    <th className="px-4 py-2 font-medium">{copy.name}</th>
+                    <th className="px-4 py-2 font-medium">{copy.unverified.created}</th>
+                    <th className="px-4 py-2 font-medium">{copy.unverified.lastSignIn}</th>
+                    <th className="px-4 py-2 font-medium">{copy.unverified.provider}</th>
+                    {canDeleteUsers ? <th className="px-4 py-2 font-medium">{copy.remove.column}</th> : null}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {unverifiedSignups.map(account => (
+                    <tr key={account.uid}>
+                      <td className="px-4 py-2 text-slate-900">{account.email}</td>
+                      <td className="px-4 py-2 text-slate-600">{account.displayName ?? copy.noName}</td>
+                      <td className="px-4 py-2 text-slate-600">{formatMoment(account.createdAt)}</td>
+                      <td className="px-4 py-2 text-slate-600">{formatMoment(account.lastSignInAt)}</td>
+                      <td className="px-4 py-2 text-xs text-slate-500">{account.providers.join(', ') || '—'}</td>
+                      {canDeleteUsers ? (
+                        <td className="px-4 py-2">
+                          <button
+                            type="button"
+                            className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                            onClick={() => setDeleteTarget({ uid: account.uid, email: account.email, displayName: account.displayName ?? undefined })}
+                          >
+                            {copy.remove.action}
+                          </button>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
+        <label className="space-y-1 text-sm text-slate-700">
+          <span className="font-medium text-slate-900">{copy.filters.search}</span>
+          <input
+            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            placeholder={copy.filters.searchPlaceholder}
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+          />
+        </label>
+        <label className="space-y-1 text-sm text-slate-700">
+          <span className="font-medium text-slate-900">{copy.approval}</span>
+          <select
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            value={approvalFilter}
+            onChange={event => setApprovalFilter(event.target.value as ApprovalFilter)}
+          >
+            <option value="all">{copy.filters.approvalAll}</option>
+            {approvalStatusOptions.map(status => (
+              <option key={status} value={status}>
+                {copy.approvalStatus[status]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-sm text-slate-700">
+          <span className="font-medium text-slate-900">{copy.privileges}</span>
+          <select
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            value={privilegeFilter}
+            onChange={event => setPrivilegeFilter(event.target.value as PrivilegeFilter)}
+          >
+            <option value="all">{copy.filters.privilegesAll}</option>
+            <option value="none">{copy.filters.privilegesNone}</option>
+            {privilegedSystemRoleOptions.map(option => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-sm text-slate-700">
+          <span className="font-medium text-slate-900">{copy.filters.sort}</span>
+          <select
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            value={sortKey}
+            onChange={event => setSortKey(event.target.value as SortKey)}
+          >
+            <option value="email-asc">{copy.filters.sortEmailAsc}</option>
+            <option value="email-desc">{copy.filters.sortEmailDesc}</option>
+            <option value="name-asc">{copy.filters.sortNameAsc}</option>
+            <option value="name-desc">{copy.filters.sortNameDesc}</option>
+            <option value="approval">{copy.filters.sortApproval}</option>
+            <option value="newest">{copy.filters.sortNewest}</option>
+            <option value="oldest">{copy.filters.sortOldest}</option>
+          </select>
+        </label>
+        <p className="text-xs text-slate-500 lg:col-span-4">{copy.filters.count(users.length, allUsers?.length ?? 0)}</p>
+      </section>
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
@@ -468,7 +788,7 @@ export default function AdminUsersPage() {
                         className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
                         disabled={user.uid === currentUser?.uid}
                         title={user.uid === currentUser?.uid ? copy.remove.notSelf : undefined}
-                        onClick={() => setDeleteUid(user.uid)}
+                        onClick={() => setDeleteTarget(user)}
                       >
                         {copy.remove.action}
                       </button>
@@ -477,28 +797,33 @@ export default function AdminUsersPage() {
                 </tr>
               );
             })}
+            {usersQuery.isSuccess && !users.length ? (
+              <tr>
+                <td className="px-4 py-6 text-sm text-slate-600" colSpan={7}>
+                  {copy.filters.empty}
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
 
-      {deleteUid ? (() => {
-        const target = users.find(u => u.uid === deleteUid);
-        return target ? (
-          <DeleteUserDialog
-            user={target}
-            locale={locale}
-            onClose={() => setDeleteUid(null)}
-            onDeleted={() => {
-              setDeleteUid(null);
-              setReviewUid(current => (current === deleteUid ? null : current));
-              void queryClient.invalidateQueries({ queryKey: ['users'] });
-            }}
-          />
-        ) : null;
-      })() : null}
+      {deleteTarget ? (
+        <DeleteUserDialog
+          user={deleteTarget}
+          locale={locale}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setReviewUid(current => (current === deleteTarget.uid ? null : current));
+            setDeleteTarget(null);
+            void queryClient.invalidateQueries({ queryKey: ['users'] });
+            void queryClient.invalidateQueries({ queryKey: ['unverifiedSignups'] });
+          }}
+        />
+      ) : null}
 
       {reviewUid ? (() => {
-        const reviewUser = users.find(u => u.uid === reviewUid);
+        const reviewUser = (allUsers ?? []).find(u => u.uid === reviewUid);
         return reviewUser ? (
           <UserProfileReviewModal
             user={reviewUser}

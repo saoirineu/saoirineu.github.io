@@ -576,6 +576,31 @@ export async function syncUserProfileForLogin(user: AuthProfileUser) {
   return upsertUser(user.uid, buildUserProfileLoginPayload(user, existingProfile, matchedMember));
 }
 
+/** A sign-up that never confirmed its email, so it exists only in Firebase Auth. */
+export type UnverifiedSignup = {
+  uid: string;
+  email: string;
+  displayName: string | null;
+  /** ISO strings, or null when Firebase reports no metadata. */
+  createdAt: string | null;
+  lastSignInAt: string | null;
+  providers: string[];
+};
+
+/**
+ * Lists the accounts stuck at email confirmation. They have no users/{uid}
+ * document — the profile is written only after verification — so fetchUsers
+ * cannot see them and a Cloud Function has to read Firebase Auth instead.
+ */
+export async function fetchUnverifiedSignups(): Promise<UnverifiedSignup[]> {
+  const callable = httpsCallable<Record<string, never>, { accounts: UnverifiedSignup[] }>(
+    functions,
+    'listUnverifiedSignupsCallable'
+  );
+  const result = await callable({});
+  return result.data.accounts ?? [];
+}
+
 /**
  * Superadmin-only wipe: the profile with its subcollections, the files the user
  * uploaded, and the Firebase Auth account. Runs in a Cloud Function because

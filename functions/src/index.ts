@@ -877,14 +877,28 @@ export const leaderRespond = onCall(
 // Sends a multilingual email verification to the currently signed-in user.
 // Called from the frontend instead of Firebase's built-in sendEmailVerification so the
 // email body is in all four app languages (pt, en, es, it).
-/** Superadmin check, reading the same fields the Firestore rules do. */
-async function assertCallerIsSuperadmin(uid: string | undefined) {
+/** The caller's roles, read from the same fields the Firestore rules look at. */
+async function callerSystemRoles(uid: string | undefined): Promise<string[]> {
   if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
 
   const caller = (await admin.firestore().doc(`users/${uid}`).get()).data() ?? {};
-  const roles = Array.isArray(caller.systemRoles) ? caller.systemRoles : [];
-  if (!roles.includes('superadmin') && caller.systemRole !== 'superadmin') {
+  const roles = Array.isArray(caller.systemRoles) ? caller.systemRoles.filter(role => typeof role === 'string') : [];
+  if (typeof caller.systemRole === 'string') roles.push(caller.systemRole);
+  return roles;
+}
+
+async function assertCallerIsSuperadmin(uid: string | undefined) {
+  const roles = await callerSystemRoles(uid);
+  if (!roles.includes('superadmin')) {
     throw new HttpsError('permission-denied', 'Only a superadmin can delete a user.');
+  }
+}
+
+/** Mirrors hasRequiredRole(role, 'useradmin') on the frontend. */
+async function assertCallerCanManageUsers(uid: string | undefined) {
+  const roles = await callerSystemRoles(uid);
+  if (!roles.includes('superadmin') && !roles.includes('useradmin')) {
+    throw new HttpsError('permission-denied', 'Only a user administrator can list signups.');
   }
 }
 
@@ -925,6 +939,52 @@ export const deleteUserAccountCallable = onCall(async request => {
   }
 
   return { deletedFiles };
+});
+
+/** Firebase's metadata timestamps are UTC strings; the UI wants something sortable. */
+function isoTimestamp(value: string | undefined): string | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
+}
+
+/**
+ * Signups that never confirmed their address. They have no users/{uid} document
+ * — the profile is only written once the email is verified — so the admin list,
+ * which reads Firestore, cannot see them. Firebase Auth is the only source.
+ */
+export const listUnverifiedSignupsCallable = onCall(async request => {
+  await assertCallerCanManageUsers(request.auth?.uid);
+
+  const accounts: {
+    uid: string;
+    email: string;
+    displayName: string | null;
+    createdAt: string | null;
+    lastSignInAt: string | null;
+    providers: string[];
+  }[] = [];
+
+  let pageToken: string | undefined;
+  do {
+    const page = await admin.auth().listUsers(1000, pageToken);
+    page.users.forEach(record => {
+      if (!record.email || record.emailVerified) return;
+      accounts.push({
+        uid: record.uid,
+        email: record.email,
+        displayName: record.displayName ?? null,
+        createdAt: isoTimestamp(record.metadata.creationTime),
+        lastSignInAt: isoTimestamp(record.metadata.lastSignInTime),
+        providers: record.providerData.map(provider => provider.providerId),
+      });
+    });
+    pageToken = page.pageToken;
+  } while (pageToken);
+
+  // Newest signup first: the ones worth chasing are the ones that just happened.
+  accounts.sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''));
+  return { accounts };
 });
 
 export const sendVerificationEmailCallable = onCall(
