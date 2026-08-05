@@ -39,6 +39,12 @@ smtp-secrets:
 	printf '%s' "$$SMTP_USER" | $(FIREBASE) functions:secrets:set SMTP_USER --project $(FIREBASE_PROJECT) && \
 	printf '%s' "$$SMTP_PASS" | $(FIREBASE) functions:secrets:set SMTP_PASS --project $(FIREBASE_PROJECT)
 
+# Pushes the mail-relay shared secret. The same value must sit in
+# scripts/portal-mail/relay-config.php on the santodaime.it hosting account.
+mail-relay-secret:
+	@set -a && . docs/credentials/mail-relay.env && set +a && \
+	printf '%s' "$$MAIL_RELAY_TOKEN" | $(FIREBASE) functions:secrets:set MAIL_RELAY_TOKEN --project $(FIREBASE_PROJECT)
+
 leader-token-secret:
 	@set -a && . docs/credentials/leader-token.env && set +a && \
 	printf '%s' "$$LEADER_TOKEN_SECRET" | $(FIREBASE) functions:secrets:set LEADER_TOKEN_SECRET --project $(FIREBASE_PROJECT)

@@ -3,17 +3,18 @@ import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import * as nodemailer from 'nodemailer';
 
 import { computeLeaderResponse, LEADER_DECISIONS, type LeaderDecision } from './leaderDecision';
 
 admin.initializeApp();
 
-const smtpHost = defineSecret('SMTP_HOST');
-const smtpPort = defineSecret('SMTP_PORT');
-const smtpUser = defineSecret('SMTP_USER');
-const smtpPass = defineSecret('SMTP_PASS');
+const mailRelayToken = defineSecret('MAIL_RELAY_TOKEN');
+// Endpoint on the santodaime.it hosting account (see scripts/portal-mail/).
+const MAIL_RELAY_URL = 'https://www.santodaime.it/portal-mail/relay.php';
 const leaderTokenSecret = defineSecret('LEADER_TOKEN_SECRET');
+
+/** Everything a mail-sending function needs declared on it. */
+const MAIL_SECRETS = [mailRelayToken];
 const appBaseUrl = defineString('APP_BASE_URL', { default: 'https://saoirineu.github.io' });
 
 // Always-on recipients of the "new ICEFLU registration pending" admin notice.
@@ -224,24 +225,29 @@ const finalApprovalEmail: Record<LeaderEmailLocale, { subject: string; body: str
   },
 };
 
-// Every message is sent as the authenticated mailbox (info@santodaime.it), with
-// a display name so it reads as the portal rather than a bare address.
-const MAIL_FROM_NAME = 'São Irineu - ICEFLU Italia';
-
-function mailFrom() {
-  return `"${MAIL_FROM_NAME}" <${smtpUser.value()}>`;
-}
-
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: smtpHost.value(),
-    port: parseInt(smtpPort.value(), 10),
-    secure: parseInt(smtpPort.value(), 10) === 465,
-    auth: {
-      user: smtpUser.value(),
-      pass: smtpPass.value(),
+/**
+ * Hands a message to the relay running on the santodaime.it hosting account,
+ * which posts it to the local MTA. Talking SMTP straight from here does not
+ * work: Serverplan rejects Google's egress at RCPT TO (`550 ... SPauthBL`) and
+ * firewalls it outright from some regions. The relay shares the machine with
+ * the mail server, so no cloud IP appears in the path and the message is
+ * DKIM-signed as info@santodaime.it on the way out.
+ */
+async function sendPortalMail(message: { to: string | string[]; subject: string; text: string }) {
+  const response = await fetch(MAIL_RELAY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Relay-Token': mailRelayToken.value(),
     },
+    body: JSON.stringify({ to: message.to, subject: message.subject, text: message.text }),
+    signal: AbortSignal.timeout(20_000),
   });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`Mail relay responded ${response.status}: ${detail.slice(0, 300)}`);
+  }
 }
 
 // Recipients of the admin "registration pending" notice: the always-on baseline
@@ -413,7 +419,7 @@ function buildUserNeedsInfoEmailText(name: string, note: string, profileUrl: str
 export const onUserApprovalDecision = onDocumentWritten(
   {
     document: 'users/{uid}',
-    secrets: [smtpHost, smtpPort, smtpUser, smtpPass],
+    secrets: MAIL_SECRETS,
   },
   async event => {
     const before = event.data?.before.data();
@@ -428,12 +434,10 @@ export const onUserApprovalDecision = onDocumentWritten(
     if (!email) return;
 
     const name = profileDisplayName(after);
-    const transporter = createTransporter();
     const portalUrl = appBaseUrl.value().replace(/\/$/, '');
 
     if (afterStatus === 'approved') {
-      await transporter.sendMail({
-        from: mailFrom(),
+      await sendPortalMail({
         to: email,
         subject: 'Your ICEFLU membership has been approved — São Irineu',
         text: buildUserApprovedEmailText(name, portalUrl),
@@ -443,8 +447,7 @@ export const onUserApprovalDecision = onDocumentWritten(
 
     const note = typeof after.adminNote === 'string' ? after.adminNote.trim() : '';
     const profileUrl = `${portalUrl}/profile`;
-    await transporter.sendMail({
-      from: mailFrom(),
+    await sendPortalMail({
       to: email,
       subject: 'Your ICEFLU membership needs revision — São Irineu',
       text: buildUserNeedsInfoEmailText(name, note, profileUrl),
@@ -459,7 +462,7 @@ export const onUserApprovalDecision = onDocumentWritten(
 export const onRegistrationBothApproved = onDocumentWritten(
   {
     document: 'events/{eventId}/registrations/{id}',
-    secrets: [smtpHost, smtpPort, smtpUser, smtpPass],
+    secrets: MAIL_SECRETS,
   },
   async event => {
     const after = event.data?.after.data();
@@ -476,9 +479,7 @@ export const onRegistrationBothApproved = onDocumentWritten(
     const locale = normalizeLeaderEmailLocale(after.locale);
     const message = finalApprovalEmail[locale];
     try {
-      const transporter = createTransporter();
-      await transporter.sendMail({
-        from: mailFrom(),
+      await sendPortalMail({
         to: email,
         subject: message.subject,
         text: message.body,
@@ -492,7 +493,7 @@ export const onRegistrationBothApproved = onDocumentWritten(
 export const onUserApprovalPending = onDocumentWritten(
   {
     document: 'users/{uid}',
-    secrets: [smtpHost, smtpPort, smtpUser, smtpPass],
+    secrets: MAIL_SECRETS,
   },
   async event => {
     const before = event.data?.before.data();
@@ -502,11 +503,9 @@ export const onUserApprovalPending = onDocumentWritten(
 
     const base = appBaseUrl.value().replace(/\/$/, '');
     const reviewUrl = `${base}/admin/users`;
-    const transporter = createTransporter();
     const recipients = await loadNotificationRecipients();
 
-    await transporter.sendMail({
-      from: mailFrom(),
+    await sendPortalMail({
       to: recipients,
       subject: `ICEFLU portal user approval — ${after.email ?? event.params.uid}`,
       text: buildUserApprovalEmailBody({ uid: event.params.uid, data: after, reviewUrl }),
@@ -519,7 +518,7 @@ export const onUserApprovalPending = onDocumentWritten(
 export const onEventRegistration = onDocumentCreated(
   {
     document: 'events/{eventId}/registrations/{id}',
-    secrets: [smtpHost, smtpPort, smtpUser, smtpPass, leaderTokenSecret],
+    secrets: [...MAIL_SECRETS, leaderTokenSecret],
   },
   async event => {
     const data = event.data?.data();
@@ -534,10 +533,8 @@ export const onEventRegistration = onDocumentCreated(
     const token = signLeaderToken(id, leaderEmail, leaderTokenSecret.value(), eventId);
     const reviewUrl = buildLeaderReviewUrl(id, token, eventId);
     const locale = normalizeLeaderEmailLocale(data.locale);
-    const transporter = createTransporter();
 
-    await transporter.sendMail({
-      from: mailFrom(),
+    await sendPortalMail({
       to: leaderEmail,
       subject: `Registration approval request — ${name}`,
       text: buildLeaderEmailBody({ leaderName: leaderName || 'leader', reviewUrl, locale }),
@@ -761,7 +758,7 @@ async function approveUserConsentForRegistration(userId: unknown, registrationId
 }
 
 export const leaderRespond = onCall(
-  { secrets: [leaderTokenSecret, smtpHost, smtpPort, smtpUser, smtpPass] },
+  { secrets: [leaderTokenSecret, ...MAIL_SECRETS] },
   async request => {
     const payload = (request.data ?? {}) as {
       id?: unknown;
@@ -838,9 +835,7 @@ export const leaderRespond = onCall(
         const locale = normalizeLeaderEmailLocale(data.locale);
         const message = applicantOutcomeEmail[locale][outcome];
         try {
-          const transporter = createTransporter();
-          await transporter.sendMail({
-            from: mailFrom(),
+          await sendPortalMail({
             to: applicantEmail,
             subject: message.subject,
             text: message.body,
@@ -857,9 +852,7 @@ export const leaderRespond = onCall(
       const paymentToken = signPaymentToken(ref.id, leaderTokenSecret.value(), payload.eventId as string);
       const paymentReviewUrl = buildPaymentReviewUrl(ref.id, paymentToken, payload.eventId as string);
       try {
-        const transporter = createTransporter();
-        await transporter.sendMail({
-          from: mailFrom(),
+        await sendPortalMail({
           to: PAYMENT_ADMIN_EMAIL,
           subject: `Payment verification — ${applicantName}`,
           text: buildPaymentAdminEmail({ name: applicantName, reviewUrl: paymentReviewUrl }),
@@ -988,7 +981,7 @@ export const listUnverifiedSignupsCallable = onCall(async request => {
 });
 
 export const sendVerificationEmailCallable = onCall(
-  { secrets: [smtpHost, smtpPort, smtpUser, smtpPass] },
+  { secrets: MAIL_SECRETS },
   async request => {
     const email = request.auth?.token.email;
     if (!email) {
@@ -996,14 +989,32 @@ export const sendVerificationEmailCallable = onCall(
     }
 
     const base = appBaseUrl.value().replace(/\/$/, '');
-    const link = await admin.auth().generateEmailVerificationLink(email, { url: `${base}/login` });
 
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: mailFrom(),
-      to: email,
-      subject: 'Confirm your email — São Irineu',
-      text: buildVerificationEmailText(link),
-    });
+    let link: string;
+    try {
+      link = await admin.auth().generateEmailVerificationLink(email, { url: `${base}/login` });
+    } catch (error) {
+      console.error('Failed to generate the verification link', error);
+      throw new HttpsError('internal', 'Could not generate the confirmation link.', {
+        reason: 'link-failed',
+      });
+    }
+
+    // Any throw from here reached the client as a bare "INTERNAL". Give the
+    // login page a reason it can turn into a sentence the person can act on.
+    try {
+      await sendPortalMail({
+        to: email,
+        subject: 'Confirm your email — São Irineu',
+        text: buildVerificationEmailText(link),
+      });
+    } catch (error) {
+      console.error('Failed to send the verification email', error);
+      throw new HttpsError('unavailable', `Could not deliver the confirmation email to ${email}.`, {
+        reason: 'smtp-failed',
+      });
+    }
+
+    return { sent: true, email };
   }
 );

@@ -26,6 +26,7 @@ Agents working here should optimize for small, verified changes and preserve use
 - `make firebase-rules` deploys both Firestore and Storage rules.
 - `make deploy-functions` builds and deploys Cloud Functions.
 - `make deploy-backend` deploys Firestore rules, Storage rules, and Cloud Functions.
+- `make mail-relay-secret` pushes the mail relay's shared secret (see Safety).
 
 ## Conventions
 
@@ -41,6 +42,7 @@ Agents working here should optimize for small, verified changes and preserve use
 - Check local changes before editing active feature files.
 - Active work area: the generic events engine (`frontend/src/lib/events.ts`, `frontend/src/lib/eventRegistrations.ts`, `frontend/src/lib/leaderReview.ts`, `frontend/src/pages/events/`, `EventRegistrationPage.tsx`, `EventsAdminPage.tsx`, `LeaderReviewPage.tsx`). Check recent git history before editing these. (The bespoke European Gathering code was retired in June 2026 — EG is now the `events/encontro-europeu-2026` instance.)
 - Do not modify generated files unless they change as a result of a validated command.
+- Email does not go over SMTP. Cloud Functions POST to a PHP relay hosted on the santodaime.it cPanel (`scripts/portal-mail/`), because Serverplan blocks Google's egress IPs. Deploying functions does **not** update that endpoint — it is uploaded by hand through cPanel — and its shared secret is mirrored in two places that must change together. Read [docs/email-delivery.md](docs/email-delivery.md) before touching `sendPortalMail()` or anything under `scripts/portal-mail/`.
 - Use route-level lazy loading and domain splits before accepting bundle growth.
 
 ## Key Paths

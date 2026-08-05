@@ -79,12 +79,20 @@ make deploy-backend     # rules + functions
 Other useful targets: `make backup`, `make leader-link`, `make seed-leader-demo`. Run
 `make` with no target list or read the [`Makefile`](Makefile) for the rest.
 
+Email is **not** sent over SMTP: Cloud Functions POST to a PHP relay on the
+santodaime.it hosting, because Serverplan refuses mail from Google's IP ranges. The
+endpoint lives in [`scripts/portal-mail/`](scripts/portal-mail/) and is uploaded through
+cPanel, so changing it is not part of `make deploy-functions` — see
+[docs/email-delivery.md](docs/email-delivery.md).
+
 ## Docs & conventions
 
 - [AGENTS.md](AGENTS.md) — canonical working conventions (architecture boundaries, build/test
   commands, sensitive areas). Read this before contributing.
 - [docs/arquitetura-frontend.md](docs/arquitetura-frontend.md) — frontend structure.
 - [docs/firestore-schema.md](docs/firestore-schema.md) — Firestore collections and rules.
+- [docs/email-delivery.md](docs/email-delivery.md) — how portal email is sent, why it does
+  not use SMTP, and how to rotate the relay secret.
 - [docs/events-eventadmin-design.md](docs/events-eventadmin-design.md) — generic events,
   `eventadmin` role, consent ledger, leader decisions (as-built design record).
 - [docs/archive/](docs/archive/) — completed/retired tracking docs.

@@ -37,6 +37,9 @@ data/members/
 # Scripts deps
 scripts/node_modules/
 
+# Mail relay shared secret (upload it to the hosting, never commit it)
+scripts/portal-mail/relay-config.php
+
 # Internal notes
 TODO.md
 
