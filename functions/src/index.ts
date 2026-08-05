@@ -282,20 +282,20 @@ function buildVerificationEmailText(link: string): string {
     'São Irineu',
     '',
     '────────────────────────────────',
+    'Benvenuto/a su São Irineu!',
+    '',
+    'Clicca sul link qui sotto per confermare il tuo indirizzo email e attivare il tuo account:',
+    link,
+    '',
+    'Se non hai creato questo account, puoi ignorare questa email.',
+    '',
+    '────────────────────────────────',
     'Bem-vindo/a ao São Irineu!',
     '',
     'Clique no link abaixo para confirmar o seu endereço de e-mail e activar a sua conta:',
     link,
     '',
     'Se não criou esta conta, pode ignorar este e-mail.',
-    '',
-    '────────────────────────────────',
-    'Welcome to São Irineu!',
-    '',
-    'Click the link below to confirm your email address and activate your account:',
-    link,
-    '',
-    'If you did not create this account, you can ignore this email.',
     '',
     '────────────────────────────────',
     '¡Bienvenido/a a São Irineu!',
@@ -306,12 +306,12 @@ function buildVerificationEmailText(link: string): string {
     'Si no creaste esta cuenta, puedes ignorar este correo.',
     '',
     '────────────────────────────────',
-    'Benvenuto/a su São Irineu!',
+    'Welcome to São Irineu!',
     '',
-    'Clicca sul link qui sotto per confermare il tuo indirizzo email e attivare il tuo account:',
+    'Click the link below to confirm your email address and activate your account:',
     link,
     '',
-    'Se non hai creato questo account, puoi ignorare questa email.',
+    'If you did not create this account, you can ignore this email.',
   ].join('\n');
 }
 
@@ -338,7 +338,8 @@ function profileDisplayName(data: FirebaseFirestore.DocumentData): string {
 }
 
 // Italian first: ICEFLU Italia is an Italian association and most members read
-// it, so it should be the block they see without scrolling.
+// it, so it should be the block they see without scrolling. Then pt, es, en,
+// the same order every multilingual email in this file uses.
 function buildUserApprovedEmailText(name: string, portalUrl: string): string {
   const hi = name ? ` ${name}` : '';
   return [
@@ -361,19 +362,19 @@ function buildUserApprovedEmailText(name: string, portalUrl: string): string {
     portalUrl,
     '',
     '────────────────────────────────',
-    `Hello${hi},`,
-    '',
-    'Your ICEFLU membership has been approved. Your member profile is now active. Thank you!',
-    '',
-    'Access the São Irineu platform:',
-    portalUrl,
-    '',
-    '────────────────────────────────',
     `Hola${hi},`,
     '',
     'Su inscripción en ICEFLU ha sido aprobada. Su perfil de socio ya está activo. ¡Gracias!',
     '',
     'Acceda a la plataforma São Irineu:',
+    portalUrl,
+    '',
+    '────────────────────────────────',
+    `Hello${hi},`,
+    '',
+    'Your ICEFLU membership has been approved. Your member profile is now active. Thank you!',
+    '',
+    'Access the São Irineu platform:',
     portalUrl,
   ].join('\n');
 }
@@ -385,18 +386,18 @@ function buildUserNeedsInfoEmailText(name: string, note: string, profileUrl: str
     'São Irineu',
     '',
     '────────────────────────────────',
+    `Ciao${hi},`,
+    '',
+    "La tua iscrizione a ICEFLU necessita di revisione prima di poter essere approvata. Aggiorna il tuo profilo e invialo di nuovo per l'approvazione:",
+    profileUrl,
+    ...noteBlock("Nota dell'amministrazione"),
+    '',
+    '────────────────────────────────',
     `Olá${hi},`,
     '',
     'A sua inscrição no ICEFLU precisa de revisão antes de poder ser aprovada. Por favor, actualize o seu perfil e envie-o novamente para aprovação:',
     profileUrl,
     ...noteBlock('Nota da administração'),
-    '',
-    '────────────────────────────────',
-    `Hello${hi},`,
-    '',
-    'Your ICEFLU membership needs revision before it can be approved. Please update your profile and submit it again for approval:',
-    profileUrl,
-    ...noteBlock('Note from the administration'),
     '',
     '────────────────────────────────',
     `Hola${hi},`,
@@ -406,11 +407,11 @@ function buildUserNeedsInfoEmailText(name: string, note: string, profileUrl: str
     ...noteBlock('Nota de la administración'),
     '',
     '────────────────────────────────',
-    `Ciao${hi},`,
+    `Hello${hi},`,
     '',
-    "La tua iscrizione a ICEFLU necessita di revisione prima di poter essere approvata. Aggiorna il tuo profilo e invialo di nuovo per l'approvazione:",
+    'Your ICEFLU membership needs revision before it can be approved. Please update your profile and submit it again for approval:',
     profileUrl,
-    ...noteBlock("Nota dell'amministrazione"),
+    ...noteBlock('Note from the administration'),
   ].join('\n');
 }
 
@@ -869,7 +870,7 @@ export const leaderRespond = onCall(
 
 // Sends a multilingual email verification to the currently signed-in user.
 // Called from the frontend instead of Firebase's built-in sendEmailVerification so the
-// email body is in all four app languages (pt, en, es, it).
+// email body is in all four app languages (it, pt, es, en).
 /** The caller's roles, read from the same fields the Firestore rules look at. */
 async function callerSystemRoles(uid: string | undefined): Promise<string[]> {
   if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
