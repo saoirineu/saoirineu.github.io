@@ -7,6 +7,7 @@ import { RoleGate } from './components/RoleGate';
 import { useDevMode } from './providers/useDevMode';
 
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
+const MembershipReviewPage = lazy(() => import('./pages/MembershipReviewPage'));
 const SacramentPage = lazy(() => import('./pages/SacramentPage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -91,6 +92,7 @@ function App() {
             </Route>
             <Route element={<RoleGate requiredRole="useradmin" />}>
               <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/registrations" element={<MembershipReviewPage />} />
             </Route>
           </Route>
         </Route>

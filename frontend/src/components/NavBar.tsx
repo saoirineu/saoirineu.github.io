@@ -43,6 +43,7 @@ const copyByLocale = {
     sacrament: 'Sacramento',
     works: 'Trabalhos',
     users: 'Usuários',
+    registrations: 'Inscrições',
     dev: 'Dev',
     signOut: 'Sair',
     language: 'Idioma'
@@ -58,6 +59,7 @@ const copyByLocale = {
     sacrament: 'Sacrament',
     works: 'Works',
     users: 'Users',
+    registrations: 'Registrations',
     dev: 'Dev',
     signOut: 'Sign out',
     language: 'Language'
@@ -73,6 +75,7 @@ const copyByLocale = {
     sacrament: 'Sacramento',
     works: 'Trabajos',
     users: 'Usuarios',
+    registrations: 'Inscripciones',
     dev: 'Dev',
     signOut: 'Salir',
     language: 'Idioma'
@@ -88,6 +91,7 @@ const copyByLocale = {
     sacrament: 'Sacramento',
     works: 'Lavori',
     users: 'Utenti',
+    registrations: 'Iscrizioni',
     dev: 'Dev',
     signOut: 'Esci',
     language: 'Lingua'
@@ -108,7 +112,9 @@ export function NavBar() {
     ...(hasRequiredRole(role, 'custodian') ? custodianLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
     ...(hasRequiredRole(role, 'eventadmin') ? [{ to: '/admin/events', label: copy.events }] : []),
     ...(hasRequiredRole(role, 'admin') ? adminLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
-    ...(hasRequiredRole(role, 'useradmin') ? [{ to: '/admin/users', label: copy.users }] : [])
+    ...(hasRequiredRole(role, 'useradmin')
+      ? [{ to: '/admin/registrations', label: copy.registrations }, { to: '/admin/users', label: copy.users }]
+      : [])
   ];
 
   return (
