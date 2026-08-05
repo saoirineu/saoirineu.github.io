@@ -12,15 +12,17 @@ import type { SiteLocale } from '../../lib/siteLocale';
 import { uploadAccept } from '../../lib/uploads';
 
 /**
- * The blank consent form, the same PDF the event registration links to. Kept as
- * a static asset per language rather than read from event data, since a member
- * signs one consent for the association, not for a particular event.
+ * The blank consent form (version 1.1, effective 03.08.2026), one PDF per
+ * language. Read from Storage docs/ like the privacy notice and the statute, so
+ * a new version reaches members without a code deploy; uploaded with
+ * scripts/upload-documents.mjs. Not read from event data, since a member signs
+ * one consent for the association, not for a particular event.
  */
 const CONSENT_FORM_URL: Record<SiteLocale, string> = {
-  pt: '/encontro-europeu/consenso-informado-pt.pdf',
-  en: '/encontro-europeu/consenso-informado-en.pdf',
-  es: '/encontro-europeu/consenso-informado-es.pdf',
-  it: '/encontro-europeu/consenso-informado-it.pdf'
+  pt: 'https://firebasestorage.googleapis.com/v0/b/sao-irineu.firebasestorage.app/o/docs%2Ficeflu-consenso-informato-pt.pdf?alt=media',
+  en: 'https://firebasestorage.googleapis.com/v0/b/sao-irineu.firebasestorage.app/o/docs%2Ficeflu-consenso-informato-en.pdf?alt=media',
+  es: 'https://firebasestorage.googleapis.com/v0/b/sao-irineu.firebasestorage.app/o/docs%2Ficeflu-consenso-informato-es.pdf?alt=media',
+  it: 'https://firebasestorage.googleapis.com/v0/b/sao-irineu.firebasestorage.app/o/docs%2Ficeflu-consenso-informato-it.pdf?alt=media'
 };
 
 const copyByLocale = {
