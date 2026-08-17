@@ -11,11 +11,8 @@ import {
 } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
-import {
-  UserProfileReviewModal,
-  approvalStatusButtonClass,
-  profileLabelsByLocale
-} from './admin/UserProfileReviewModal';
+import { UserProfileReviewModal } from './admin/UserProfileReviewModal';
+import { approvalStatusButtonClass, profileLabelsByLocale } from './admin/userReview';
 
 /**
  * Review queue for ICEFLU membership applications. Deliberately separate from

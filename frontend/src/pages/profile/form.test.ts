@@ -7,6 +7,7 @@ import {
   applyMemberPrefill,
   avatarFallback,
   buildProfileForm,
+  buildProfileFormFromProfile,
   buildUserPayload,
   initialProfileForm,
   isProfileFormReadyForApproval,
@@ -222,6 +223,31 @@ describe('profile form helpers', () => {
 
     const prefilled = applyMemberPrefill(initialProfileForm, makeMember({ citizenship: 'Brasiliana' }));
     expect(prefilled.citizenshipCountryCodes).toEqual(['BR']);
+  });
+
+  it('rebuilds a stored profile as a form without an auth user, for admin review', () => {
+    const form = buildProfileFormFromProfile({
+      uid: 'other-user',
+      displayName: 'Nome Perfil',
+      email: 'perfil@example.com',
+      isItalian: false,
+      idType: 'passport',
+      fiscalCode: 'YA1234567',
+      citizenship: 'Brasiliana',
+      privacyConsent: 'agree',
+      declarationConsent: 'agree',
+      firstWorkDate: '2023-06-24'
+    });
+
+    expect(form.displayName).toBe('Nome Perfil');
+    expect(form.email).toBe('perfil@example.com');
+    expect(form.isItalian).toBe(false);
+    expect(form.idType).toBe('passport');
+    expect(form.citizenshipCountryCodes).toEqual(['BR']);
+    expect(form.privacyConsent).toBe('agree');
+    // Derived answers survive the round trip, so the review shows the same
+    // radios the applicant left behind.
+    expect(form.hasParticipatedInSantoDaimeWork).toBe(true);
   });
 
   it('creates avatar fallback url from name or email', () => {

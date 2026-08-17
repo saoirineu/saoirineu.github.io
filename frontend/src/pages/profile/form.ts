@@ -251,7 +251,10 @@ export function isProfileFormReadyForApproval(form: ProfileFormState, hasSelecte
   return missingRequiredProfileFields(form, hasSelectedIdentityDocument).length === 0;
 }
 
-export function buildProfileForm(user: User, profile?: UserProfile | null): ProfileFormState {
+/** All the auth account contributes to the form: the rest comes from the profile. */
+type ProfileFormAuthUser = Pick<User, 'displayName' | 'email'>;
+
+export function buildProfileForm(user: ProfileFormAuthUser, profile?: UserProfile | null): ProfileFormState {
   const preferredCommunicationEmail = profile?.preferredCommunicationEmail === 'secondary' && profile.email2 && isValidOptionalEmail(profile.email2)
     ? 'secondary'
     : 'login';
@@ -340,6 +343,15 @@ export function buildProfileForm(user: User, profile?: UserProfile | null): Prof
     doctrineRolesText: profile?.doctrineRoles?.join(', ') || '',
     observations: profile?.observations || ''
   };
+}
+
+/**
+ * The saved profile of somebody else, rebuilt as a form: what an administrator
+ * reads when reviewing an application. Nobody is signed in as this person, so
+ * the stored document is the whole truth — no auth account to fall back on.
+ */
+export function buildProfileFormFromProfile(profile: UserProfile): ProfileFormState {
+  return buildProfileForm({ displayName: profile.displayName ?? null, email: profile.email ?? null }, profile);
 }
 
 /** Member registry fields copied into the form when the matching form field is empty. */

@@ -26,11 +26,8 @@ import {
 } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { DeleteUserDialog } from './admin/DeleteUserDialog';
-import {
-  UserProfileReviewModal,
-  approvalStatusButtonClass,
-  profileLabelsByLocale
-} from './admin/UserProfileReviewModal';
+import { UserProfileReviewModal } from './admin/UserProfileReviewModal';
+import { approvalStatusButtonClass, profileLabelsByLocale } from './admin/userReview';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
 
