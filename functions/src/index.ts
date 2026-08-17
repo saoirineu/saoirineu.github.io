@@ -326,7 +326,7 @@ function buildUserApprovalEmailBody(args: { uid: string; data: FirebaseFirestore
     `UID: ${args.uid}`,
     `Identity document: ${args.data.identityDocumentPrimaryName ?? 'uploaded'}`,
     ``,
-    `Review users here:`,
+    `Review this registration here:`,
     args.reviewUrl,
   ].join('\n');
 }
@@ -503,7 +503,9 @@ export const onUserApprovalPending = onDocumentWritten(
     if (after.approvalStatus !== 'pending' || before?.approvalStatus === 'pending') return;
 
     const base = appBaseUrl.value().replace(/\/$/, '');
-    const reviewUrl = `${base}/admin/users`;
+    // The registration queue, not /admin/users: it opens on the applications
+    // waiting for a decision, which is exactly what this notice is about.
+    const reviewUrl = `${base}/admin/registrations`;
     const recipients = await loadNotificationRecipients();
 
     await sendPortalMail({
