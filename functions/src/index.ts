@@ -1,10 +1,12 @@
-import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 
 import { computeLeaderResponse, LEADER_DECISIONS, type LeaderDecision } from './leaderDecision';
+import { signReviewToken, verifyReviewToken, type TokenVerdict } from './reviewToken';
+import { evaluateThrottle, type ThrottleState } from './mailThrottle';
+import { isSelfNominatedLeader } from './leaderReference';
 
 admin.initializeApp();
 
@@ -29,45 +31,36 @@ type LeaderComment = {
   at: admin.firestore.Timestamp;
 };
 
-const LEADER_TOKEN_HEX_LENGTH = 32;
-
 // Leader token is scoped to events/{eventId}/registrations/{registrationId}.
 function leaderTokenPayload(registrationId: string, leaderEmail: string, eventId: string) {
   const email = leaderEmail.trim().toLowerCase();
   return `${eventId}:${registrationId}:${email}`;
 }
 
-function signLeaderToken(registrationId: string, leaderEmail: string, secret: string, eventId: string) {
-  return crypto
-    .createHmac('sha256', secret)
-    .update(leaderTokenPayload(registrationId, leaderEmail, eventId))
-    .digest('hex')
-    .slice(0, LEADER_TOKEN_HEX_LENGTH);
-}
-
-function verifyLeaderToken(registrationId: string, leaderEmail: string, token: string, secret: string, eventId: string) {
-  const expected = signLeaderToken(registrationId, leaderEmail, secret, eventId);
-  const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(token, 'hex');
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
-}
-
 // Payment token is scoped to the administration mailbox for a given registration.
-function signPaymentToken(registrationId: string, secret: string, eventId: string) {
-  return crypto
-    .createHmac('sha256', secret)
-    .update(`payment:${eventId}:${registrationId}:${PAYMENT_ADMIN_EMAIL}`)
-    .digest('hex')
-    .slice(0, LEADER_TOKEN_HEX_LENGTH);
+function paymentTokenPayload(registrationId: string, eventId: string) {
+  return `payment:${eventId}:${registrationId}:${PAYMENT_ADMIN_EMAIL}`;
 }
 
-function verifyPaymentToken(registrationId: string, token: string, secret: string, eventId: string) {
-  const expected = signPaymentToken(registrationId, secret, eventId);
-  const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(token, 'hex');
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+function signLeaderToken(registrationId: string, leaderEmail: string, secret: string, eventId: string) {
+  return signReviewToken(leaderTokenPayload(registrationId, leaderEmail, eventId), secret, Date.now());
+}
+
+function signPaymentToken(registrationId: string, secret: string, eventId: string) {
+  return signReviewToken(paymentTokenPayload(registrationId, eventId), secret, Date.now());
+}
+
+/** Turns a verdict into the error the review pages can explain to a person. */
+function assertTokenAccepted(verdict: TokenVerdict) {
+  if (verdict === 'valid') return;
+  if (verdict === 'expired') {
+    throw new HttpsError(
+      'deadline-exceeded',
+      'This review link has expired. Ask the portal administration for a fresh one.',
+      { reason: 'token-expired' }
+    );
+  }
+  throw new HttpsError('permission-denied', 'Invalid token.');
 }
 
 function buildLeaderReviewUrl(registrationId: string, token: string, eventId: string) {
@@ -224,6 +217,45 @@ const finalApprovalEmail: Record<LeaderEmailLocale, { subject: string; body: str
     body: 'Tu inscripción ha sido aprobada tanto por el dirigente como por la administración y ahora está confirmada. Puedes ver el estado en el portal.',
   },
 };
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Spends one send from a named allowance, or reports that it is used up.
+ *
+ * The relay caps the whole domain at 120 messages an hour, so an unbounded
+ * send path is not just spam — it locks every other portal email out for the
+ * rest of the hour. Counters live in a collection no client rule grants access
+ * to; only the admin SDK touches them.
+ */
+async function consumeMailAllowance(key: string, maxInWindow: number, windowMs: number): Promise<boolean> {
+  const db = admin.firestore();
+  const ref = db.collection('mailThrottle').doc(key.replace(/\//g, '_'));
+
+  try {
+    return await db.runTransaction(async transaction => {
+      const snapshot = await transaction.get(ref);
+      const data = snapshot.data();
+      const state: ThrottleState | null =
+        data && typeof data.windowStart === 'number' && typeof data.count === 'number'
+          ? { windowStart: data.windowStart, count: data.count }
+          : null;
+
+      const decision = evaluateThrottle({ now: Date.now(), windowMs, maxInWindow, state });
+      transaction.set(ref, {
+        ...decision.next,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      return decision.allowed;
+    });
+  } catch (error) {
+    // Bookkeeping trouble must not silence real mail; the relay's own limiter
+    // is still behind this.
+    console.error(`Mail allowance check failed for ${key}`, error);
+    return true;
+  }
+}
 
 /**
  * Hands a message to the relay running on the santodaime.it hosting account,
@@ -506,6 +538,14 @@ export const onUserApprovalPending = onDocumentWritten(
     // The registration queue, not /admin/users: it opens on the applications
     // waiting for a decision, which is exactly what this notice is about.
     const reviewUrl = `${base}/admin/registrations`;
+
+    // approvalStatus is self-writable between needs-profile and pending, so
+    // toggling it is a send primitive. Resubmission is legitimate; a loop is not.
+    if (!(await consumeMailAllowance(`approval:${event.params.uid}`, 5, DAY_MS))) {
+      console.warn(`Approval notice suppressed for ${event.params.uid}: daily allowance spent`);
+      return;
+    }
+
     const recipients = await loadNotificationRecipients();
 
     await sendPortalMail({
@@ -532,6 +572,51 @@ export const onEventRegistration = onDocumentCreated(
     const leaderEmail = typeof data.centerLeaderEmail === 'string' ? data.centerLeaderEmail.trim() : '';
     const leaderName = typeof data.centerLeader === 'string' ? data.centerLeader.trim() : '';
     if (!leaderEmail) return;
+
+    const userId = typeof data.userId === 'string' ? data.userId : 'unknown';
+
+    // The applicant types centerLeaderEmail, so it can point at their own inbox.
+    // Flag it for the event admins and send nothing: a self-addressed approval
+    // link would make leaderApproval meaningless.
+    const accountEmail = userId !== 'unknown'
+      ? (await admin.firestore().doc(`users/${userId}`).get()).data()?.email
+      : undefined;
+
+    // They may also delete and recreate the registration freely, so cap how
+    // often one person can make the portal mail anyone about one event.
+    if (!(await consumeMailAllowance(`leader:${eventId}:${userId}`, 5, DAY_MS))) {
+      console.warn(`Leader notice suppressed for ${userId} on ${eventId}: daily allowance spent`);
+      return;
+    }
+
+    if (isSelfNominatedLeader({ leaderEmail, applicantEmails: [data.email, accountEmail] })) {
+      console.warn(`Self-nominated reference leader on ${eventId}/${id}; no review link sent`);
+      await event.data!.ref.update({
+        leaderReviewBlocked: 'self-nominated',
+        leaderReviewBlockedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Tell a human, rather than leaving the registration silently unreviewed.
+      // Whoever handles it decides whether this is fraud or someone who is
+      // genuinely their own centre's leader.
+      try {
+        await sendPortalMail({
+          to: await loadNotificationRecipients(),
+          subject: `Registration needs a reference church — ${name}`,
+          text: [
+            `${name} registered for ${eventId} giving their own address as the reference church leader (${leaderEmail}).`,
+            ``,
+            `No approval link was sent, because it would have gone to the applicant.`,
+            `Please confirm who the reference church leader is and re-issue the link.`,
+            ``,
+            `Registration: ${id}`,
+          ].join('\n'),
+        });
+      } catch (error) {
+        console.error('Failed to send the self-nomination notice', error);
+      }
+      return;
+    }
 
     const token = signLeaderToken(id, leaderEmail, leaderTokenSecret.value(), eventId);
     const reviewUrl = buildLeaderReviewUrl(id, token, eventId);
@@ -624,9 +709,14 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown; ev
     throw new HttpsError('failed-precondition', 'No leader email associated with this registration.');
   }
 
-  if (!verifyLeaderToken(args.id, leaderEmail, args.token, leaderTokenSecret.value(), eventId)) {
-    throw new HttpsError('permission-denied', 'Invalid token.');
-  }
+  assertTokenAccepted(
+    verifyReviewToken({
+      token: args.token,
+      payload: leaderTokenPayload(args.id, leaderEmail, eventId),
+      secret: leaderTokenSecret.value(),
+      nowMs: Date.now()
+    })
+  );
 
   return { ref, data };
 }
@@ -659,9 +749,14 @@ async function loadRegistrationForPayment(args: { id: unknown; token: unknown; e
   if (!snapshot.exists) {
     throw new HttpsError('not-found', 'Registration not found.');
   }
-  if (!verifyPaymentToken(args.id, args.token, leaderTokenSecret.value(), eventId)) {
-    throw new HttpsError('permission-denied', 'Invalid token.');
-  }
+  assertTokenAccepted(
+    verifyReviewToken({
+      token: args.token,
+      payload: paymentTokenPayload(args.id, eventId),
+      secret: leaderTokenSecret.value(),
+      nowMs: Date.now()
+    })
+  );
 
   return { ref, data: snapshot.data() ?? {} };
 }
@@ -989,6 +1084,15 @@ export const sendVerificationEmailCallable = onCall(
     const email = request.auth?.token.email;
     if (!email) {
       throw new HttpsError('unauthenticated', 'Must be signed in with an email account.');
+    }
+
+    const uid = request.auth?.uid ?? email;
+    if (!(await consumeMailAllowance(`verify:${uid}`, 6, HOUR_MS))) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'Too many confirmation emails requested. Please wait a while before trying again.',
+        { reason: 'rate-limited' }
+      );
     }
 
     const base = appBaseUrl.value().replace(/\/$/, '');
