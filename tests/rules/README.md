@@ -17,24 +17,24 @@ you how to install one if it cannot.
 
 Each test name carries a tag:
 
-- **`[guard]`** — behaviour that is already correct. These pass today and must keep
-  passing. They are the safety net while the rules are being changed.
-- **`[C1]` `[C2]` `[C3]` `[H1]`…** — a finding from `docs/security/README.md`. These
-  encode the **desired** end state, so they **fail on purpose** until that finding is
-  fixed. They are the acceptance criteria, not a broken suite.
-
-So a red run is expected right now. What matters is *which* tests are red:
+- **`[guard]`** — behaviour that is already correct and must keep passing. Most of the
+  suite is this: the regression net around the rules.
+- **a finding tag** (`[M2]`) — a gap from the security review that is not closed yet.
+  These are written with `it.fails`, so they pass *because* the assertion still fails.
+  When someone closes the gap, the test flips to failing and tells them to drop the
+  marker. The suite stays green and the debt stays visible.
 
 ```
-82 tests — 51 passing, 31 failing
-[C3] 7   [M1] 6   [C1] 4   [H3] 3   [H2] 3   [H1] 3   [C2] 3   [M2] 2
+make test-rules     # 83 tests, all passing
+make test           # + frontend (104) + functions (9)
 ```
 
-Working through a finding means watching its tag go green while every `[guard]` stays
-green. When all 82 pass, C1–C3, H1–H3 and M1–M2 are closed.
+A red run means a real regression, so treat it as one.
 
-`[M2]` is the exception: it cannot go green from a rules change alone. Capacity
-accounting has to move into a Cloud Function first — see M2 in the findings doc.
+Only `[M2]` is open today: capacity accounting still runs client-side inside the
+registration transaction (`adjustEventCapacity` in `lib/eventRegistrations.ts`), so
+tightening that rule to event admins would break registration until the accounting
+moves server-side.
 
 ## Layout
 
