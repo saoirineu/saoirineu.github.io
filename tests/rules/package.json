@@ -1,0 +1,14 @@
+{
+  "name": "saoirineu-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "./run.sh",
+    "test:watch": "./run.sh --watch"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.2",
+    "vitest": "^2.1.9"
+  }
+}

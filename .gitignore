@@ -44,3 +44,11 @@ scripts/portal-mail/relay-config.php
 TODO.md
 
 firebase-debug.log
+
+# Security findings — keep out of a public repo while they are unpatched
+docs/security/
+
+# Emulator logs
+*-debug.log
+
+tests/rules/node_modules/

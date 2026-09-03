@@ -2,7 +2,7 @@ PORT ?= 5174
 FIREBASE_PROJECT ?= sao-irineu
 FIREBASE ?= $(shell which firebase 2>/dev/null || echo npx firebase)
 
-.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean smtp-secrets leader-token-secret regenerate-leader-token leader-link
+.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean leader-token-secret regenerate-leader-token leader-link test-rules test
 
 serve:
 	npm --prefix frontend run dev -- --host --port $(PORT)
@@ -12,6 +12,20 @@ up:
 
 aup:
 	git add -A && git commit -m "up" && git push
+
+# Security-rules regression suite (tests/rules). Runs against throwaway
+# emulators, never the live project. Rules changes should go through this
+# before `make firebase-rules`.
+tests/rules/node_modules:
+	npm --prefix tests/rules install
+
+test-rules: tests/rules/node_modules
+	./tests/rules/run.sh
+
+# Everything that can run without credentials.
+test: test-rules
+	npm --prefix frontend test
+	npm --prefix functions test
 
 firestore-rules:
 	$(FIREBASE) deploy --only firestore:rules --project $(FIREBASE_PROJECT)
@@ -31,13 +45,6 @@ scripts/node_modules:
 
 backup: scripts/node_modules
 	node scripts/backup.js
-
-smtp-secrets:
-	@set -a && . functions/smtp.env && set +a && \
-	printf '%s' "$$SMTP_HOST" | $(FIREBASE) functions:secrets:set SMTP_HOST --project $(FIREBASE_PROJECT) && \
-	printf '%s' "$$SMTP_PORT" | $(FIREBASE) functions:secrets:set SMTP_PORT --project $(FIREBASE_PROJECT) && \
-	printf '%s' "$$SMTP_USER" | $(FIREBASE) functions:secrets:set SMTP_USER --project $(FIREBASE_PROJECT) && \
-	printf '%s' "$$SMTP_PASS" | $(FIREBASE) functions:secrets:set SMTP_PASS --project $(FIREBASE_PROJECT)
 
 # Pushes the mail-relay shared secret. The same value must sit in
 # scripts/portal-mail/relay-config.php on the santodaime.it hosting account.
