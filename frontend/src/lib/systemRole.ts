@@ -2,8 +2,6 @@ export type SystemRole = 'user' | 'useradmin' | 'eventadmin' | 'admin' | 'supera
 export type PrivilegedSystemRole = Exclude<SystemRole, 'user'>;
 export type SystemRoleSet = SystemRole[];
 
-export const bootstrapSuperadminEmail = 'renato.fabbri@gmail.com';
-
 export const privilegedSystemRoleOptions: PrivilegedSystemRole[] = ['useradmin', 'custodian', 'eventadmin', 'admin', 'superadmin'];
 
 export function normalizeSystemRole(value: unknown): SystemRole {
@@ -39,19 +37,13 @@ export function primarySystemRole(roles: readonly SystemRole[]): SystemRole {
   return 'user';
 }
 
-export function isBootstrapSuperadminEmail(email: string | null | undefined) {
-  return (email ?? '').trim().toLowerCase() === bootstrapSuperadminEmail;
-}
-
-export function getEffectiveSystemRole(args: { email?: string | null; storedRole?: unknown }): SystemRole {
+export function getEffectiveSystemRole(args: { storedRole?: unknown }): SystemRole {
   return primarySystemRole(getEffectiveSystemRoles({ ...args, storedRoles: undefined }));
 }
 
-export function getEffectiveSystemRoles(args: { email?: string | null; storedRole?: unknown; storedRoles?: unknown }): SystemRoleSet {
-  if (isBootstrapSuperadminEmail(args.email)) {
-    return ['superadmin'];
-  }
-
+// Roles come from the user document only. There is deliberately no email-based
+// bootstrap: an address is not a credential, and the rules no longer honour one.
+export function getEffectiveSystemRoles(args: { storedRole?: unknown; storedRoles?: unknown }): SystemRoleSet {
   return normalizeSystemRoles(args.storedRoles, args.storedRole);
 }
 

@@ -1,28 +1,31 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // A verified address, not merely a session: Firebase issues a usable ID token
+    // the moment an account is created, and `members` holds records for people who
+    // have never signed up — so an unconfirmed signup on someone else's address
+    // would otherwise read their record. Mirrors canSyncProfile() in AuthProvider.
+    // get() rather than a bare property so a token without the claim is false,
+    // not an evaluation error.
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.get('email_verified', false) == true;
     }
 
     function hasStoredRole(role) {
       return isSignedIn()
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
         && (
-          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.systemRole == role
+          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('systemRole', '') == role
           || (
-            firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.systemRoles is list
-            && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.systemRoles.hasAny([role])
+            firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('systemRoles', []).hasAny([role])
           )
         );
     }
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.admin == true
-        || request.auth.token.role == 'admin'
-        || request.auth.token.role == 'superadmin'
-        || request.auth.token.email == 'renato.fabbri@gmail.com'
+        request.auth.token.get('admin', false) == true
+        || request.auth.token.get('role', '') in ['admin', 'superadmin']
         || hasStoredRole('admin')
         || hasStoredRole('superadmin')
       );
@@ -32,10 +35,22 @@ service firebase.storage {
       return isAdmin() || hasStoredRole('useradmin');
     }
 
+    function isEventAdmin() {
+      return isAdmin() || hasStoredRole('eventadmin');
+    }
+
     function isAllowedDocument() {
       return request.resource != null
         && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+    }
+
+    // Ownership regardless of status, so a member keeps access to the documents on
+    // their own registration after it is approved.
+    function ownsEventRegistration(eventId, registrationId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/events/$(eventId)/registrations/$(registrationId))
+        && firestore.get(/databases/(default)/documents/events/$(eventId)/registrations/$(registrationId)).data.userId == request.auth.uid;
     }
 
     function ownsPendingEventRegistration(eventId, registrationId) {
@@ -45,9 +60,12 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/events/$(eventId)/registrations/$(registrationId)).data.status == 'pending';
     }
 
+    // Identity documents, payment proofs and signed consent forms. `read` covers
+    // list as well as get, so anything short of ownership would let any account
+    // enumerate the whole prefix and download every registrant's documents.
     match /events/{eventId}/registrations/{registrationId}/{fileName} {
-      allow read: if isAdmin() || isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isAdmin() || isEventAdmin() || ownsEventRegistration(eventId, registrationId);
+      allow create: if ownsPendingEventRegistration(eventId, registrationId)
         && isAllowedDocument()
         && fileName.matches('(identityDocument|paymentProof|consentDocument)-.*');
       allow delete: if isAdmin() || ownsPendingEventRegistration(eventId, registrationId);

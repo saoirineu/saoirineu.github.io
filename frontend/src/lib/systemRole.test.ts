@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  bootstrapSuperadminEmail,
   getEffectiveSystemRole,
   getEffectiveSystemRoles,
   hasRequiredRole,
-  isBootstrapSuperadminEmail,
   normalizeSystemRole,
   normalizeSystemRoles,
   primarySystemRole
@@ -35,17 +33,17 @@ describe('systemRole helpers', () => {
     expect(primarySystemRole(['user'])).toBe('user');
   });
 
-  it('detects bootstrap superadmin email', () => {
-    expect(isBootstrapSuperadminEmail(bootstrapSuperadminEmail)).toBe(true);
-    expect(isBootstrapSuperadminEmail('Renato.Fabbri@gmail.com')).toBe(true);
-    expect(isBootstrapSuperadminEmail('other@example.com')).toBe(false);
+  it('computes effective roles from the stored role only', () => {
+    expect(getEffectiveSystemRole({ storedRole: 'admin' })).toBe('admin');
+    expect(getEffectiveSystemRole({ storedRole: undefined })).toBe('user');
+    expect(getEffectiveSystemRoles({ storedRoles: ['useradmin', 'custodian'] })).toEqual(['useradmin', 'custodian']);
   });
 
-  it('computes effective roles', () => {
-    expect(getEffectiveSystemRole({ email: bootstrapSuperadminEmail, storedRole: 'user' })).toBe('superadmin');
-    expect(getEffectiveSystemRole({ email: 'other@example.com', storedRole: 'admin' })).toBe('admin');
-    expect(getEffectiveSystemRole({ email: 'other@example.com', storedRole: undefined })).toBe('user');
-    expect(getEffectiveSystemRoles({ email: 'other@example.com', storedRoles: ['useradmin', 'custodian'] })).toEqual(['useradmin', 'custodian']);
+  // No email grants a role: the bootstrap superadmin address was removed from the
+  // rules and from here, so a stored role is the only source of privilege.
+  it('grants nothing on the strength of an email address', () => {
+    expect(getEffectiveSystemRole({ storedRole: 'user' })).toBe('user');
+    expect(getEffectiveSystemRoles({ storedRoles: [] })).toEqual(['user']);
   });
 
   it('checks required role access', () => {

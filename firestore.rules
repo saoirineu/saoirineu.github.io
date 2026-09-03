@@ -5,16 +5,21 @@ service cloud.firestore {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRole == role
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('systemRole', '') == role
           || (
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRoles is list
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemRoles.hasAny([role])
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('systemRoles', []).hasAny([role])
           )
         );
     }
 
+    // A verified address, not merely a session: Firebase issues a usable ID token
+    // the moment an account is created, and `members` holds records for people who
+    // have never signed up — so an unconfirmed signup on someone else's address
+    // would otherwise read their record. Mirrors canSyncProfile() in AuthProvider.
+    // get() rather than a bare property so a token without the claim is false,
+    // not an evaluation error.
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.get('email_verified', false) == true;
     }
 
     function isOwner(field) {
@@ -23,10 +28,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.admin == true
-        || request.auth.token.role == 'admin'
-        || request.auth.token.role == 'superadmin'
-        || request.auth.token.email == 'renato.fabbri@gmail.com'
+        request.auth.token.get('admin', false) == true
+        || request.auth.token.get('role', '') in ['admin', 'superadmin']
         || hasStoredRole('admin')
         || hasStoredRole('superadmin')
       );
@@ -34,8 +37,7 @@ service cloud.firestore {
 
     function isSuperadmin() {
       return isSignedIn() && (
-        request.auth.token.role == 'superadmin'
-        || request.auth.token.email == 'renato.fabbri@gmail.com'
+        request.auth.token.get('role', '') == 'superadmin'
         || hasStoredRole('superadmin')
       );
     }
@@ -80,13 +82,16 @@ service cloud.firestore {
         || request.resource.data.approvalStatus in ['needs-profile', 'pending', 'approved', 'needs-info'];
     }
 
+    // Every guard below uses affectedKeys(), never changedKeys(): changedKeys()
+    // reports only keys present in BOTH the old and the new document, so a field
+    // that is merely added — the default state of a fresh signup — slips through.
     function userSelfMayWriteApprovalStatus() {
-      return !request.resource.data.diff(resource.data).changedKeys().hasAny(['approvalStatus'])
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approvalStatus'])
         || request.resource.data.approvalStatus in ['needs-profile', 'pending'];
     }
 
     function useradminMayWriteApprovalFields() {
-      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'approvalStatus',
           'approvalApprovedAt',
           'approvalApprovedBy',
@@ -96,7 +101,7 @@ service cloud.firestore {
     }
 
     function useradminMayWriteAdminNote() {
-      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['adminNote', 'updatedAt']);
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminNote', 'updatedAt']);
     }
 
     function hasValidConsentCreatePayload() {
@@ -297,8 +302,13 @@ service cloud.firestore {
         && hasValidEventRegistrationPayload(resource.data.eventId);
     }
 
+    // Member profiles: tax code, birth data, address, contacts, identity-document
+    // paths, and initiation/doctrine fields. Never public — a member sees their own,
+    // user admins see the rest for the approval queue. Rules-internal get() in
+    // hasStoredRole() bypasses these, so role checks are unaffected.
     match /users/{uid} {
-      allow read: if true;
+      allow get: if isSignedIn() && (request.auth.uid == uid || isUserAdmin() || isAdmin());
+      allow list: if isUserAdmin() || isAdmin();
       allow create: if hasValidUserSystemRole() && hasValidUserSystemRoles() && hasValidUserApprovalStatus() && (
         (isSignedIn()
           && request.auth.uid == uid
@@ -309,7 +319,7 @@ service cloud.firestore {
       allow update: if hasValidUserSystemRole() && hasValidUserSystemRoles() && hasValidUserApprovalStatus() && (
         (isSignedIn()
           && request.auth.uid == uid
-          && !request.resource.data.diff(resource.data).changedKeys().hasAny(['systemRole', 'systemRoles', 'approvalApprovedAt', 'approvalApprovedBy'])
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['systemRole', 'systemRoles', 'approvalApprovedAt', 'approvalApprovedBy'])
           && userSelfMayWriteApprovalStatus())
         || isSuperadmin()
         || (isUserAdmin() && (useradminMayWriteApprovalFields() || useradminMayWriteAdminNote()))
@@ -339,29 +349,35 @@ service cloud.firestore {
       allow write: if isUserAdmin();
     }
 
+    // Intended home for daimista profiles: never public, and only admins may write.
     match /pessoas/{id} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
+    // A member whose church is missing may add it (AddChurchModal on the profile
+    // form), but only admins may rewrite or remove an existing entry — the risk
+    // here is vandalism of the registry, not growth of it.
     match /churches/{id} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     match /hinarios/{id} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /hinos/{id} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
+    // Provenance for a controlled substance: integrity matters, so custodians only.
     match /beverageBatches/{id} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isCustodianOrHigher();
     }
 
     match /trabalhos/{id} {
@@ -373,7 +389,7 @@ service cloud.firestore {
 
     match /conceitos/{id} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // Association members ("soci") unified from the registry/import spreadsheets.

@@ -14,7 +14,6 @@ export function useSystemRole() {
   });
 
   const roles = getEffectiveSystemRoles({
-    email: user?.email,
     storedRole: profileQuery.data?.systemRole,
     storedRoles: profileQuery.data?.systemRoles
   });

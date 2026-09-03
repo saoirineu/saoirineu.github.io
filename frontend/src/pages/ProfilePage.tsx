@@ -10,6 +10,8 @@ import { uploadAccept } from '../lib/uploads';
 import { getFileUploadLabels } from '../lib/fileUploadLabels';
 import { FileUploadField } from '../components/FileUploadField';
 import { useAuth } from '../providers/useAuth';
+import { useSystemRole } from '../providers/useSystemRole';
+import { hasRequiredRole } from '../lib/systemRole';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { formatFullName } from './members/form';
 import { AddChurchModal, type AddChurchModalState } from './sacrament/SacramentSections';
@@ -40,6 +42,8 @@ type ProfileSaveMode = 'save' | 'submit';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { role } = useSystemRole();
+  const canSeedChurches = hasRequiredRole(role, 'admin');
   const { locale } = useSiteLocale();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -97,12 +101,15 @@ export default function ProfilePage() {
     setForm(baselineForm);
   }, [baselineForm, user]);
 
+  // Seeding the reference churches rewrites existing documents, which only admins
+  // may do. Members read the same list; letting them attempt the write would just
+  // fire a denied request on every visit to the form.
   useEffect(() => {
-    if (!user) return;
+    if (!user || !canSeedChurches) return;
     ensureItalianReferenceChurches()
       .then(() => qc.invalidateQueries({ queryKey: ['churches'] }))
       .catch(() => undefined);
-  }, [qc, user]);
+  }, [qc, user, canSeedChurches]);
 
   const setField = <K extends keyof ProfileFormState>(field: K, value: ProfileFormState[K]) => {
     setForm(current => ({ ...current, [field]: value }));
