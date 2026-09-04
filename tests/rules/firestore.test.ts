@@ -230,12 +230,9 @@ describe('M1 — reference collections must not be writable by any signed-in acc
 });
 
 describe('M2 — event capacity counters are not client-writable', () => {
-  // Known gap, tracked as M2. Capacity accounting still runs client-side inside the
-  // registration transaction (adjustEventCapacity in lib/eventRegistrations.ts), so
-  // locking this rule to event admins would break registration outright. it.fails
-  // keeps the suite honest AND green: when the accounting moves server-side and the
-  // rule is tightened, these flip to failing and tell you to drop the marker.
-  it.fails('[M2] a plain member cannot reserve the whole event (registration DoS)', async () => {
+  // Counters are maintained by the onRegistrationCapacityChange Cloud Function,
+  // which recounts them from the registrations; the client only reads them.
+  it('[M2] a plain member cannot reserve the whole event (registration DoS)', async () => {
     await assertFails(
       setDoc(doc(as(ALICE), 'events', EVENT_ID, 'capacity', 'total'), {
         capacity: 100,
@@ -246,7 +243,7 @@ describe('M2 — event capacity counters are not client-writable', () => {
     );
   });
 
-  it.fails('[M2] a plain member cannot zero the reservation count (overbooking)', async () => {
+  it('[M2] a plain member cannot zero the reservation count (overbooking)', async () => {
     await assertFails(
       setDoc(doc(as(ALICE), 'events', EVENT_ID, 'capacity', 'total'), {
         capacity: 100,

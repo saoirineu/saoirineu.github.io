@@ -304,20 +304,26 @@ async function uploadEventRegistrationDocuments(args: {
   }
 }
 
-async function adjustEventCapacity(eventId: string, bucket: EventCapacityBucket, delta: number, transaction: Transaction) {
-  const bucketRef = doc(capacityRef(eventId), bucket.id);
-  const snapshot = await transaction.get(bucketRef);
-  const currentReserved = snapshot.exists() ? asOptionalNumber(snapshot.data().reserved) ?? 0 : 0;
-  const nextReserved = currentReserved + delta;
-  if (nextReserved < 0 || nextReserved > bucket.capacity) {
+/**
+ * Refuses a registration when the bucket is already full.
+ *
+ * Read-only on purpose. The counters are maintained by the
+ * onRegistrationCapacityChange Cloud Function and are not client-writable: a rule
+ * cannot verify a count, so while the browser wrote these, any member could mark
+ * the event full or wipe the reservations.
+ *
+ * That makes this a check rather than a reservation — it reads a counter the
+ * server last wrote, so two people submitting for the final place within the same
+ * moment can both pass it. Both registrations then sit in the review queue, where
+ * the reference church and the administration see the overbooking long before
+ * anyone travels.
+ */
+async function assertBucketHasRoom(eventId: string, bucket: EventCapacityBucket, transaction: Transaction) {
+  const snapshot = await transaction.get(doc(capacityRef(eventId), bucket.id));
+  const reserved = snapshot.exists() ? asOptionalNumber(snapshot.data().reserved) ?? 0 : 0;
+  if (reserved >= bucket.capacity) {
     throw new Error('No remaining availability for this event.');
   }
-  transaction.set(bucketRef, {
-    capacity: bucket.capacity,
-    reserved: nextReserved,
-    available: bucket.capacity - nextReserved,
-    updatedAt: serverTimestamp()
-  });
 }
 
 function mapEventLeaderApproval(value: unknown): LeaderApprovalDecision | undefined {
@@ -420,7 +426,7 @@ export async function createEventRegistration(args: {
   try {
     await runTransaction(db, async transaction => {
       if (bucket && eventStatusBlocksCapacity(args.input.status)) {
-        await adjustEventCapacity(args.event.id, bucket, 1, transaction);
+        await assertBucketHasRoom(args.event.id, bucket, transaction);
       }
       transaction.set(registrationRef, payload);
     });
@@ -511,18 +517,7 @@ export async function updateEventRegistrationStatus(args: { event: EventRecord; 
   await runTransaction(db, async transaction => {
     const snap = await transaction.get(registrationDocRef);
     if (!snap.exists()) throw new Error('Registration not found.');
-    const registration = mapEventRegistration(args.id, args.event.id, snap.data());
-    const bucket = registration.capacityBucket
-      ? eventCapacityBuckets(args.event).find(item => item.id === registration.capacityBucket) ?? null
-      : null;
-
-    if (bucket) {
-      const wasBlocking = eventStatusBlocksCapacity(registration.status);
-      const willBlock = eventStatusBlocksCapacity(args.status);
-      if (wasBlocking && !willBlock) await adjustEventCapacity(args.event.id, bucket, -1, transaction);
-      if (!wasBlocking && willBlock) await adjustEventCapacity(args.event.id, bucket, 1, transaction);
-    }
-
+    // Capacity follows from the status; onRegistrationCapacityChange recounts.
     transaction.update(registrationDocRef, { status: args.status });
   });
 }
@@ -551,12 +546,6 @@ export async function deleteEventRegistration(args: { event: EventRecord; regist
   await Promise.all(paths.map(path => deleteStoredDocumentIfPresent(path).catch(() => undefined)));
 
   await runTransaction(db, async transaction => {
-    const bucket = args.registration.capacityBucket
-      ? eventCapacityBuckets(args.event).find(item => item.id === args.registration.capacityBucket) ?? null
-      : null;
-    if (bucket && eventStatusBlocksCapacity(args.registration.status)) {
-      await adjustEventCapacity(args.event.id, bucket, -1, transaction);
-    }
     transaction.delete(doc(registrationsRef(args.event.id), args.registration.id));
   });
 }

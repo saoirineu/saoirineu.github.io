@@ -7,6 +7,7 @@ import { computeLeaderResponse, LEADER_DECISIONS, type LeaderDecision } from './
 import { signReviewToken, verifyReviewToken, type TokenVerdict } from './reviewToken';
 import { evaluateThrottle, type ThrottleState } from './mailThrottle';
 import { isSelfNominatedLeader } from './leaderReference';
+import { computeCapacityRows, eventCapacityBuckets } from './eventCapacity';
 
 admin.initializeApp();
 
@@ -558,6 +559,64 @@ export const onUserApprovalPending = onDocumentWritten(
 
 // Leader-review notification for events/{eventId}/registrations (Part 2, §7.5): emails the
 // reference leader an eventId-scoped tokenized review link.
+/**
+ * Keeps events/{eventId}/capacity in step with the registrations that exist.
+ *
+ * Capacity used to be incremented by the browser inside the registration
+ * transaction, which forced the rules to let clients write the counters — and a
+ * rule cannot verify a count, so any member could mark the event full or wipe the
+ * reservations. The admin SDK bypasses rules, so the counters can now be written
+ * here and nowhere else.
+ *
+ * Recomputed from scratch rather than adjusted by a delta: a recount cannot drift,
+ * and it repairs whatever the old client-side path (or the exploit) left behind.
+ */
+export const onRegistrationCapacityChange = onDocumentWritten(
+  { document: 'events/{eventId}/registrations/{id}' },
+  async event => {
+    const { eventId } = event.params;
+    const db = admin.firestore();
+
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    // Nothing that affects a count changed, so skip the read.
+    if (
+      before &&
+      after &&
+      before.status === after.status &&
+      before.capacityBucket === after.capacityBucket
+    ) {
+      return;
+    }
+
+    const eventSnapshot = await db.doc(`events/${eventId}`).get();
+    if (!eventSnapshot.exists) return;
+
+    const buckets = eventCapacityBuckets(eventSnapshot.data());
+    if (!buckets.length) return;
+
+    const registrations = await db.collection(`events/${eventId}/registrations`).get();
+    const rows = computeCapacityRows(
+      buckets,
+      registrations.docs.map(doc => {
+        const data = doc.data();
+        return { capacityBucket: data.capacityBucket, status: data.status };
+      })
+    );
+
+    const batch = db.batch();
+    for (const row of rows) {
+      batch.set(db.doc(`events/${eventId}/capacity/${row.id}`), {
+        capacity: row.capacity,
+        reserved: row.reserved,
+        available: row.available,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    await batch.commit();
+  }
+);
+
 export const onEventRegistration = onDocumentCreated(
   {
     document: 'events/{eventId}/registrations/{id}',

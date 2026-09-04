@@ -416,24 +416,15 @@ service cloud.firestore {
           || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
       }
 
-      // Aggregate capacity counters; public-readable so the form can show availability.
+      // Aggregate capacity counters. Public-readable so the form can show
+      // availability, but written only by the onRegistrationCapacityChange Cloud
+      // Function, which recounts them from the registrations themselves. No rule
+      // can verify a count, so while clients could write these, any signed-in
+      // member could set reserved to capacity and close the event for everyone,
+      // or set it to zero and overbook it.
       match /capacity/{bucket} {
         allow read: if true;
-        allow create, update: if isSignedIn()
-          && request.resource.data.keys().hasOnly(['capacity', 'reserved', 'available', 'updatedAt'])
-          && request.resource.data.capacity is number
-          && request.resource.data.reserved is number
-          && request.resource.data.available is number
-          && request.resource.data.reserved >= 0
-          && request.resource.data.reserved <= request.resource.data.capacity
-          && request.resource.data.available == request.resource.data.capacity - request.resource.data.reserved
-          && request.resource.data.updatedAt == request.time
-          // §7.3: the event must exist, and the 'total' bucket's capacity must match the event doc
-          // (per-room capacity can't be array-matched in rules; events are eventadmin-authored).
-          && exists(/databases/$(database)/documents/events/$(eventId))
-          && (bucket != 'total'
-            || request.resource.data.capacity == get(/databases/$(database)/documents/events/$(eventId)).data.totalSlots);
-        allow delete: if false;
+        allow write: if isEventAdmin();
       }
     }
 
