@@ -7,7 +7,7 @@
 >
 > **Implementadas:** `users`, `churches`, `beverageBatches`, `trabalhos`, `members`, `events`
 > (+ subcolecoes `registrations`/`capacity`), `users/{uid}/consents`, `sacramentItems`,
-> `sacramentStocks`, `sacramentTransactions`.
+> `sacramentStocks`, `sacramentTransactions`, `churchManagers`, `catalogs`, `icefluDonations`.
 > **Planejadas:** `pessoas`, `hinarios`, `hinos`, `conceitos`.
 > **Removidas:** `europeanGatheringRegistrations` e `europeanGatheringRooms` (cutover do Encontro
 > Europeu para `events/encontro-europeu-2026`; código e regras retirados — junho/2026).
@@ -75,20 +75,55 @@
 - analiseQuimica: { campos livres }
 - createdAt, updatedAt
 
-### trabalhos (eventos/atividades)
-- titulo (opcional)
-- hinarios: ref[](hinarios)
-- igrejasResponsaveis: ref[](igrejas)
-- local: string ou ref(lugares)
-- data: date (dia)
-- horarioInicio: timestamp
-- duracaoEsperadaMin: number
-- duracaoEfetivaMin: number?
-- anotacoes: string
-- participantes: { homens: number, mulheres: number, outros?: number }
-- bebida: { loteRef: ref(bebidaLotes), quantidadeLitros: number }
-- createdBy: uid
-- createdAt, updatedAt
+### trabalhos (registros de trabalhos realizados)
+Registro de um trabalho ja feito, preenchido por um gestor da igreja (ver `churchManagers`).
+Especificacao da reuniao de 2026-09-10 (item 2). Fonte de verdade: `frontend/src/lib/works.ts`.
+Comportamento, permissoes e limitacoes: [work-records.md](work-records.md).
+- churchId, churchName: igreja a que o registro pertence (fixa apos a criacao)
+- date: `YYYY-MM-DD` (nao pode ser futura no formulario)
+- workTypeId, workTypeLabel: tipo vindo de `catalogs/workTypes`; o label e copiado no momento do
+  registro, pois a lista e editavel. `workTypeId == 'other'` usa `workTypeOther` (texto livre)
+- venueText?, hymnalText?: luogo e innario, texto livre, opcionais
+- attendees: { total, initiated } (inteiros, initiated <= total). Os "bianchi" (nao fardados)
+  sao derivados como total - initiated e nao sao gravados
+- sacrament?: { stockId, itemId, itemLabel?, quantity, unit: `L`|`kg` }: lote de um estoque
+  vinculado a igreja (`sacramentStocks.churchId`); `kg` para itens `gel`. Obrigatorio no formulario
+- contributions: { collected, icefluBrazilQuota } em euros (a quota inclui o feitio)
+- reviewStatus: `pre-approved` | `reviewed`; reviewedAt?, reviewedBy? (so quando `reviewed`)
+- createdBy, createdAt, updatedBy, updatedAt
+- Efeito colateral: a Cloud Function `onWorkSacramentChange` mantem uma saida em
+  `sacramentTransactions/work-{workId}` espelhando `sacrament` (criada, reescrita ou removida
+  junto com o registro).
+- Os dois documentos do prototipo antigo (titulo/hinarios/igrejasResponsaveis, sem `churchId`)
+  so ficam visiveis a admins.
+
+### icefluDonations (doacoes enviadas a ICEFLU Brasil)
+Doacao que uma igreja enviou a ICEFLU Brasil, com comprovante. Item 3 da reuniao de 2026-09-10.
+Mesmo modelo de acesso e revisao de `trabalhos`. Fonte de verdade: `frontend/src/lib/donations.ts`;
+comportamento e limitacoes: [iceflu-donations.md](iceflu-donations.md).
+- churchId, churchName (fixos apos a criacao)
+- date: `YYYY-MM-DD`
+- amount: number > 0 (euros)
+- reason: `feitio` (copertura feitio) | `membership` (associativo) | `jurua` (Juruá)
+- recipient: string (destinatario, texto livre)
+- method: `bank-transfer` (bonifico) | `in-person` (a mano)
+- receiptPath, receiptName: arquivo em Storage `churches/{churchId}/donations/{donationId}/receipt-*`
+  (contabile della banca ou ricevuta del destinatario; PDF/JPG/PNG ate 10 MB; nao sobrescrevivel)
+- reviewStatus: `pre-approved` | `reviewed`; reviewedAt?, reviewedBy?
+- createdBy, createdAt, updatedBy, updatedAt
+
+### churchManagers/{uid}
+Vincula uma conta as igrejas em nome das quais ela registra trabalhos (primeiro passo do
+"login como igreja", item 1.1 de 2026-09-10). Escrita so por admins.
+- churchIds: string[] (1..30), churchNames: string[]
+- email?, displayName? (denormalizados para o painel admin)
+- updatedBy, updatedAt
+
+### catalogs/{catalogId}
+Listas de opcoes editaveis por admins; leitura para usuarios verificados.
+- `catalogs/workTypes`: items: [{ id, label, category: `official`|`other`, active }]. Enquanto
+  o documento nao existe, o app usa o rascunho `DEFAULT_WORK_TYPES` de `lib/workTypes.ts`
+  (calendario oficial ainda a revisar). `other` e reservado e sempre oferecido no fim do menu.
 
 ### conceitos (planejado — sem codigo ainda; opcional, espelho SKOS/OWL)
 - id (URI ou slug)
@@ -97,11 +132,15 @@
 ### sacramentStocks / sacramentItems / sacramentTransactions (Sacramento)
 Controle de estoque do Sacramento, acessivel ao papel `custodian` (e `admin`/`superadmin`).
 Fonte de verdade dos campos: `frontend/src/lib/sacrament.ts`.
-- `sacramentStocks/{id}`: name, location?, notes?, createdAt, updatedAt — locais/depositos de estoque.
+- `sacramentStocks/{id}`: name, location?, notes?, churchId?, churchName?, createdAt, updatedAt — locais/depositos
+  de estoque. `churchId` vincula o estoque a uma igreja: seus gestores usam o Daime dele nos registros
+  de trabalho. So admins alteram o vinculo.
 - `sacramentItems/{id}`: stockId, degree, concentration?, form (`liquid`|`gel`), originChurchId?,
   originChurchName?, responsiblePerson?, feitioDate?, feitioDateEnd?, notes?, createdAt, updatedAt.
 - `sacramentTransactions/{id}`: itemId, stockId, type (`entry`|`exit`), date, missionaryName?,
-  destinationChurchId?, destinationChurchName?, quantity, notes?, createdBy?, createdAt.
+  destinationChurchId?, destinationChurchName?, quantity, notes?, createdBy?, createdAt, workId?.
+  Movimentos com `workId` (id `work-{workId}`) sao escritos pela Cloud Function a partir do registro
+  de trabalho e nao se editam na pagina Sacramento.
 
 ### members (socios da associacao)
 Colecao unificada a partir das tres planilhas em `data/members/` (registro do cloud,
@@ -130,14 +169,16 @@ senao `email-<hash>` ou `name-<hash>`.
 - hinarios: autorRef; temas
 - hinos: hinarioRef; autorRef; tema+hinarioRef
 - beverageBatches: ano+localidade; grau+ano; responsaveis
-- trabalhos: data+igrejasResponsaveis; data+createdBy; hinarios+data
+- trabalhos: churchId (igualdade simples, indice automatico; a ordenacao por data e feita no cliente)
 - events/{eventId}/registrations: status+submittedAt; attendanceMode+submittedAt
 - members: needsReview+fullName; memberStatus+fullName (listagem e filtros admin)
 
 ## Regras (esboco)
 - Leitura: `allow read: if true;` (ou restrita a auth conforme politicas de privacidade).
 - Escrita geral: `allow create, update: if request.auth != null;` mais validacao de campos/tipos.
-- trabalhos: permitir criar/editar se `request.auth.uid == resource.data.createdBy` ou tiver claim/role apropriada.
+- trabalhos: leitura/escrita por admins ou por gestores da igreja do registro (`managesChurch`); gestores so
+  gravam `pre-approved` (editar um registro revisado o devolve a `pre-approved`) e so excluem pre-aprovados;
+  o lote precisa pertencer a um estoque vinculado a igreja. Nao ha leitura publica (valores e uso de Daime).
 - beverageBatches: escrita apenas para responsaveis ou admins (claim).
 - users: cada uid edita apenas seu perfil; leitura publica opcional.
 - members: escrita apenas para admins; leitura para admins ou para o usuario autenticado cujo e-mail do token coincide com `email`/`email2` do documento (prefill do perfil; dados pessoais sensiveis).
@@ -146,7 +187,7 @@ senao `email-<hash>` ou `name-<hash>`.
 
 ## Notas de modelagem
 - Campos que referenciam taxonomias (papel, temas) devem usar labels/ids SKOS para alinhar UI/tooltips.
-- `trabalhos` atende requisitos: um ou mais hinarios, uma ou mais igrejas responsaveis, local+data+horario, duracoes, anotacoes, participantes (homens/mulheres), bebida (lote+quantidade).
+- `trabalhos` segue a especificacao de 2026-09-10: data, luogo, tipo de trabalho, innario, participantes (total/fardados), Daime (lote do estoque da igreja + quantidade), contributi raccolti e quota ICEFLU Brasile.
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
 - Inscricoes de eventos vivem em `events/{eventId}/registrations` (anexos no Firebase Storage, path administrativo guardado); `events/{eventId}/capacity/{bucket}` eh o agregado publico de vagas.
 - Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `eventadmin` cria/gerencia eventos, `admin` visualiza dados operacionais (e herda `eventadmin`), enquanto `superadmin` tambem gerencia privilegios de usuarios.

@@ -39,6 +39,22 @@ service firebase.storage {
       return isAdmin() || hasStoredRole('eventadmin');
     }
 
+    // Mirrors managesChurch() in firestore.rules.
+    function managesChurch(churchId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/churchManagers/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/churchManagers/$(request.auth.uid)).data.get('churchIds', []).hasAny([churchId]);
+    }
+
+    // A receipt may go when no donation keeps it as proof: the donation is gone,
+    // points at another file (the receipt was replaced), or is not reviewed yet.
+    function receiptIsDisposable(churchId, donationId, fileName) {
+      return !firestore.exists(/databases/(default)/documents/icefluDonations/$(donationId))
+        || firestore.get(/databases/(default)/documents/icefluDonations/$(donationId)).data.get('receiptPath', '')
+          != 'churches/' + churchId + '/donations/' + donationId + '/' + fileName
+        || firestore.get(/databases/(default)/documents/icefluDonations/$(donationId)).data.get('reviewStatus', '') == 'pre-approved';
+    }
+
     function isAllowedDocument() {
       return request.resource != null
         && request.resource.size <= 10 * 1024 * 1024
@@ -82,6 +98,23 @@ service firebase.storage {
         // registration writes to.
         && fileName.matches('(identityDocument|consentDocument)-.*');
       allow delete: if isUserAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow update: if false;
+    }
+
+    // Receipts for donations a church sent to ICEFLU Brazil (icefluDonations). The
+    // church's managers and admins read and upload them. Uploading comes before the
+    // donation document exists, so create does not look it up; deleting does, so a
+    // manager cannot remove the receipt a reviewed donation still points at.
+    match /churches/{churchId}/donations/{donationId}/{fileName} {
+      allow read: if isAdmin() || managesChurch(churchId);
+      // resource == null: uploading over an existing object counts as create, and would
+      // let a manager swap out the proof a reviewed donation points at.
+      allow create: if resource == null
+        && (isAdmin() || managesChurch(churchId))
+        && isAllowedDocument()
+        && fileName.matches('receipt-.*');
+      allow delete: if isAdmin()
+        || (managesChurch(churchId) && receiptIsDisposable(churchId, donationId, fileName));
       allow update: if false;
     }
 

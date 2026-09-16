@@ -1,464 +1,293 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { fetchChurchManagers, saveChurchManager, type ChurchManager } from '../lib/churchManagers';
+import { fetchItems, fetchStocks, fetchTransactionsByStock } from '../lib/sacrament';
+import { fetchUsers } from '../lib/users';
 import {
-  fetchWorks,
   createWork,
-  fetchChurches,
-  fetchBeverageBatches,
+  deleteWork,
+  fetchWorks,
+  fetchWorksForChurches,
+  setWorkReviewStatus,
   updateWork,
-  deleteWork
+  type Work,
+  type WorkReviewStatus
 } from '../lib/works';
+import { fetchWorkTypeCatalog, saveWorkTypes, type WorkType } from '../lib/workTypes';
 import { useAuth } from '../providers/useAuth';
+import { useChurchRecordAccess } from '../providers/useChurchRecordAccess';
+import { useSiteLocale } from '../providers/useSiteLocale';
+import { buildBalanceByItem } from './sacrament/form';
+import { numberLocaleBySite, worksCopyByLocale } from './works/copy';
 import {
-  buildWorkPayload,
-  formatDate,
-  formatTime,
+  buildWorkInput,
+  initialWorkFilter,
   initialWorkForm,
-  prefillWorkForm,
-  totalAttendees
+  stocksForChurch,
+  todayDateValue,
+  validateWorkForm,
+  workToForm,
+  type SacramentOption,
+  type WorkFormError,
+  type WorkFormState
 } from './works/form';
+import {
+  ChurchManagersPanel,
+  WorkRecordForm,
+  WorkRecordList,
+  WorkTypesPanel
+} from './works/WorksSections';
 
-export function WorksPage() {
-  const { user } = useAuth();
+type Tab = 'records' | 'managers' | 'workTypes';
+
+export default function WorksPage() {
+  const { locale } = useSiteLocale();
+  const copy = worksCopyByLocale[locale];
+  const numberLocale = numberLocaleBySite[locale];
   const qc = useQueryClient();
-  const { data, isLoading, error } = useQuery({ queryKey: ['works'], queryFn: fetchWorks });
-  const churchesQuery = useQuery({ queryKey: ['churches'], queryFn: fetchChurches });
-  const beverageQuery = useQuery({ queryKey: ['beverageBatches'], queryFn: fetchBeverageBatches });
+  const { user } = useAuth();
+  const uid = user?.uid ?? '';
+  const { isAdmin, canRecord, loading: accessLoading, managedChurchIds, churchOptions, defaultChurchId } = useChurchRecordAccess();
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(initialWorkForm);
+  const [tab, setTab] = useState<Tab>('records');
+  const [form, setForm] = useState<WorkFormState>(() => initialWorkForm());
+  const [editing, setEditing] = useState<Work | null>(null);
+  const [errors, setErrors] = useState<WorkFormError[]>([]);
+  const [filter, setFilter] = useState(initialWorkFilter);
 
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('Sessão expirada');
+  const catalogQuery = useQuery({ queryKey: ['workTypeCatalog'], queryFn: fetchWorkTypeCatalog, enabled: canRecord });
+  const worksQuery = useQuery({
+    queryKey: ['works', isAdmin ? 'all' : managedChurchIds.join(',')],
+    queryFn: () => (isAdmin ? fetchWorks() : fetchWorksForChurches(managedChurchIds)),
+    enabled: canRecord
+  });
+  const stocksQuery = useQuery({ queryKey: ['sacramentStocks'], queryFn: fetchStocks, enabled: canRecord });
+  const managersQuery = useQuery({ queryKey: ['churchManagers'], queryFn: fetchChurchManagers, enabled: isAdmin && tab === 'managers' });
+  const usersQuery = useQuery({ queryKey: ['users'], queryFn: fetchUsers, enabled: isAdmin && tab === 'managers' });
 
-      const payload = buildWorkPayload({
-        beverageBatches: beverageQuery.data,
-        form,
-        churches: churchesQuery.data,
-        userId: user.uid
-      });
+  const formChurchId = form.churchId || defaultChurchId;
 
-      if (editingId) {
-        return updateWork(editingId, { ...payload, createdBy: undefined });
-      }
+  const linkedStocks = useMemo(
+    () => stocksForChurch(stocksQuery.data ?? [], formChurchId),
+    [stocksQuery.data, formChurchId]
+  );
+  const itemQueries = useQueries({
+    queries: linkedStocks.map(stock => ({ queryKey: ['sacramentItems', stock.id], queryFn: () => fetchItems(stock.id) }))
+  });
+  const transactionQueries = useQueries({
+    queries: linkedStocks.map(stock => ({
+      queryKey: ['sacramentStockTransactions', stock.id],
+      queryFn: () => fetchTransactionsByStock(stock.id)
+    }))
+  });
+  const sacramentLoading = stocksQuery.isLoading
+    || itemQueries.some(result => result.isLoading)
+    || transactionQueries.some(result => result.isLoading);
+  const sacramentOptions: SacramentOption[] = linkedStocks.flatMap((stock, index) => {
+    const balances = buildBalanceByItem(transactionQueries[index]?.data ?? []);
+    return (itemQueries[index]?.data ?? []).map(item => ({ item, stock, balance: balances.get(item.id) ?? 0 }));
+  });
 
-      return createWork(payload);
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['works'] });
-      setForm(initialWorkForm);
-      setEditingId(null);
+  const workTypes: WorkType[] = catalogQuery.data?.items ?? [];
+  const churchName = (id: string) => churchOptions.find(church => church.id === id)?.name ?? editing?.churchName ?? id;
+
+  function resetForm() {
+    setForm(initialWorkForm());
+    setEditing(null);
+    setErrors([]);
+  }
+
+  async function refreshAfterWrite(stockIds: string[]) {
+    await qc.invalidateQueries({ queryKey: ['works'] });
+    // The ledger movement is written by a Cloud Function shortly after the record.
+    for (const stockId of stockIds) {
+      await qc.invalidateQueries({ queryKey: ['sacramentStockTransactions', stockId] });
     }
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: async (values: WorkFormState) => {
+      const input = buildWorkInput({
+        form: values,
+        churchName: churchName(values.churchId),
+        workTypes,
+        otherLabel: copy.other,
+        sacramentOptions,
+        existing: editing ?? undefined
+      });
+      if (editing) {
+        await updateWork(editing.id, input, { uid, keepReview: isAdmin });
+      } else {
+        await createWork(input, uid);
+      }
+      return [input.sacrament?.stockId, editing?.sacrament?.stockId].filter((id): id is string => !!id);
+    },
+    onSuccess: async stockIds => {
+      resetForm();
+      await refreshAfterWrite(stockIds);
+    }
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ work, status }: { work: Work; status: WorkReviewStatus }) => setWorkReviewStatus(work.id, status, uid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['works'] })
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      if (!user) throw new Error('Sessão expirada');
-      return deleteWork(id);
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['works'] });
-      if (editingId) setEditingId(null);
+    mutationFn: (work: Work) => deleteWork(work.id),
+    onSuccess: async (_, work) => {
+      if (editing?.id === work.id) resetForm();
+      await refreshAfterWrite(work.sacrament ? [work.sacrament.stockId] : []);
     }
   });
 
-  if (isLoading) {
-    return <div className="text-sm text-slate-600">Carregando trabalhos...</div>;
+  const managerMutation = useMutation({
+    mutationFn: (next: ChurchManager) => saveChurchManager(next, uid),
+    onSuccess: async (_, next) => {
+      await qc.invalidateQueries({ queryKey: ['churchManagers'] });
+      await qc.invalidateQueries({ queryKey: ['churchManager', next.uid] });
+    }
+  });
+
+  const workTypesMutation = useMutation({
+    mutationFn: (items: WorkType[]) => saveWorkTypes(items, uid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workTypeCatalog'] })
+  });
+
+  if (accessLoading) {
+    return <p className="text-sm text-slate-500">{copy.loading}</p>;
   }
 
-  if (error) {
-    return <div className="text-sm text-red-600">Erro ao carregar trabalhos.</div>;
+  if (!canRecord) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900 shadow-sm">
+        {copy.noPermission}
+      </div>
+    );
   }
+
+  const values = { ...form, churchId: formChurchId };
+  const busyWork = reviewMutation.isPending ? reviewMutation.variables?.work : deleteMutation.isPending ? deleteMutation.variables : undefined;
+  const tabs: Tab[] = isAdmin ? ['records', 'managers', 'workTypes'] : ['records'];
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Trabalhos</h1>
-        <p className="text-sm text-slate-600">Agenda e histórico com hinários, igrejas, participantes e Daime.</p>
+        <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
+        <p className="text-sm text-slate-600">{isAdmin ? copy.introAdmin : copy.intro}</p>
       </div>
 
-      <form
-        className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-        onSubmit={e => {
-          e.preventDefault();
-          mutation.mutate();
-        }}
-      >
-        <div>
-          <h2 className="text-sm font-semibold text-slate-800">Novo trabalho</h2>
-          <p className="text-xs text-slate-500">Campos principais para criar rapidamente.</p>
-        </div>
-
-        <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
-          <label className="text-sm text-slate-700">
-            Título
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Trabalho de..."
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm text-slate-700">
-              Data
-              <input
-                type="date"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Horário início
-              <input
-                type="time"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.startTime}
-                onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
-              />
-            </label>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-            <label className="text-sm text-slate-700">
-              Duração esperada (min)
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.expectedDurationMin}
-                onChange={e => setForm(f => ({ ...f, expectedDurationMin: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Duração efetiva (min)
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.actualDurationMin}
-                onChange={e => setForm(f => ({ ...f, actualDurationMin: e.target.value }))}
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-2">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm text-slate-700">
-              Igreja responsável (cadastrada)
-              <select
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.churchRespId}
-                onChange={e => {
-                  const found = churchesQuery.data?.find(i => i.id === e.target.value);
-                  setForm(f => ({ ...f, churchRespId: e.target.value, churchRespName: found?.name ?? '' }));
-                }}
-              >
-                <option value="">— Selecionar —</option>
-                {churchesQuery.data?.map(ig => (
-                  <option key={ig.id} value={ig.id}>
-                    {ig.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm text-slate-700">
-              Igreja responsável (texto livre)
-              <input
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.churchesText}
-                onChange={e => setForm(f => ({ ...f, churchesText: e.target.value }))}
-                placeholder="Ex.: igreja não cadastrada ou múltiplas"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm text-slate-700">
-              Local (igreja cadastrada)
-              <select
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.venueId}
-                onChange={e => {
-                  const found = churchesQuery.data?.find(i => i.id === e.target.value);
-                  setForm(f => ({ ...f, venueId: e.target.value, venueName: found?.name ?? '' }));
-                }}
-              >
-                <option value="">— Selecionar —</option>
-                {churchesQuery.data?.map(ig => (
-                  <option key={ig.id} value={ig.id}>
-                    {ig.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm text-slate-700">
-              Local (texto livre)
-              <input
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.venueText}
-                onChange={e => setForm(f => ({ ...f, venueText: e.target.value }))}
-                placeholder="Ex.: nome da igreja não cadastrada ou outra localidade"
-              />
-            </label>
-          </div>
-
-          <label className="text-sm text-slate-700 sm:col-span-2">
-            Hinários (separar por vírgula)
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.hymnals}
-              onChange={e => setForm(f => ({ ...f, hymnals: e.target.value }))}
-              placeholder="Ex.: O Cruzeiro, Lua Branca"
-            />
-          </label>
-        </div>
-
-        <div className="grid gap-3 rounded-lg bg-slate-100 p-3">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
-            <label className="text-sm text-slate-700">
-              Total de pessoas
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.total}
-                onChange={e => setForm(f => ({ ...f, total: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Fardados
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.initiated}
-                onChange={e => setForm(f => ({ ...f, initiated: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Homens
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.men}
-                onChange={e => setForm(f => ({ ...f, men: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Mulheres
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.women}
-                onChange={e => setForm(f => ({ ...f, women: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Crianças
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.children}
-                onChange={e => setForm(f => ({ ...f, children: e.target.value }))}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              Outros
-              <input
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.others}
-                onChange={e => setForm(f => ({ ...f, others: e.target.value }))}
-              />
-            </label>
-          </div>
-          <label className="text-sm text-slate-700">
-            Descrição de "outros"
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.othersDescription}
-              onChange={e => setForm(f => ({ ...f, othersDescription: e.target.value }))}
-              placeholder="Ex.: visitantes, músicos convidados, equipe técnica"
-            />
-          </label>
-        </div>
-
-        <div className="grid gap-3 rounded-lg bg-slate-100 p-3">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm text-slate-700">
-              Lote de Daime (cadastrado)
-              <select
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.batchId}
-                onChange={e => {
-                  const found = beverageQuery.data?.find(b => b.id === e.target.value);
-                  setForm(f => ({ ...f, batchId: e.target.value, batchDescription: found?.description ?? '' }));
-                }}
-              >
-                <option value="">— Selecionar —</option>
-                {beverageQuery.data?.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.description}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm text-slate-700">
-              Quantidade (L)
-              <input
-                type="number"
-                step="0.1"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                value={form.liters}
-                onChange={e => setForm(f => ({ ...f, liters: e.target.value }))}
-              />
-            </label>
-          </div>
-
-          <label className="text-sm text-slate-700">
-            Descrição do Daime (texto livre)
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              value={form.batchText}
-              onChange={e => setForm(f => ({ ...f, batchText: e.target.value }))}
-              placeholder="Ex.: primeiro grau, 1x1, 2023, Céu do Vale"
-            />
-          </label>
-        </div>
-
-        <div className="rounded-lg bg-slate-100 p-3">
-          <label className="text-sm text-slate-700">
-            Anotações
-            <textarea
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              rows={3}
-              value={form.notes}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-            />
-          </label>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
-          >
-            {mutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Salvar trabalho'}
-          </button>
-          {editingId && (
+      {tabs.length > 1 ? (
+        <div role="tablist" className="flex flex-wrap gap-2">
+          {tabs.map(entry => (
             <button
+              key={entry}
               type="button"
-              className="text-xs text-slate-600 underline"
-              onClick={() => {
-                setEditingId(null);
-                setForm(initialWorkForm);
-              }}
+              role="tab"
+              aria-selected={tab === entry}
+              onClick={() => setTab(entry)}
+              className={`rounded-full px-3 py-1.5 text-sm transition ${
+                tab === entry
+                  ? 'bg-[color:var(--brand-blue-deep)] text-white shadow-sm'
+                  : 'border border-[color:var(--brand-sand)] bg-white text-[color:var(--brand-ink)] hover:bg-[rgba(63,132,194,0.12)]'
+              }`}
             >
-              Cancelar edição
+              {copy.tabs[entry]}
             </button>
-          )}
-          {mutation.isError ? (
-            <span className="text-sm text-red-600">Erro ao salvar.</span>
-          ) : null}
-          {mutation.isSuccess ? (
-            <span className="text-sm text-green-700">Salvo.</span>
-          ) : null}
+          ))}
         </div>
-      </form>
+      ) : null}
 
-      <div className="space-y-3">
-        {(!data || data.length === 0) && (
-          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Nenhum trabalho cadastrado ainda.
-          </div>
-        )}
+      {tab === 'records' ? (
+        <>
+          <WorkRecordForm
+            copy={copy}
+            numberLocale={numberLocale}
+            form={values}
+            setField={(key, value) => {
+              saveMutation.reset();
+              setForm(prev => ({
+                ...prev,
+                churchId: formChurchId,
+                // Batches belong to a church's stocks, so a new church clears the pick.
+                ...(key === 'churchId' ? { sacramentItemId: '' } : {}),
+                [key]: value
+              }));
+            }}
+            errors={errors}
+            churchOptions={churchOptions}
+            workTypes={workTypes}
+            sacramentOptions={sacramentOptions}
+            sacramentLoading={sacramentLoading}
+            editing={editing}
+            today={todayDateValue()}
+            saving={saveMutation.isPending}
+            saveError={saveMutation.isError}
+            saved={saveMutation.isSuccess}
+            onSubmit={() => {
+              const found = validateWorkForm(values, { today: todayDateValue() });
+              setErrors(found);
+              if (found.length === 0) saveMutation.mutate(values);
+            }}
+            onCancel={resetForm}
+          />
 
-        {data?.map(work => {
-          const attendees = totalAttendees(work.attendees);
-          const editPrefill = () => {
-            setEditingId(work.id);
-            setForm(prefillWorkForm(work));
-          };
+          {worksQuery.isLoading ? (
+            <p className="text-sm text-slate-400">{copy.loading}</p>
+          ) : worksQuery.isError ? (
+            <p className="text-sm text-red-600">{copy.loadError}</p>
+          ) : (
+            <WorkRecordList
+              copy={copy}
+              numberLocale={numberLocale}
+              works={worksQuery.data ?? []}
+              filter={filter}
+              setFilter={setFilter}
+              churchOptions={isAdmin ? churchOptions : churchOptions.length > 1 ? churchOptions : []}
+              isAdmin={isAdmin}
+              busyId={busyWork?.id ?? null}
+              actionError={reviewMutation.isError || deleteMutation.isError}
+              onEdit={work => {
+                if (!isAdmin && work.reviewStatus === 'reviewed' && !window.confirm(copy.confirmEditReviewed)) return;
+                saveMutation.reset();
+                setEditing(work);
+                setForm(workToForm(work));
+                setErrors([]);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onDelete={work => {
+                if (window.confirm(copy.confirmDelete)) deleteMutation.mutate(work);
+              }}
+              onReview={(work, status) => reviewMutation.mutate({ work, status })}
+            />
+          )}
+        </>
+      ) : null}
 
-          return (
-            <div
-              key={work.id}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-lg font-semibold text-slate-900">{work.title || 'Trabalho'}</div>
-                  <div className="text-sm text-slate-600">
-                    {formatDate(work.date)} • {formatTime(work.startTime)} •{' '}
-                    {work.venueName || work.venueText || 'Local a definir'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  {work.beverage?.batchId || work.beverage?.batchDescription || work.beverage?.batchText ? (
-                    <div className="text-xs font-medium text-blue-700">
-                      Daime: {work.beverage.batchDescription || work.beverage.batchId || work.beverage.batchText}
-                      {work.beverage.liters ? ` • ${work.beverage.liters} L` : ''}
-                    </div>
-                  ) : null}
-                  <button
-                    className="rounded border border-slate-300 px-3 py-1 font-medium text-slate-700 shadow-sm"
-                    onClick={editPrefill}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="rounded border border-red-200 px-3 py-1 font-medium text-red-700 shadow-sm disabled:opacity-50"
-                    disabled={deleteMutation.isPending && deleteMutation.variables === work.id}
-                    onClick={() => {
-                      const ok = window.confirm('Excluir este trabalho?');
-                      if (!ok) return;
-                      deleteMutation.mutate(work.id);
-                    }}
-                  >
-                    {deleteMutation.isPending && deleteMutation.variables === work.id
-                      ? 'Excluindo...'
-                      : 'Excluir'}
-                  </button>
-                </div>
-              </div>
+      {tab === 'managers' && isAdmin ? (
+        <ChurchManagersPanel
+          copy={copy}
+          managers={managersQuery.data ?? []}
+          users={usersQuery.data ?? []}
+          churches={churchOptions}
+          loading={managersQuery.isLoading || usersQuery.isLoading}
+          saving={managerMutation.isPending}
+          error={managerMutation.isError}
+          onSave={next => managerMutation.mutate(next)}
+        />
+      ) : null}
 
-              <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
-                <div>
-                  <span className="font-medium">Igrejas responsáveis:</span>{' '}
-                  {work.responsibleChurchNames?.length
-                    ? work.responsibleChurchNames.join(', ')
-                    : work.responsibleChurchText || '—'}
-                </div>
-                <div>
-                  <span className="font-medium">Hinários:</span>{' '}
-                  {work.hymnals?.length ? work.hymnals.join(', ') : '—'}
-                </div>
-                <div>
-                  <span className="font-medium">Participantes:</span>{' '}
-                  {attendees
-                    ? `${attendees.total} (F:${attendees.initiated ?? '0'} H:${attendees.men} M:${attendees.women}` +
-                      ` C:${attendees.children} ` +
-                      `${attendees.others ? ` O:${attendees.others}` : ''})`
-                    : '—'}
-                </div>
-                <div>
-                  <span className="font-medium">Duração esperada:</span>{' '}
-                  {work.expectedDurationMin ? `${work.expectedDurationMin} min` : '—'}
-                  {work.actualDurationMin ? ` • Efetiva: ${work.actualDurationMin} min` : ''}
-                </div>
-              </div>
-
-              {work.notes ? (
-                <p className="mt-3 text-sm text-slate-600">{work.notes}</p>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+      {tab === 'workTypes' && isAdmin ? (
+        <WorkTypesPanel
+          copy={copy}
+          catalog={catalogQuery.data}
+          saving={workTypesMutation.isPending}
+          saved={workTypesMutation.isSuccess}
+          error={workTypesMutation.isError}
+          onSave={items => workTypesMutation.mutate(items)}
+        />
+      ) : null}
     </div>
   );
 }
-
-export default WorksPage;

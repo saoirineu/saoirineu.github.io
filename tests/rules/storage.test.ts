@@ -18,9 +18,11 @@ import {
   BOOTSTRAP_EMAIL,
   EVENTADMIN,
   EVENT_ID,
+  MANAGER,
   REGISTRATION_ID,
   USERADMIN,
   createTestEnvironment,
+  donationFixture,
   registrationFixture,
   verified
 } from './helpers';
@@ -35,6 +37,10 @@ const registrationDir = `events/${EVENT_ID}/registrations/${REGISTRATION_ID}`;
 const aliceIdDoc = `${registrationDir}/identityDocument-passport.pdf`;
 const alicePayment = `${registrationDir}/paymentProof-transfer.pdf`;
 const aliceProfileDoc = `users/${ALICE.uid}/identityDocument-carta.pdf`;
+const reviewedReceipt = 'churches/church-1/donations/don-reviewed/receipt-1-bonifico.pdf';
+const replacedReceipt = 'churches/church-1/donations/don-reviewed/receipt-0-old.pdf';
+const pendingReceipt = 'churches/church-1/donations/don-pre/receipt-1-bonifico.pdf';
+const otherChurchReceipt = 'churches/church-2/donations/don-other/receipt-1.pdf';
 
 beforeAll(async () => {
   testEnv = await createTestEnvironment();
@@ -64,7 +70,16 @@ beforeEach(async () => {
       submittedAt: new Date()
     });
 
+    // MANAGER acts for church-1 (see firestore.test.ts for the records themselves).
+    await setDoc(doc(db, 'users', MANAGER.uid), profile(MANAGER.email));
+    await setDoc(doc(db, 'churchManagers', MANAGER.uid), { churchIds: ['church-1'], churchNames: ['Stella Azzurra'] });
+    await setDoc(doc(db, 'icefluDonations', 'don-pre'), donationFixture('don-pre'));
+    await setDoc(doc(db, 'icefluDonations', 'don-reviewed'), donationFixture('don-reviewed', { reviewStatus: 'reviewed' }));
+
     const storage = context.storage();
+    for (const path of [reviewedReceipt, replacedReceipt, pendingReceipt, otherChurchReceipt]) {
+      await uploadBytes(ref(storage, path), PDF, pdfMeta);
+    }
     await uploadBytes(ref(storage, aliceIdDoc), PDF, pdfMeta);
     await uploadBytes(ref(storage, alicePayment), PDF, pdfMeta);
     await uploadBytes(ref(storage, aliceProfileDoc), PDF, pdfMeta);
@@ -189,6 +204,41 @@ describe('guard — profile documents stay private', () => {
     await assertFails(
       uploadBytes(ref(as(BOB), `users/${ALICE.uid}/identityDocument-planted.pdf`), PDF, pdfMeta)
     );
+  });
+});
+
+describe('guard — donation receipts are church-scoped', () => {
+  it('[guard] a manager can upload a receipt into their church\'s donation folder', async () => {
+    await assertSucceeds(uploadBytes(ref(as(MANAGER), 'churches/church-1/donations/don-new/receipt-2-ricevuta.pdf'), PDF, pdfMeta));
+  });
+
+  it('[guard] receipts must be PDF/JPG/PNG files named receipt-*', async () => {
+    await assertFails(uploadBytes(ref(as(MANAGER), 'churches/church-1/donations/don-new/receipt-2.txt'), PDF, { contentType: 'text/plain' }));
+    await assertFails(uploadBytes(ref(as(MANAGER), 'churches/church-1/donations/don-new/invoice-2.pdf'), PDF, pdfMeta));
+  });
+
+  it('[guard] a plain member cannot upload or read receipts', async () => {
+    await assertFails(uploadBytes(ref(as(BOB), 'churches/church-1/donations/don-new/receipt-2.pdf'), PDF, pdfMeta));
+    await assertFails(getBytes(ref(as(BOB), pendingReceipt)));
+    await assertFails(getBytes(ref(anon(), pendingReceipt)));
+  });
+
+  it('[guard] a manager reads their church\'s receipts only; an admin reads all', async () => {
+    await assertSucceeds(getBytes(ref(as(MANAGER), pendingReceipt)));
+    await assertFails(getBytes(ref(as(MANAGER), otherChurchReceipt)));
+    await assertFails(uploadBytes(ref(as(MANAGER), 'churches/church-2/donations/don-x/receipt-1.pdf'), PDF, pdfMeta));
+    await assertSucceeds(getBytes(ref(as(ADMIN), otherChurchReceipt)));
+  });
+
+  it('[guard] a manager cannot delete the receipt a reviewed donation keeps as proof', async () => {
+    await assertFails(deleteObject(ref(as(MANAGER), reviewedReceipt)));
+    await assertSucceeds(deleteObject(ref(as(MANAGER), replacedReceipt)));
+    await assertSucceeds(deleteObject(ref(as(MANAGER), pendingReceipt)));
+    await assertSucceeds(deleteObject(ref(as(ADMIN), reviewedReceipt)));
+  });
+
+  it('[guard] receipts cannot be overwritten in place', async () => {
+    await assertFails(uploadBytes(ref(as(MANAGER), pendingReceipt), PDF, pdfMeta));
   });
 });
 

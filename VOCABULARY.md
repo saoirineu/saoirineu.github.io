@@ -27,22 +27,30 @@ Intended to become a SKOS vocabulary / OWL ontology.
 
 | English (code)         | Portuguese (domain)        | Notes |
 |------------------------|----------------------------|-------|
-| `Work`                 | Trabalho                   | A spiritual work/ceremony |
-| `work.date`            | trabalho.data              | Firestore field: `date` |
-| `work.startTime`       | trabalho.horarioInicio     | Firestore field: `startTime` |
-| `expectedDurationMin`  | duracaoEsperadaMin         | Firestore field: `expectedDurationMin` |
-| `actualDurationMin`    | duracaoEfetivaMin          | Firestore field: `actualDurationMin` |
-| `attendees.initiated`  | participantes.fardados     | Firestore field: `initiated` |
-| `attendees.men`        | participantes.homens       | Firestore field: `men` |
-| `attendees.women`      | participantes.mulheres     | Firestore field: `women` |
-| `hymnals`              | hinarios                   | List of hymnal names used in the work |
-| `venueId`              | localId                    | |
-| `venueName`            | localNome                  | |
-| `venueText`            | localTexto                 | Free-text for unregistered venues |
-| `responsibleChurchIds` | igrejasResponsaveisIds     | |
-| `responsibleChurchNames` | igrejasResponsaveisNomes | |
-| `responsibleChurchText` | igrejasResponsaveisTexto  | |
-| `notes`                | anotacoes                  | |
+| `Work`                 | Trabalho (realizado)       | Record of a work already held (Italian: lavoro fatto) |
+| `work.churchId`        | trabalho.igrejaId          | Church the record belongs to |
+| `work.date`            | trabalho.data              | `YYYY-MM-DD` |
+| `workTypeId` / `workTypeLabel` | tipoTrabalho       | From `catalogs/workTypes` (calendário oficial, cura, São Miguel, mesa branca, umbandaime); `other` + `workTypeOther` |
+| `venueText`            | localTexto                 | Free-text place (luogo) |
+| `hymnalText`           | hinarioTexto               | Free-text hymnal(s) (innario) |
+| `attendees.total`      | participantes.total        | |
+| `attendees.initiated`  | participantes.fardados     | Whites (bianchi / não fardados) = total − fardados, derived |
+| `sacrament.itemId` / `quantity` | daimeUsado / quantidade | Batch from a stock linked to the church; `unit` L or kg |
+| `contributions.collected` | contribuicoesRecebidas  | EUR |
+| `contributions.icefluBrazilQuota` | cotaIcefluBrasil | EUR, includes feitio |
+| `reviewStatus`         | estadoRevisao              | `pre-approved` (pré-aprovado) or `reviewed` (revisado e aprovado) |
+| `ChurchManager`        | gestorDaIgreja             | `churchManagers/{uid}`: account acting for a church |
+
+## Donations to ICEFLU Brazil
+
+| English (code)      | Portuguese / Italian (domain)            | Notes |
+|---------------------|------------------------------------------|-------|
+| `Donation`          | doação à ICEFLU Brasil / donazione       | `icefluDonations/{id}` |
+| `amount`            | valor / importo                          | EUR |
+| `reason`            | motivo / causale                         | `feitio` (copertura feitio), `membership` (associativo), `jurua` (Juruá) |
+| `recipient`         | destinatário / destinatario              | Free text |
+| `method`            | forma de envio / modalità                | `bank-transfer` (bonifico), `in-person` (a mano) |
+| `receiptPath`       | comprovante / contabile, ricevuta        | Bank statement for a transfer, recipient's receipt by hand |
 
 ## Churches
 
@@ -80,6 +88,9 @@ Intended to become a SKOS vocabulary / OWL ontology.
 | `users`                            | `usuarios`                   |
 | `churches`                         | `igrejas`                    |
 | `trabalhos`                        | `trabalhos` (collection name kept; all field names migrated) |
+| `churchManagers`                   | `gestoresIgrejas`            |
+| `catalogs`                         | `catalogos`                  |
+| `icefluDonations`                  | `doacoesIceflu`              |
 | `beverageBatches`                  | `bebidaLotes`                |
 | `europeanGatheringRegistrations`   | `encontroEuropeuInscricoes`  |
 | `europeanGatheringRooms`           | `encontroEuropeuQuartos`     |

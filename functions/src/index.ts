@@ -8,6 +8,7 @@ import { signReviewToken, verifyReviewToken, type TokenVerdict } from './reviewT
 import { evaluateThrottle, type ThrottleState } from './mailThrottle';
 import { isSelfNominatedLeader } from './leaderReference';
 import { computeCapacityRows, eventCapacityBuckets } from './eventCapacity';
+import { sameWorkExit, workExitTransaction, workExitTransactionId } from './workSacrament';
 
 admin.initializeApp();
 
@@ -614,6 +615,39 @@ export const onRegistrationCapacityChange = onDocumentWritten(
       });
     }
     await batch.commit();
+  }
+);
+
+/**
+ * Books the Daime a recorded work used as an exit movement in the Sacrament ledger.
+ *
+ * Church managers may record works but not write sacramentTransactions, which stay
+ * custodian-only; the rules check at write time that the batch belongs to a stock
+ * linked to the work's church. The movement lives at a deterministic id, so edits
+ * and retries rewrite it rather than booking the Daime twice, and deleting the
+ * work (or removing its Daime) removes it.
+ */
+export const onWorkSacramentChange = onDocumentWritten(
+  { document: 'trabalhos/{workId}' },
+  async event => {
+    const { workId } = event.params;
+    const before = workExitTransaction(workId, event.data?.before.data());
+    const after = workExitTransaction(workId, event.data?.after.data());
+    if (sameWorkExit(before, after)) return;
+
+    const db = admin.firestore();
+    const ref = db.doc(`sacramentTransactions/${workExitTransactionId(workId)}`);
+
+    if (!after) {
+      await ref.delete();
+      return;
+    }
+
+    await db.runTransaction(async transaction => {
+      const existing = await transaction.get(ref);
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      transaction.set(ref, existing.exists ? { ...after, updatedAt: now } : { ...after, createdAt: now, updatedAt: now });
+    });
   }
 );
 

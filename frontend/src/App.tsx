@@ -11,6 +11,7 @@ const MembershipReviewPage = lazy(() => import('./pages/MembershipReviewPage'));
 const SacramentPage = lazy(() => import('./pages/SacramentPage'));
 const ChurchesPage = lazy(() => import('./pages/ChurchesPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const DonationsPage = lazy(() => import('./pages/DonationsPage'));
 const EventsAdminPage = lazy(() => import('./pages/EventsAdminPage'));
 const EventRegistrationsAdminPage = lazy(() => import('./pages/EventRegistrationsAdminPage'));
 const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
@@ -78,8 +79,10 @@ function App() {
               <Route path="/churches" element={<ChurchesPage />} />
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/hymnals" element={<HymnsPage />} />
-              <Route path="/works" element={<WorksPage />} />
             </Route>
+            {/* Church managers and admins; both pages explain the gate to anyone else. */}
+            <Route path="/works" element={<WorksPage />} />
+            <Route path="/donations" element={<DonationsPage />} />
             <Route element={<RoleGate requiredRole="custodian" />}>
               <Route path="/sacrament" element={<SacramentPage />} />
             </Route>

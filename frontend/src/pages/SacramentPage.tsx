@@ -42,6 +42,8 @@ export default function SacramentPage() {
         name: stockForm.name.trim(),
         location: stockForm.location.trim() || undefined,
         notes: stockForm.notes.trim(),
+        churchId: stockForm.churchId || undefined,
+        churchName: churches.find(church => church.id === stockForm.churchId)?.name,
       });
     },
     onSuccess: async () => {
@@ -93,6 +95,20 @@ export default function SacramentPage() {
                 value={stockForm.location}
                 onChange={e => setStockForm(prev => ({ ...prev, location: e.target.value }))}
               />
+            </div>
+            <div className="col-span-2">
+              <label className={labelCls()}>{copy.linkedChurch}</label>
+              <select
+                className={inputCls('w-full')}
+                value={stockForm.churchId}
+                onChange={e => setStockForm(prev => ({ ...prev, churchId: e.target.value }))}
+              >
+                <option value="">{copy.noLinkedChurch}</option>
+                {churches.map(church => (
+                  <option key={church.id} value={church.id}>{church.name}</option>
+                ))}
+              </select>
+              <p className="mt-0.5 text-xs text-slate-400">{copy.linkedChurchHint}</p>
             </div>
             <div className="col-span-2">
               <label className={labelCls()}>{copy.notes}</label>

@@ -41,6 +41,7 @@ import {
   inputCls,
   itemToItemForm,
   labelCls,
+  stockToStockForm,
   toDateInputValue,
   type BatchSort,
   type BatchSortKey,
@@ -224,6 +225,8 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
   }
 
   function canEditTx(tx: SacramentTransaction) {
+    // A work's movement is rewritten from the record on every save, so edits belong there.
+    if (tx.workId) return false;
     return isAdmin || tx.createdBy === uid;
   }
 
@@ -424,6 +427,11 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                   <td className="py-1 pr-2 text-slate-600">{tx.missionaryName ?? '—'}</td>
                   <td className="py-1 pr-2 text-slate-600">
                     {tx.type === 'exit' ? (tx.destinationChurchName ?? '—') : '—'}
+                    {tx.workId ? (
+                      <span title={copy.workMovementHint} className="ml-1 rounded-full bg-[rgba(63,132,194,0.12)] px-1.5 py-0.5 text-[color:var(--brand-blue-deep)]">
+                        {copy.workMovement}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="py-1 pr-2 text-right font-medium text-slate-800">
                     {tx.type === 'exit' ? '−' : '+'}
@@ -870,11 +878,7 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemForm, setItemForm] = useState<ItemFormState>(initialItemForm);
   const [editingStock, setEditingStock] = useState(false);
-  const [stockEditForm, setStockEditForm] = useState<StockFormState>({
-    name: stock.name,
-    location: stock.location ?? '',
-    notes: stock.notes ?? '',
-  });
+  const [stockEditForm, setStockEditForm] = useState<StockFormState>(() => stockToStockForm(stock));
   const [deleting, setDeleting] = useState(false);
 
   const itemsQuery = useQuery({
@@ -919,6 +923,9 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
         name: stockEditForm.name.trim(),
         location: stockEditForm.location.trim() || undefined,
         notes: stockEditForm.notes.trim(),
+        // '' unlinks; see updateStock.
+        churchId: stockEditForm.churchId,
+        churchName: churches.find(church => church.id === stockEditForm.churchId)?.name,
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentStocks'] });
@@ -959,6 +966,20 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
                 />
               </div>
               <div className="sm:col-span-2">
+                <label className={labelCls()}>{copy.linkedChurch}</label>
+                <select
+                  className={inputCls('w-full')}
+                  value={stockEditForm.churchId}
+                  onChange={e => setStockEditForm(prev => ({ ...prev, churchId: e.target.value }))}
+                >
+                  <option value="">{copy.noLinkedChurch}</option>
+                  {churches.map(church => (
+                    <option key={church.id} value={church.id}>{church.name}</option>
+                  ))}
+                </select>
+                <p className="mt-0.5 text-xs text-slate-400">{copy.linkedChurchHint}</p>
+              </div>
+              <div className="sm:col-span-2">
                 <label className={labelCls()}>{copy.notes}</label>
                 <textarea
                   className={inputCls('w-full')}
@@ -973,6 +994,14 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
               <h2 className="text-base font-semibold text-[color:var(--brand-ink)]">{stock.name}</h2>
               {stock.location && (
                 <p className="text-xs text-slate-500">{stock.location}</p>
+              )}
+              {stock.churchId && (
+                <p className="text-xs text-slate-500">
+                  {copy.linkedChurch}:{' '}
+                  <span className="font-medium text-slate-700">
+                    {churches.find(church => church.id === stock.churchId)?.name ?? stock.churchName ?? stock.churchId}
+                  </span>
+                </p>
               )}
               {stock.notes && (
                 <p className="mt-1 text-xs text-slate-500">{stock.notes}</p>
@@ -1003,7 +1032,7 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
                 type="button"
                 onClick={() => {
                   setEditingStock(false);
-                  setStockEditForm({ name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '' });
+                  setStockEditForm(stockToStockForm(stock));
                 }}
                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
               >
@@ -1028,7 +1057,7 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
                 <button
                   type="button"
                   onClick={() => {
-                    setStockEditForm({ name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '' });
+                    setStockEditForm(stockToStockForm(stock));
                     setEditingStock(true);
                   }}
                   className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"

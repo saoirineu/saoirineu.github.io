@@ -16,14 +16,12 @@ export type ChurchFormState = {
 };
 
 export type ChurchUsageStats = {
-  worksVenue: number;
   worksResponsible: number;
   membersCurrentChurch: number;
   membersInitiationChurch: number;
 };
 
 export const emptyChurchUsageStats: ChurchUsageStats = {
-  worksVenue: 0,
   worksResponsible: 0,
   membersCurrentChurch: 0,
   membersInitiationChurch: 0
@@ -88,17 +86,13 @@ export function sortChurches(churches: ChurchInfo[]) {
   return churches.slice().sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export function buildChurchUsageMap(works: Work[], users: UserProfile[]) {
+export function buildChurchUsageMap(works: Pick<Work, 'churchId'>[], users: UserProfile[]) {
   const map = new Map<string, ChurchUsageStats>();
 
   works.forEach(work => {
-    if (work.venueId) {
-      incrementUsage(map, work.venueId, 'worksVenue');
+    if (work.churchId) {
+      incrementUsage(map, work.churchId, 'worksResponsible');
     }
-
-    (work.responsibleChurchIds ?? []).forEach(id => {
-      incrementUsage(map, id, 'worksResponsible');
-    });
   });
 
   users.forEach(user => {

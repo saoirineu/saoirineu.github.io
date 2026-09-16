@@ -95,6 +95,10 @@ cPanel, so changing it is not part of `make deploy-functions` — see
   not use SMTP, and how to rotate the relay secret.
 - [docs/events-eventadmin-design.md](docs/events-eventadmin-design.md) — generic events,
   `eventadmin` role, consent ledger, leader decisions (as-built design record).
+- [docs/work-records.md](docs/work-records.md) — records of completed works ("lavori fatti"):
+  church managers, Daime deduction, rollout steps, limitations.
+- [docs/iceflu-donations.md](docs/iceflu-donations.md) — donations churches sent to ICEFLU
+  Brazil, with receipts: access, storage, rollout, limitations.
 - [docs/archive/](docs/archive/) — completed/retired tracking docs.
 
 ## Roadmap

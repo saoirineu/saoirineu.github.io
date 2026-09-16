@@ -1,4 +1,4 @@
-import type { SacramentForm, SacramentItem, SacramentTransaction } from '../../lib/sacrament';
+import type { SacramentForm, SacramentItem, SacramentStock, SacramentTransaction } from '../../lib/sacrament';
 import type { ChurchInfo } from '../../lib/works';
 import type { Copy } from './copy';
 
@@ -166,8 +166,12 @@ export type SetItemField = <K extends keyof ItemFormState>(key: K, value: ItemFo
 
 // ─── stock form ────────────────────────────────────────────────────────────────
 
-export type StockFormState = { name: string; location: string; notes: string };
-export const initialStockForm: StockFormState = { name: '', location: '', notes: '' };
+export type StockFormState = { name: string; location: string; notes: string; churchId: string };
+export const initialStockForm: StockFormState = { name: '', location: '', notes: '', churchId: '' };
+
+export function stockToStockForm(stock: SacramentStock): StockFormState {
+  return { name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '', churchId: stock.churchId ?? '' };
+}
 
 // ─── batch sorting ─────────────────────────────────────────────────────────────
 

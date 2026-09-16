@@ -50,6 +50,9 @@ export const USERADMIN = { uid: 'uadmin', email: 'uadmin@example.com' };
 export const EVENTADMIN = { uid: 'eadmin', email: 'eadmin@example.com' };
 export const ADMIN = { uid: 'admin', email: 'admin@example.com' };
 export const SUPERADMIN = { uid: 'sadmin', email: 'sadmin@example.com' };
+export const CUSTODIAN = { uid: 'custodian', email: 'custodian@example.com' };
+/** Linked by an admin to church-1 (churchManagers/manager). */
+export const MANAGER = { uid: 'manager', email: 'manager@example.com' };
 
 /** The address hardcoded as superadmin in firestore.rules / storage.rules (H3). */
 export const BOOTSTRAP_EMAIL = 'renato.fabbri@gmail.com';
@@ -80,6 +83,39 @@ export function registrationFixture(overrides: Record<string, unknown> = {}) {
     needsExtraLinen: false,
     contribution: { nights: 3, lodging: 100, spiritualWorks: 50, extras: 0, total: 150 },
     status: 'pending',
+    ...overrides
+  };
+}
+
+/** A work record for church-1 that satisfies hasValidWorkRecord (timestamps added by the caller). */
+export function workFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    churchId: 'church-1',
+    churchName: 'Stella Azzurra',
+    date: '2026-09-15',
+    workTypeId: 'concentracao',
+    workTypeLabel: 'Concentração',
+    attendees: { total: 20, initiated: 12 },
+    sacrament: { stockId: 'stock-1', itemId: 'item-1', itemLabel: '2º grau', quantity: 0.5, unit: 'L' },
+    contributions: { collected: 400, icefluBrazilQuota: 120.5 },
+    reviewStatus: 'pre-approved',
+    ...overrides
+  };
+}
+
+/** A donation from church-1 that satisfies hasValidDonation (timestamps added by the caller). */
+export function donationFixture(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    churchId: 'church-1',
+    churchName: 'Stella Azzurra',
+    date: '2026-09-10',
+    amount: 350,
+    reason: 'feitio',
+    recipient: 'ICEFLU — Céu do Mapiá',
+    method: 'bank-transfer',
+    receiptPath: `churches/church-1/donations/${id}/receipt-1-bonifico.pdf`,
+    receiptName: 'bonifico.pdf',
+    reviewStatus: 'pre-approved',
     ...overrides
   };
 }

@@ -3,6 +3,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   query,
@@ -28,6 +29,9 @@ export type SacramentStock = {
   name: string;
   location?: string;
   notes?: string;
+  /** Links the stock to a church: its managers draw Daime from it when recording works. */
+  churchId?: string;
+  churchName?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -61,6 +65,8 @@ export type SacramentTransaction = {
   notes?: string;
   createdBy?: string;
   createdAt?: Timestamp;
+  /** Set on exits booked by onWorkSacramentChange for a recorded work; edited through the work. */
+  workId?: string;
 };
 
 const stocksRef = collection(db, 'sacramentStocks');
@@ -74,6 +80,8 @@ function mapStock(id: string, value: unknown): SacramentStock {
     name: asOptionalString(data.name) ?? '',
     location: asOptionalString(data.location),
     notes: asOptionalString(data.notes),
+    churchId: asOptionalString(data.churchId),
+    churchName: asOptionalString(data.churchName),
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined,
     updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
   };
@@ -113,6 +121,7 @@ function mapTransaction(id: string, value: unknown): SacramentTransaction {
     notes: asOptionalString(data.notes),
     createdBy: asOptionalString(data.createdBy),
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined,
+    workId: asOptionalString(data.workId),
   };
 }
 
@@ -130,6 +139,8 @@ export async function createStock(data: Omit<SacramentStock, 'id'>): Promise<str
       name: data.name,
       location: data.location,
       notes: data.notes,
+      churchId: data.churchId,
+      churchName: data.churchName,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
@@ -141,7 +152,14 @@ export async function updateStock(
   id: string,
   data: Partial<Omit<SacramentStock, 'id'>>,
 ): Promise<void> {
-  await updateDoc(doc(stocksRef, id), removeUndefinedDeep({ ...data, updatedAt: serverTimestamp() }));
+  // An empty churchId unlinks the stock; undefined leaves the link as it is.
+  const unlink = data.churchId === '';
+  await updateDoc(doc(stocksRef, id), removeUndefinedDeep({
+    ...data,
+    churchId: unlink ? deleteField() : data.churchId,
+    churchName: unlink ? deleteField() : data.churchName,
+    updatedAt: serverTimestamp(),
+  }));
 }
 
 export async function fetchItems(stockId: string): Promise<SacramentItem[]> {

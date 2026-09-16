@@ -5,6 +5,7 @@ import { hasRequiredRole } from '../lib/systemRole';
 import { BrandMark } from './BrandMark';
 import { useDevMode } from '../providers/useDevMode';
 import { useAuth } from '../providers/useAuth';
+import { useChurchManager } from '../providers/useChurchManager';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { useSystemRole } from '../providers/useSystemRole';
 
@@ -19,8 +20,7 @@ const stableLinks: Array<{ to: string; key: NavCopyKey }> = [
 const devLinks: Array<{ to: string; key: NavCopyKey }> = [
   { to: '/churches', key: 'churches' },
   { to: '/people', key: 'people' },
-  { to: '/hymnals', key: 'hymns' },
-  { to: '/works', key: 'works' }
+  { to: '/hymnals', key: 'hymns' }
 ];
 
 const custodianLinks: Array<{ to: string; key: NavCopyKey }> = [
@@ -42,6 +42,7 @@ const copyByLocale = {
     hymns: 'Hinários/Hinos',
     sacrament: 'Sacramento',
     works: 'Trabalhos',
+    donations: 'Doações',
     users: 'Usuários',
     registrations: 'Inscrições',
     dev: 'Dev',
@@ -58,6 +59,7 @@ const copyByLocale = {
     hymns: 'Hymns',
     sacrament: 'Sacrament',
     works: 'Works',
+    donations: 'Donations',
     users: 'Users',
     registrations: 'Registrations',
     dev: 'Dev',
@@ -74,6 +76,7 @@ const copyByLocale = {
     hymns: 'Himnarios/Himnos',
     sacrament: 'Sacramento',
     works: 'Trabajos',
+    donations: 'Donaciones',
     users: 'Usuarios',
     registrations: 'Inscripciones',
     dev: 'Dev',
@@ -90,6 +93,7 @@ const copyByLocale = {
     hymns: 'Inni/Innari',
     sacrament: 'Sacramento',
     works: 'Lavori',
+    donations: 'Donazioni',
     users: 'Utenti',
     registrations: 'Iscrizioni',
     dev: 'Dev',
@@ -102,6 +106,7 @@ export function NavBar() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const { role } = useSystemRole();
+  const { churchIds: managedChurchIds } = useChurchManager();
   const { canToggleDevMode, devModeEnabled, setDevModeEnabled } = useDevMode();
   const { locale, setLocale } = useSiteLocale();
   const copy = copyByLocale[locale];
@@ -109,6 +114,9 @@ export function NavBar() {
   const navigationLinks = [
     ...stableLinks.map(link => ({ to: link.to, label: copy[link.key] })),
     ...(devModeEnabled ? devLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
+    ...(managedChurchIds.length || hasRequiredRole(role, 'admin')
+      ? [{ to: '/works', label: copy.works }, { to: '/donations', label: copy.donations }]
+      : []),
     ...(hasRequiredRole(role, 'custodian') ? custodianLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),
     ...(hasRequiredRole(role, 'eventadmin') ? [{ to: '/admin/events', label: copy.events }] : []),
     ...(hasRequiredRole(role, 'admin') ? adminLinks.map(link => ({ to: link.to, label: copy[link.key] })) : []),

@@ -22,10 +22,6 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.get('email_verified', false) == true;
     }
 
-    function isOwner(field) {
-      return isSignedIn() && request.auth.uid == request.resource.data[field];
-    }
-
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.get('admin', false) == true
@@ -121,6 +117,134 @@ service cloud.firestore {
         || (request.resource.data[field] is string
           && request.resource.data[field].size() > 0
           && request.resource.data[field].size() <= maxSize);
+    }
+
+    // Church managers act for the churches an admin linked to their account
+    // (churchManagers/{uid}) — the first step toward logging in as a church.
+    function managesChurch(churchId) {
+      return isSignedIn()
+        && churchId is string
+        && exists(/databases/$(database)/documents/churchManagers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/churchManagers/$(request.auth.uid)).data.get('churchIds', []).hasAny([churchId]);
+    }
+
+    function hasValidChurchManagerPayload() {
+      return request.resource.data.keys().hasOnly(['churchIds', 'churchNames', 'email', 'displayName', 'updatedAt', 'updatedBy'])
+        && request.resource.data.churchIds is list
+        && request.resource.data.churchIds.size() > 0
+        && request.resource.data.churchIds.size() <= 30
+        && request.resource.data.churchNames is list
+        && request.resource.data.churchNames.size() <= 30
+        && hasValidOptionalString('email', 320)
+        && hasValidOptionalString('displayName', 200)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isAmount(value) {
+      return (value is int || value is float) && value >= 0 && value <= 10000000;
+    }
+
+    function hasValidWorkRecord() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'churchId', 'churchName', 'date', 'workTypeId', 'workTypeLabel', 'workTypeOther',
+          'venueText', 'hymnalText', 'attendees', 'sacrament', 'contributions',
+          'reviewStatus', 'reviewedAt', 'reviewedBy', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
+        ])
+        && data.churchId is string && data.churchId.size() > 0 && data.churchId.size() <= 128
+        && data.churchName is string && data.churchName.size() <= 200
+        && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.workTypeId is string && data.workTypeId.size() > 0 && data.workTypeId.size() <= 64
+        && data.workTypeLabel is string && data.workTypeLabel.size() > 0 && data.workTypeLabel.size() <= 200
+        && hasValidOptionalString('workTypeOther', 200)
+        && hasValidOptionalString('venueText', 200)
+        && hasValidOptionalString('hymnalText', 500)
+        && data.attendees is map
+        && data.attendees.keys().hasOnly(['total', 'initiated'])
+        && data.attendees.total is int && data.attendees.total >= 0 && data.attendees.total <= 100000
+        && data.attendees.initiated is int && data.attendees.initiated >= 0
+        && data.attendees.initiated <= data.attendees.total
+        && data.contributions is map
+        && data.contributions.keys().hasOnly(['collected', 'icefluBrazilQuota'])
+        && isAmount(data.contributions.collected)
+        && isAmount(data.contributions.icefluBrazilQuota)
+        && data.createdBy is string
+        && data.updatedBy == request.auth.uid
+        && data.updatedAt == request.time
+        && hasValidRecordReview()
+        && hasValidWorkSacrament();
+    }
+
+    // Work and donation records: pre-approved records carry no reviewer; a review is
+    // stamped by the admin who gives it.
+    function hasValidRecordReview() {
+      let data = request.resource.data;
+      let wasReviewed = resource != null && resource.data.get('reviewStatus', '') == 'reviewed';
+      return (data.reviewStatus == 'pre-approved' && !data.keys().hasAny(['reviewedAt', 'reviewedBy']))
+        || (data.reviewStatus == 'reviewed'
+          && data.reviewedBy is string
+          && data.reviewedAt is timestamp
+          && (wasReviewed || (data.reviewedBy == request.auth.uid && data.reviewedAt == request.time)));
+    }
+
+    // The Daime must come from a stock linked to the work's church. Checked only when
+    // the Daime changes, so unlinking a stock later does not lock its old records.
+    function hasValidWorkSacrament() {
+      let data = request.resource.data;
+      return !data.keys().hasAny(['sacrament'])
+        || (resource != null && resource.data.get('sacrament', null) == data.sacrament)
+        || (data.sacrament is map
+          && data.sacrament.keys().hasOnly(['stockId', 'itemId', 'itemLabel', 'quantity', 'unit'])
+          && data.sacrament.stockId is string
+          && data.sacrament.itemId is string
+          && data.sacrament.get('itemLabel', '') is string
+          && data.sacrament.get('itemLabel', '').size() <= 300
+          && (data.sacrament.quantity is int || data.sacrament.quantity is float)
+          && data.sacrament.quantity > 0
+          && data.sacrament.quantity <= 1000
+          && data.sacrament.unit in ['L', 'kg']
+          && get(/databases/$(database)/documents/sacramentItems/$(data.sacrament.itemId)).data.stockId == data.sacrament.stockId
+          && (get(/databases/$(database)/documents/sacramentItems/$(data.sacrament.itemId)).data.get('form', 'liquid') == 'gel')
+            == (data.sacrament.unit == 'kg')
+          && get(/databases/$(database)/documents/sacramentStocks/$(data.sacrament.stockId)).data.get('churchId', '') == data.churchId);
+    }
+
+    // A donation sent to ICEFLU Brazil. The receipt (bank statement for a transfer,
+    // the recipient's receipt for cash handed over) must sit in this donation's own
+    // folder under its church: churches/{churchId}/donations/{donationId}/receipt-*.
+    function hasValidDonation(donationId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'churchId', 'churchName', 'date', 'amount', 'reason', 'recipient', 'method',
+          'receiptPath', 'receiptName',
+          'reviewStatus', 'reviewedAt', 'reviewedBy', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
+        ])
+        && data.churchId is string && data.churchId.size() > 0 && data.churchId.size() <= 128
+        && data.churchName is string && data.churchName.size() <= 200
+        && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && (data.amount is int || data.amount is float) && data.amount > 0 && data.amount <= 10000000
+        && data.reason in ['feitio', 'membership', 'jurua']
+        && data.recipient is string && data.recipient.size() > 0 && data.recipient.size() <= 200
+        && data.method in ['bank-transfer', 'in-person']
+        && data.receiptPath is string
+        && data.receiptPath.split('/').size() == 5
+        && data.receiptPath.split('/')[0] == 'churches'
+        && data.receiptPath.split('/')[1] == data.churchId
+        && data.receiptPath.split('/')[2] == 'donations'
+        && data.receiptPath.split('/')[3] == donationId
+        && data.receiptPath.split('/')[4].matches('^receipt-.+')
+        && data.receiptName is string && data.receiptName.size() > 0 && data.receiptName.size() <= 300
+        && data.createdBy is string
+        && data.updatedBy == request.auth.uid
+        && data.updatedAt == request.time
+        && hasValidRecordReview();
+    }
+
+    function recordAuthorshipUnchanged() {
+      return request.resource.data.churchId == resource.data.churchId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
     }
 
     function hasValidContribution() {
@@ -380,11 +504,58 @@ service cloud.firestore {
       allow write: if isCustodianOrHigher();
     }
 
+    // Records of works already held, filed by the church's managers. They carry
+    // contribution totals and Daime usage, so they are not public: a manager sees
+    // their own churches' records, admins see all. Records start pre-approved; only
+    // an admin marks one reviewed, and a manager's edit sends it back for review.
+    // The Daime movement they imply is booked by onWorkSacramentChange.
     match /trabalhos/{id} {
-      allow read: if true;
-      allow create: if isSignedIn() && isOwner('createdBy');
-      allow update: if isSignedIn() && resource.data.createdBy == request.auth.uid;
-      allow delete: if false;
+      allow read: if isAdmin() || managesChurch(resource.data.churchId);
+      allow create: if hasValidWorkRecord()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && (isAdmin()
+          || (managesChurch(request.resource.data.churchId) && request.resource.data.reviewStatus == 'pre-approved'));
+      allow update: if hasValidWorkRecord()
+        && recordAuthorshipUnchanged()
+        && (isAdmin()
+          || (managesChurch(resource.data.churchId) && request.resource.data.reviewStatus == 'pre-approved'));
+      allow delete: if isAdmin()
+        || (managesChurch(resource.data.churchId) && resource.data.get('reviewStatus', '') == 'pre-approved');
+    }
+
+    // Donations a church sent to ICEFLU Brazil, with proof of payment. Same access as
+    // work records: the church's managers and admins, pre-approved until an admin
+    // reviews them. Receipts live in Storage (see storage.rules).
+    match /icefluDonations/{id} {
+      allow read: if isAdmin() || managesChurch(resource.data.churchId);
+      allow create: if hasValidDonation(id)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && (isAdmin()
+          || (managesChurch(request.resource.data.churchId) && request.resource.data.reviewStatus == 'pre-approved'));
+      allow update: if hasValidDonation(id)
+        && recordAuthorshipUnchanged()
+        && (isAdmin()
+          || (managesChurch(resource.data.churchId) && request.resource.data.reviewStatus == 'pre-approved'));
+      allow delete: if isAdmin()
+        || (managesChurch(resource.data.churchId) && resource.data.get('reviewStatus', '') == 'pre-approved');
+    }
+
+    // Links accounts to the churches they manage. Granting it lets an account file
+    // works for that church and book Daime from its stocks, so only admins write it.
+    match /churchManagers/{uid} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow create, update: if isAdmin() && hasValidChurchManagerPayload();
+      allow delete: if isAdmin();
+    }
+
+    // Admin-maintained option lists (catalogs/workTypes: the work-record dropdown).
+    match /catalogs/{catalogId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin()
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 200;
     }
 
     match /conceitos/{id} {
@@ -428,10 +599,14 @@ service cloud.firestore {
       }
     }
 
+    // churchId links a stock to a church, which lets that church's managers book
+    // Daime from it when recording works — a grant, so only admins may change it.
     match /sacramentStocks/{id} {
       allow read: if isSignedIn();
       allow create: if isAdmin();
-      allow update: if isCustodianOrHigher();
+      allow update: if isAdmin()
+        || (isCustodianOrHigher()
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['churchId', 'churchName']));
       allow delete: if isAdmin();
     }
 

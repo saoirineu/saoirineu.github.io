@@ -3,12 +3,14 @@ import {
   collection,
   doc,
   deleteDoc,
+  deleteField,
   getDocs,
-  orderBy,
   query,
+  serverTimestamp,
   setDoc,
   Timestamp,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore';
 
 import { db } from './firebase';
@@ -18,131 +20,209 @@ import {
   asOptionalString,
   asOptionalTimestamp,
   asRecord,
-  asStringArray,
   removeUndefinedDeep
 } from './firestoreData';
 
+// A record of a work already held, filed by one of the church's managers
+// (see lib/churchManagers.ts). Its Daime usage is booked as an exit movement in
+// the Sacrament ledger by the onWorkSacramentChange Cloud Function.
+
+export type WorkReviewStatus = 'pre-approved' | 'reviewed';
+
+export type WorkSacramentUnit = 'L' | 'kg';
+
 export type Work = {
   id: string;
-  title?: string;
-  date?: Timestamp | null;
-  startTime?: Timestamp | null;
-  expectedDurationMin?: number;
-  actualDurationMin?: number;
-  notes?: string;
-  attendees?: {
-    total?: number;
-    initiated?: number;
-    men?: number;
-    women?: number;
-    children?: number;
-    others?: number;
-    othersDescription?: string;
-  };
-  hymnals?: string[];
-  responsibleChurchIds?: string[];
-  responsibleChurchNames?: string[];
-  responsibleChurchText?: string;
-  venueId?: string;
-  venueName?: string;
+  churchId: string;
+  churchName: string;
+  /** Day the work was held, YYYY-MM-DD. */
+  date: string;
+  workTypeId: string;
+  /** Label at the time of recording: the work-type catalog is admin-editable. */
+  workTypeLabel: string;
+  workTypeOther?: string;
   venueText?: string;
-  beverage?: {
-    batchRef?: string;
-    batchId?: string;
-    batchDescription?: string;
-    batchText?: string;
-    liters?: number;
+  hymnalText?: string;
+  /** Whites (non-fardados) are derived as total - initiated, never stored. */
+  attendees: { total: number; initiated: number };
+  sacrament?: {
+    stockId: string;
+    itemId: string;
+    itemLabel?: string;
+    quantity: number;
+    unit: WorkSacramentUnit;
   };
+  contributions: { collected: number; icefluBrazilQuota: number };
+  reviewStatus: WorkReviewStatus;
+  reviewedAt?: Timestamp;
+  reviewedBy?: string;
   createdBy?: string;
+  createdAt?: Timestamp;
+  updatedBy?: string;
+  updatedAt?: Timestamp;
 };
+
+export type WorkInput = Omit<Work, 'id' | 'reviewStatus' | 'reviewedAt' | 'reviewedBy' | 'createdBy' | 'createdAt' | 'updatedBy' | 'updatedAt'>;
 
 const worksRef = collection(db, 'trabalhos');
 const churchesRef = collection(db, 'churches');
 
-function mapAttendees(value: unknown): Work['attendees'] {
-  const data = asRecord(value);
-  return {
-    total: asOptionalNumber(data.total),
-    initiated: asOptionalNumber(data.initiated),
-    men: asOptionalNumber(data.men),
-    women: asOptionalNumber(data.women),
-    children: asOptionalNumber(data.children),
-    others: asOptionalNumber(data.others),
-    othersDescription: asOptionalString(data.othersDescription)
-  };
-}
-
-function mapBeverage(value: unknown): Work['beverage'] {
-  const data = asRecord(value);
-  return {
-    batchRef: asOptionalString(data.batchRef),
-    batchId: asOptionalString(data.batchId),
-    batchDescription: asOptionalString(data.batchDescription),
-    batchText: asOptionalString(data.batchText),
-    liters: asOptionalNumber(data.liters)
-  };
+function dateString(value: unknown): string {
+  if (typeof value === 'string') return value;
+  // Early prototype records stored the day as a Timestamp.
+  const timestamp = asOptionalTimestamp(value);
+  if (!timestamp) return '';
+  const date = timestamp.toDate();
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function mapWork(id: string, value: unknown): Work {
   const data = asRecord(value);
+  const attendees = asRecord(data.attendees);
+  const contributions = asRecord(data.contributions);
+  const sacrament = asRecord(data.sacrament);
+  const itemId = asOptionalString(sacrament.itemId);
+  const stockId = asOptionalString(sacrament.stockId);
+
   return {
     id,
-    title: asOptionalString(data.title),
-    date: asOptionalTimestamp(data.date),
-    startTime: asOptionalTimestamp(data.startTime),
-    expectedDurationMin: asOptionalNumber(data.expectedDurationMin),
-    actualDurationMin: asOptionalNumber(data.actualDurationMin),
-    notes: asOptionalString(data.notes),
-    attendees: mapAttendees(data.attendees),
-    hymnals: asStringArray(data.hymnals),
-    responsibleChurchIds: asStringArray(data.responsibleChurchIds),
-    responsibleChurchNames: asStringArray(data.responsibleChurchNames),
-    responsibleChurchText: asOptionalString(data.responsibleChurchText),
-    venueId: asOptionalString(data.venueId),
-    venueName: asOptionalString(data.venueName),
+    churchId: asOptionalString(data.churchId) ?? '',
+    churchName: asOptionalString(data.churchName) ?? '',
+    date: dateString(data.date),
+    workTypeId: asOptionalString(data.workTypeId) ?? '',
+    workTypeLabel: asOptionalString(data.workTypeLabel) ?? asOptionalString(data.title) ?? '',
+    workTypeOther: asOptionalString(data.workTypeOther),
     venueText: asOptionalString(data.venueText),
-    beverage: mapBeverage(data.beverage),
-    createdBy: asOptionalString(data.createdBy)
+    hymnalText: asOptionalString(data.hymnalText),
+    attendees: {
+      total: asOptionalNumber(attendees.total) ?? 0,
+      initiated: asOptionalNumber(attendees.initiated) ?? 0
+    },
+    sacrament: itemId && stockId
+      ? {
+          stockId,
+          itemId,
+          itemLabel: asOptionalString(sacrament.itemLabel),
+          quantity: asOptionalNumber(sacrament.quantity) ?? 0,
+          unit: sacrament.unit === 'kg' ? 'kg' : 'L'
+        }
+      : undefined,
+    contributions: {
+      collected: asOptionalNumber(contributions.collected) ?? 0,
+      icefluBrazilQuota: asOptionalNumber(contributions.icefluBrazilQuota) ?? 0
+    },
+    reviewStatus: data.reviewStatus === 'reviewed' ? 'reviewed' : 'pre-approved',
+    reviewedAt: asOptionalTimestamp(data.reviewedAt) ?? undefined,
+    reviewedBy: asOptionalString(data.reviewedBy),
+    createdBy: asOptionalString(data.createdBy),
+    createdAt: asOptionalTimestamp(data.createdAt) ?? undefined,
+    updatedBy: asOptionalString(data.updatedBy),
+    updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined
   };
 }
 
+function sortWorks(works: Work[]) {
+  return works.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
+}
+
+/** Every record — admins only. */
 export async function fetchWorks(): Promise<Work[]> {
-  const q = query(worksRef, orderBy('date', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(docSnapshot => mapWork(docSnapshot.id, docSnapshot.data()));
+  const snapshot = await getDocs(worksRef);
+  return sortWorks(snapshot.docs.map(docSnapshot => mapWork(docSnapshot.id, docSnapshot.data())));
 }
 
-export type WorkInput = {
-  title?: string;
-  date?: Timestamp | null;
-  startTime?: Timestamp | null;
-  expectedDurationMin?: number | null;
-  actualDurationMin?: number | null;
-  venueId?: string;
-  venueName?: string;
-  venueText?: string;
-  hymnals?: string[];
-  responsibleChurchIds?: string[];
-  responsibleChurchNames?: string[];
-  responsibleChurchText?: string;
-  attendees?: {
-    total?: number;
-    initiated?: number;
-    men?: number;
-    women?: number;
-    children?: number;
-    others?: number;
-    othersDescription?: string;
+/**
+ * The records of the given churches. One equality query per church, because the
+ * rules can only prove a manager's access against a single churchId.
+ */
+export async function fetchWorksForChurches(churchIds: string[]): Promise<Work[]> {
+  const snapshots = await Promise.all(
+    churchIds.map(churchId => getDocs(query(worksRef, where('churchId', '==', churchId))))
+  );
+  return sortWorks(snapshots.flatMap(snapshot => snapshot.docs.map(docSnapshot => mapWork(docSnapshot.id, docSnapshot.data()))));
+}
+
+function workPayload(input: WorkInput) {
+  return {
+    churchId: input.churchId,
+    churchName: input.churchName,
+    date: input.date,
+    workTypeId: input.workTypeId,
+    workTypeLabel: input.workTypeLabel,
+    attendees: { total: input.attendees.total, initiated: input.attendees.initiated },
+    contributions: {
+      collected: input.contributions.collected,
+      icefluBrazilQuota: input.contributions.icefluBrazilQuota
+    }
   };
-  beverage?: {
-    batchId?: string;
-    batchDescription?: string;
-    batchText?: string;
-    liters?: number | null;
+}
+
+function sacramentPayload(sacrament: NonNullable<WorkInput['sacrament']>) {
+  return removeUndefinedDeep({
+    stockId: sacrament.stockId,
+    itemId: sacrament.itemId,
+    itemLabel: sacrament.itemLabel || undefined,
+    quantity: sacrament.quantity,
+    unit: sacrament.unit
+  });
+}
+
+export async function createWork(input: WorkInput, uid: string) {
+  const payload = removeUndefinedDeep({
+    ...workPayload(input),
+    workTypeOther: input.workTypeOther || undefined,
+    venueText: input.venueText || undefined,
+    hymnalText: input.hymnalText || undefined,
+    sacrament: input.sacrament ? sacramentPayload(input.sacrament) : undefined,
+    reviewStatus: 'pre-approved' satisfies WorkReviewStatus,
+    createdBy: uid,
+    createdAt: serverTimestamp(),
+    updatedBy: uid,
+    updatedAt: serverTimestamp()
+  });
+
+  return addDoc(worksRef, payload);
+}
+
+/**
+ * Saves an edit. A manager's edit sends a reviewed record back to pre-approved,
+ * since the admin reviewed different figures; an admin's own edit keeps its status.
+ */
+export async function updateWork(id: string, input: WorkInput, options: { uid: string; keepReview: boolean }) {
+  const payload: Record<string, unknown> = {
+    ...workPayload(input),
+    workTypeOther: input.workTypeOther || deleteField(),
+    venueText: input.venueText || deleteField(),
+    hymnalText: input.hymnalText || deleteField(),
+    sacrament: input.sacrament ? sacramentPayload(input.sacrament) : deleteField(),
+    updatedBy: options.uid,
+    updatedAt: serverTimestamp()
   };
-  notes?: string;
-  createdBy: string;
-};
+
+  if (!options.keepReview) {
+    payload.reviewStatus = 'pre-approved' satisfies WorkReviewStatus;
+    payload.reviewedAt = deleteField();
+    payload.reviewedBy = deleteField();
+  }
+
+  return updateDoc(doc(worksRef, id), payload);
+}
+
+export async function setWorkReviewStatus(id: string, status: WorkReviewStatus, uid: string) {
+  const reviewed = status === 'reviewed';
+  return updateDoc(doc(worksRef, id), {
+    reviewStatus: status,
+    reviewedAt: reviewed ? serverTimestamp() : deleteField(),
+    reviewedBy: reviewed ? uid : deleteField(),
+    updatedBy: uid,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteWork(id: string) {
+  return deleteDoc(doc(worksRef, id));
+}
 
 export type ChurchInfo = {
   id: string;
@@ -157,11 +237,6 @@ export type ChurchInfo = {
   observations?: string;
   lat?: number;
   lng?: number;
-};
-
-export type BeverageInfo = {
-  id: string;
-  description: string;
 };
 
 function mergeCatalogChurches(churches: ChurchInfo[]) {
@@ -269,102 +344,5 @@ export async function updateChurch(id: string, input: Partial<ChurchInput>) {
 
 export async function deleteChurch(id: string) {
   const ref = doc(churchesRef, id);
-  return deleteDoc(ref);
-}
-
-export async function fetchBeverageBatches(): Promise<BeverageInfo[]> {
-  try {
-    const q = query(collection(db, 'beverageBatches'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(docSnapshot => {
-      const data = asRecord(docSnapshot.data());
-      const description = typeof data.description === 'string' ? data.description : undefined;
-      const desc = description
-        ? description
-        : `${data.grau ?? '?'}º grau, ${data.concentracao ?? ''} ${data.ano ?? ''} ${data.localidade ?? ''}`.trim();
-      return { id: docSnapshot.id, description: desc };
-    });
-  } catch {
-    return [];
-  }
-}
-
-export async function createWork(input: WorkInput) {
-  const firestorePayload = removeUndefinedDeep({
-    title: input.title,
-    date: input.date ?? null,
-    startTime: input.startTime ?? null,
-    expectedDurationMin: input.expectedDurationMin ?? null,
-    actualDurationMin: input.actualDurationMin ?? null,
-    venueId: input.venueId,
-    venueName: input.venueName,
-    venueText: input.venueText,
-    hymnals: input.hymnals,
-    responsibleChurchIds: input.responsibleChurchIds,
-    responsibleChurchNames: input.responsibleChurchNames,
-    responsibleChurchText: input.responsibleChurchText,
-    attendees: input.attendees ? {
-      total: input.attendees.total,
-      initiated: input.attendees.initiated,
-      men: input.attendees.men,
-      women: input.attendees.women,
-      children: input.attendees.children,
-      others: input.attendees.others,
-      othersDescription: input.attendees.othersDescription
-    } : undefined,
-    beverage: input.beverage ? {
-      batchId: input.beverage.batchId,
-      batchDescription: input.beverage.batchDescription,
-      batchText: input.beverage.batchText,
-      liters: input.beverage.liters ?? null
-    } : undefined,
-    notes: input.notes,
-    createdBy: input.createdBy,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now()
-  });
-
-  return addDoc(worksRef, firestorePayload as Record<string, unknown>);
-}
-
-export async function updateWork(id: string, input: Partial<WorkInput>) {
-  const ref = doc(worksRef, id);
-  const firestorePayload = removeUndefinedDeep({
-    title: input.title,
-    date: input.date,
-    startTime: input.startTime,
-    expectedDurationMin: input.expectedDurationMin,
-    actualDurationMin: input.actualDurationMin,
-    venueId: input.venueId,
-    venueName: input.venueName,
-    venueText: input.venueText,
-    hymnals: input.hymnals,
-    responsibleChurchIds: input.responsibleChurchIds,
-    responsibleChurchNames: input.responsibleChurchNames,
-    responsibleChurchText: input.responsibleChurchText,
-    attendees: input.attendees ? {
-      total: input.attendees.total,
-      initiated: input.attendees.initiated,
-      men: input.attendees.men,
-      women: input.attendees.women,
-      children: input.attendees.children,
-      others: input.attendees.others,
-      othersDescription: input.attendees.othersDescription
-    } : undefined,
-    beverage: input.beverage ? {
-      batchId: input.beverage.batchId,
-      batchDescription: input.beverage.batchDescription,
-      batchText: input.beverage.batchText,
-      liters: input.beverage.liters
-    } : undefined,
-    notes: input.notes,
-    updatedAt: Timestamp.now()
-  });
-
-  return updateDoc(ref, firestorePayload as Record<string, unknown>);
-}
-
-export async function deleteWork(id: string) {
-  const ref = doc(worksRef, id);
   return deleteDoc(ref);
 }

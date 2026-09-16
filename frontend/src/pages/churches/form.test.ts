@@ -59,8 +59,10 @@ describe('churches form helpers', () => {
   it('aggregates usage stats from sessions and users', () => {
     const usage = buildChurchUsageMap(
       [
-        { id: 't1', venueId: 'i1', responsibleChurchIds: ['i1', 'i2'] },
-        { id: 't2', venueId: 'i2', responsibleChurchIds: ['i2'] }
+        { churchId: 'i1' },
+        { churchId: 'i2' },
+        { churchId: 'i2' },
+        { churchId: '' }
       ],
       [
         { uid: 'u1', currentChurchId: 'i1', initiationChurchId: 'i2' },
@@ -69,13 +71,11 @@ describe('churches form helpers', () => {
     );
 
     expect(usage.get('i1')).toEqual({
-      worksVenue: 1,
       worksResponsible: 1,
       membersCurrentChurch: 1,
       membersInitiationChurch: 0
     });
     expect(usage.get('i2')).toEqual({
-      worksVenue: 1,
       worksResponsible: 2,
       membersCurrentChurch: 1,
       membersInitiationChurch: 2

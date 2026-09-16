@@ -10,6 +10,7 @@ import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebas
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -26,17 +27,21 @@ import {
   ALICE,
   BOB,
   BOOTSTRAP_EMAIL,
+  CUSTODIAN,
   EVENTADMIN,
   EVENT_ID,
   IMPORTED_MEMBER,
+  MANAGER,
   NEWBIE,
   REGISTRATION_ID,
   SUPERADMIN,
   USERADMIN,
   createTestEnvironment,
+  donationFixture,
   registrationFixture,
   unverified,
-  verified
+  verified,
+  workFixture
 } from './helpers';
 
 let testEnv: RulesTestEnvironment;
@@ -104,6 +109,40 @@ beforeEach(async () => {
     });
 
     await setDoc(doc(db, 'settings', 'notifications'), { extraEmails: [] });
+
+    // Work records: MANAGER acts for church-1, whose stock is stock-1.
+    await setDoc(doc(db, 'users', CUSTODIAN.uid), profile(CUSTODIAN.email, { systemRoles: ['custodian'] }));
+    await setDoc(doc(db, 'users', MANAGER.uid), profile(MANAGER.email));
+    await setDoc(doc(db, 'churchManagers', MANAGER.uid), { churchIds: ['church-1'], churchNames: ['Stella Azzurra'] });
+    await setDoc(doc(db, 'sacramentStocks', 'stock-1'), { name: 'Stella Azzurra', churchId: 'church-1' });
+    await setDoc(doc(db, 'sacramentStocks', 'stock-2'), { name: 'Barcelona', churchId: 'church-2' });
+    await setDoc(doc(db, 'sacramentItems', 'item-1'), { stockId: 'stock-1', degree: '2', form: 'liquid' });
+    await setDoc(doc(db, 'sacramentItems', 'item-gel'), { stockId: 'stock-1', degree: '1', form: 'gel' });
+    await setDoc(doc(db, 'sacramentItems', 'item-2'), { stockId: 'stock-2', degree: '3', form: 'liquid' });
+    const stamped = { createdBy: MANAGER.uid, createdAt: new Date(), updatedBy: MANAGER.uid, updatedAt: new Date() };
+    await setDoc(doc(db, 'trabalhos', 'work-pre'), { ...workFixture(), ...stamped });
+    await setDoc(doc(db, 'trabalhos', 'work-reviewed'), {
+      ...workFixture({ reviewStatus: 'reviewed', reviewedBy: ADMIN.uid, reviewedAt: new Date() }),
+      ...stamped
+    });
+    await setDoc(doc(db, 'icefluDonations', 'don-pre'), { ...donationFixture('don-pre'), ...stamped });
+    await setDoc(doc(db, 'icefluDonations', 'don-reviewed'), {
+      ...donationFixture('don-reviewed', { reviewStatus: 'reviewed', reviewedBy: ADMIN.uid, reviewedAt: new Date() }),
+      ...stamped
+    });
+    await setDoc(doc(db, 'icefluDonations', 'don-other-church'), {
+      ...donationFixture('don-other-church', {
+        churchId: 'church-2',
+        receiptPath: 'churches/church-2/donations/don-other-church/receipt-1.pdf'
+      }),
+      ...stamped,
+      createdBy: ADMIN.uid
+    });
+    await setDoc(doc(db, 'trabalhos', 'work-other-church'), {
+      ...workFixture({ churchId: 'church-2', churchName: 'Barcelona', sacrament: { stockId: 'stock-2', itemId: 'item-2', quantity: 1, unit: 'L' } }),
+      ...stamped,
+      createdBy: ADMIN.uid
+    });
   });
 });
 
@@ -469,6 +508,304 @@ describe('guard — consents and settings', () => {
     await assertFails(
       setDoc(doc(as(ALICE), 'users', ALICE.uid, 'approvedSnapshots', 'snap-1'), { fullName: 'Alice' })
     );
+  });
+});
+
+describe('guard — work records are church-scoped', () => {
+  const created = (who: { uid: string }) => ({
+    createdBy: who.uid,
+    createdAt: serverTimestamp(),
+    updatedBy: who.uid,
+    updatedAt: serverTimestamp()
+  });
+  const edited = (who: { uid: string }) => ({ updatedBy: who.uid, updatedAt: serverTimestamp() });
+
+  it('[guard] a manager can record a pre-approved work for their church', async () => {
+    await assertSucceeds(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), { ...workFixture(), ...created(MANAGER) }));
+  });
+
+  it('[guard] a gel batch is recorded in kg, never litres', async () => {
+    const gel = { stockId: 'stock-1', itemId: 'item-gel', quantity: 0.2 };
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), { ...workFixture({ sacrament: { ...gel, unit: 'L' } }), ...created(MANAGER) })
+    );
+    await assertSucceeds(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), { ...workFixture({ sacrament: { ...gel, unit: 'kg' } }), ...created(MANAGER) })
+    );
+  });
+
+  it('[guard] a plain member cannot record a work', async () => {
+    await assertFails(setDoc(doc(as(BOB), 'trabalhos', 'new'), { ...workFixture(), ...created(BOB) }));
+  });
+
+  it('[guard] a manager cannot record a work for a church they do not manage', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
+        ...workFixture({ churchId: 'church-2', sacrament: { stockId: 'stock-2', itemId: 'item-2', quantity: 1, unit: 'L' } }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager cannot book Daime from another church\'s stock', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
+        ...workFixture({ sacrament: { stockId: 'stock-2', itemId: 'item-2', quantity: 1, unit: 'L' } }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager cannot pair a batch with a stock it does not belong to', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
+        ...workFixture({ sacrament: { stockId: 'stock-1', itemId: 'item-2', quantity: 1, unit: 'L' } }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager cannot file a record as already reviewed', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
+        ...workFixture({ reviewStatus: 'reviewed', reviewedBy: MANAGER.uid, reviewedAt: serverTimestamp() }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] fardati cannot exceed the total', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
+        ...workFixture({ attendees: { total: 5, initiated: 6 } }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager can list their church\'s records, and only those', async () => {
+    const db = as(MANAGER);
+    await assertSucceeds(getDocs(query(collection(db, 'trabalhos'), where('churchId', '==', 'church-1'))));
+    await assertFails(getDocs(query(collection(db, 'trabalhos'), where('churchId', '==', 'church-2'))));
+    await assertFails(getDocs(collection(db, 'trabalhos')));
+    await assertFails(getDoc(doc(db, 'trabalhos', 'work-other-church')));
+  });
+
+  it('[guard] work records are not readable by other members or anonymously', async () => {
+    await assertFails(getDoc(doc(as(BOB), 'trabalhos', 'work-pre')));
+    await assertFails(getDoc(doc(anon(), 'trabalhos', 'work-pre')));
+  });
+
+  it('[guard] an admin can list every record and mark one reviewed', async () => {
+    await assertSucceeds(getDocs(collection(as(ADMIN), 'trabalhos')));
+    await assertSucceeds(
+      updateDoc(doc(as(ADMIN), 'trabalhos', 'work-pre'), {
+        reviewStatus: 'reviewed',
+        reviewedBy: ADMIN.uid,
+        reviewedAt: serverTimestamp(),
+        ...edited(ADMIN)
+      })
+    );
+  });
+
+  it('[guard] a manager cannot mark their own record reviewed', async () => {
+    await assertFails(
+      updateDoc(doc(as(MANAGER), 'trabalhos', 'work-pre'), {
+        reviewStatus: 'reviewed',
+        reviewedBy: MANAGER.uid,
+        reviewedAt: serverTimestamp(),
+        ...edited(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager\'s edit sends a reviewed record back to pre-approved', async () => {
+    const ref = doc(as(MANAGER), 'trabalhos', 'work-reviewed');
+    await assertFails(updateDoc(ref, { hymnalText: 'O Cruzeiro', ...edited(MANAGER) }));
+    await assertSucceeds(
+      updateDoc(ref, {
+        hymnalText: 'O Cruzeiro',
+        reviewStatus: 'pre-approved',
+        reviewedAt: deleteField(),
+        reviewedBy: deleteField(),
+        ...edited(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager can correct the Daime of their record within the church\'s stock', async () => {
+    const ref = doc(as(MANAGER), 'trabalhos', 'work-pre');
+    await assertSucceeds(
+      updateDoc(ref, { sacrament: { stockId: 'stock-1', itemId: 'item-1', quantity: 0.8, unit: 'L' }, ...edited(MANAGER) })
+    );
+    await assertFails(
+      updateDoc(ref, { sacrament: { stockId: 'stock-2', itemId: 'item-2', quantity: 0.8, unit: 'L' }, ...edited(MANAGER) })
+    );
+  });
+
+  it('[guard] unlinking a stock does not lock the records that already used it', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(), 'sacramentStocks', 'stock-1'), { churchId: deleteField() });
+    });
+    const ref = doc(as(MANAGER), 'trabalhos', 'work-pre');
+    await assertSucceeds(updateDoc(ref, { hymnalText: 'Nova Jerusalém', ...edited(MANAGER) }));
+    await assertFails(
+      updateDoc(ref, { sacrament: { stockId: 'stock-1', itemId: 'item-1', quantity: 2, unit: 'L' }, ...edited(MANAGER) })
+    );
+  });
+
+  it('[guard] a manager cannot move a record to another church or reassign its author', async () => {
+    await assertFails(updateDoc(doc(as(MANAGER), 'trabalhos', 'work-pre'), { churchId: 'church-2', ...edited(MANAGER) }));
+    await assertFails(updateDoc(doc(as(MANAGER), 'trabalhos', 'work-pre'), { createdBy: BOB.uid, ...edited(MANAGER) }));
+  });
+
+  it('[guard] a manager can delete a pre-approved record but not a reviewed one', async () => {
+    await assertFails(deleteDoc(doc(as(MANAGER), 'trabalhos', 'work-reviewed')));
+    await assertSucceeds(deleteDoc(doc(as(MANAGER), 'trabalhos', 'work-pre')));
+    await assertSucceeds(deleteDoc(doc(as(ADMIN), 'trabalhos', 'work-reviewed')));
+  });
+
+  it('[guard] a manager cannot write the Daime ledger directly', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'sacramentTransactions', 'work-new'), {
+        itemId: 'item-1',
+        stockId: 'stock-1',
+        type: 'entry',
+        date: '2026-09-15',
+        quantity: 50,
+        createdBy: MANAGER.uid
+      })
+    );
+  });
+
+  it('[guard] nobody but an admin can grant church management', async () => {
+    const grant = (who: { uid: string }) => ({
+      churchIds: ['church-2'],
+      churchNames: ['Barcelona'],
+      updatedBy: who.uid,
+      updatedAt: serverTimestamp()
+    });
+    await assertFails(setDoc(doc(as(MANAGER), 'churchManagers', MANAGER.uid), grant(MANAGER)));
+    await assertFails(setDoc(doc(as(BOB), 'churchManagers', BOB.uid), grant(BOB)));
+    await assertFails(setDoc(doc(as(USERADMIN), 'churchManagers', BOB.uid), grant(USERADMIN)));
+    await assertSucceeds(setDoc(doc(as(ADMIN), 'churchManagers', BOB.uid), grant(ADMIN)));
+  });
+
+  it('[guard] a manager can read their own grant, not someone else\'s', async () => {
+    await assertSucceeds(getDoc(doc(as(MANAGER), 'churchManagers', MANAGER.uid)));
+    await assertSucceeds(getDoc(doc(as(BOB), 'churchManagers', BOB.uid)));
+    await assertFails(getDoc(doc(as(BOB), 'churchManagers', MANAGER.uid)));
+  });
+
+  it('[guard] a custodian cannot relink a stock to a church, an admin can', async () => {
+    await assertFails(updateDoc(doc(as(CUSTODIAN), 'sacramentStocks', 'stock-2'), { churchId: 'church-1' }));
+    await assertSucceeds(updateDoc(doc(as(CUSTODIAN), 'sacramentStocks', 'stock-2'), { notes: 'Deposito' }));
+    await assertSucceeds(updateDoc(doc(as(ADMIN), 'sacramentStocks', 'stock-2'), { churchId: 'church-1' }));
+  });
+
+  it('[guard] the work-type catalog is readable by members and written by admins only', async () => {
+    const items = { items: [{ id: 'concentracao', label: 'Concentração', category: 'official', active: true }] };
+    await assertSucceeds(getDoc(doc(as(BOB), 'catalogs', 'workTypes')));
+    await assertFails(getDoc(doc(anon(), 'catalogs', 'workTypes')));
+    await assertFails(setDoc(doc(as(MANAGER), 'catalogs', 'workTypes'), items));
+    await assertSucceeds(setDoc(doc(as(ADMIN), 'catalogs', 'workTypes'), items));
+  });
+});
+
+describe('guard — ICEFLU donations are church-scoped', () => {
+  const created = (who: { uid: string }) => ({
+    createdBy: who.uid,
+    createdAt: serverTimestamp(),
+    updatedBy: who.uid,
+    updatedAt: serverTimestamp()
+  });
+  const edited = (who: { uid: string }) => ({ updatedBy: who.uid, updatedAt: serverTimestamp() });
+
+  it('[guard] a manager can record a pre-approved donation for their church', async () => {
+    await assertSucceeds(setDoc(doc(as(MANAGER), 'icefluDonations', 'don-new'), { ...donationFixture('don-new'), ...created(MANAGER) }));
+  });
+
+  it('[guard] a plain member cannot record a donation', async () => {
+    await assertFails(setDoc(doc(as(BOB), 'icefluDonations', 'don-new'), { ...donationFixture('don-new'), ...created(BOB) }));
+  });
+
+  it('[guard] a manager cannot record a donation for another church', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'icefluDonations', 'don-new'), {
+        ...donationFixture('don-new', { churchId: 'church-2', receiptPath: 'churches/church-2/donations/don-new/receipt-1.pdf' }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] the receipt must sit in this donation\'s own folder under its church', async () => {
+    const attempt = (receiptPath: string) =>
+      setDoc(doc(as(MANAGER), 'icefluDonations', 'don-new'), { ...donationFixture('don-new', { receiptPath }), ...created(MANAGER) });
+    await assertFails(attempt('churches/church-2/donations/don-new/receipt-1.pdf'));
+    await assertFails(attempt('churches/church-1/donations/don-pre/receipt-1-bonifico.pdf'));
+    await assertFails(attempt('users/manager/identityDocument-1.pdf'));
+    await assertFails(attempt('churches/church-1/donations/don-new/notes.pdf'));
+  });
+
+  it('[guard] reason, method and amount are constrained', async () => {
+    const attempt = (overrides: Record<string, unknown>) =>
+      setDoc(doc(as(MANAGER), 'icefluDonations', 'don-new'), { ...donationFixture('don-new', overrides), ...created(MANAGER) });
+    await assertFails(attempt({ reason: 'other' }));
+    await assertFails(attempt({ method: 'crypto' }));
+    await assertFails(attempt({ amount: 0 }));
+    await assertFails(attempt({ recipient: '' }));
+    await assertSucceeds(attempt({ reason: 'jurua', method: 'in-person', amount: 12.5 }));
+  });
+
+  it('[guard] a manager cannot file a donation as already reviewed', async () => {
+    await assertFails(
+      setDoc(doc(as(MANAGER), 'icefluDonations', 'don-new'), {
+        ...donationFixture('don-new', { reviewStatus: 'reviewed', reviewedBy: MANAGER.uid, reviewedAt: serverTimestamp() }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager lists only their church\'s donations; others read none', async () => {
+    const db = as(MANAGER);
+    await assertSucceeds(getDocs(query(collection(db, 'icefluDonations'), where('churchId', '==', 'church-1'))));
+    await assertFails(getDocs(query(collection(db, 'icefluDonations'), where('churchId', '==', 'church-2'))));
+    await assertFails(getDocs(collection(db, 'icefluDonations')));
+    await assertFails(getDoc(doc(as(BOB), 'icefluDonations', 'don-pre')));
+    await assertFails(getDoc(doc(anon(), 'icefluDonations', 'don-pre')));
+    await assertSucceeds(getDocs(collection(as(ADMIN), 'icefluDonations')));
+  });
+
+  it('[guard] only an admin marks a donation reviewed', async () => {
+    const review = (who: { uid: string }) => ({
+      reviewStatus: 'reviewed',
+      reviewedBy: who.uid,
+      reviewedAt: serverTimestamp(),
+      ...edited(who)
+    });
+    await assertFails(updateDoc(doc(as(MANAGER), 'icefluDonations', 'don-pre'), review(MANAGER)));
+    await assertSucceeds(updateDoc(doc(as(ADMIN), 'icefluDonations', 'don-pre'), review(ADMIN)));
+  });
+
+  it('[guard] a manager\'s edit sends a reviewed donation back to pre-approved', async () => {
+    const ref = doc(as(MANAGER), 'icefluDonations', 'don-reviewed');
+    await assertFails(updateDoc(ref, { amount: 400, ...edited(MANAGER) }));
+    await assertSucceeds(
+      updateDoc(ref, {
+        amount: 400,
+        reviewStatus: 'pre-approved',
+        reviewedAt: deleteField(),
+        reviewedBy: deleteField(),
+        ...edited(MANAGER)
+      })
+    );
+  });
+
+  it('[guard] a manager can delete a pre-approved donation but not a reviewed one', async () => {
+    await assertFails(deleteDoc(doc(as(MANAGER), 'icefluDonations', 'don-reviewed')));
+    await assertFails(deleteDoc(doc(as(MANAGER), 'icefluDonations', 'don-other-church')));
+    await assertSucceeds(deleteDoc(doc(as(MANAGER), 'icefluDonations', 'don-pre')));
+    await assertSucceeds(deleteDoc(doc(as(ADMIN), 'icefluDonations', 'don-reviewed')));
   });
 });
 
