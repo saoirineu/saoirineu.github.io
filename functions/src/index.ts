@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
 
 import { computeLeaderResponse, LEADER_DECISIONS, type LeaderDecision } from './leaderDecision';
@@ -9,6 +10,8 @@ import { evaluateThrottle, type ThrottleState } from './mailThrottle';
 import { isSelfNominatedLeader } from './leaderReference';
 import { computeCapacityRows, eventCapacityBuckets } from './eventCapacity';
 import { sameWorkExit, workExitTransaction, workExitTransactionId } from './workSacrament';
+import type { MailGuard } from './mailQueue';
+import { createMailQueue, type QueueOutcome } from './mailQueueRuntime';
 
 admin.initializeApp();
 
@@ -273,6 +276,8 @@ async function sendPortalMail(message: { to: string | string[]; subject: string;
     headers: {
       'Content-Type': 'application/json',
       'X-Relay-Token': mailRelayToken.value(),
+      // Node's default agent string reads as a bot to the hosting's protection.
+      'User-Agent': 'SaoIrineuPortal/1.0 (+https://saoirineu.github.io)',
     },
     body: JSON.stringify({ to: message.to, subject: message.subject, text: message.text }),
     signal: AbortSignal.timeout(20_000),
@@ -283,6 +288,27 @@ async function sendPortalMail(message: { to: string | string[]; subject: string;
     throw new Error(`Mail relay responded ${response.status}: ${detail.slice(0, 300)}`);
   }
 }
+
+const mailQueue = createMailQueue({
+  db: admin.firestore(),
+  send: sendPortalMail,
+  isEmailVerified: async uid => {
+    try {
+      return (await admin.auth().getUser(uid)).emailVerified;
+    } catch {
+      return null; // the account no longer exists
+    }
+  },
+});
+const deliverOrQueue = mailQueue.deliverOrQueue;
+
+/** Retries queued emails the relay refused. Nothing due costs one small query. */
+export const retryQueuedMail = onSchedule(
+  { schedule: 'every 5 minutes', secrets: MAIL_SECRETS, timeoutSeconds: 300 },
+  async () => {
+    await mailQueue.retryDue();
+  }
+);
 
 // Recipients of the admin "registration pending" notice: the always-on baseline
 // plus the users and extra emails admins configure in settings/notifications
@@ -471,22 +497,32 @@ export const onUserApprovalDecision = onDocumentWritten(
     const name = profileDisplayName(after);
     const portalUrl = appBaseUrl.value().replace(/\/$/, '');
 
+    // Sent late, a decision email must still match the profile: an admin may have
+    // changed their mind while the relay was refusing mail.
+    const guard: MailGuard = { type: 'docField', path: `users/${event.params.uid}`, field: 'approvalStatus', oneOf: [afterStatus] };
+
     if (afterStatus === 'approved') {
-      await sendPortalMail({
-        to: email,
-        subject: 'Your ICEFLU membership has been approved — São Irineu',
-        text: buildUserApprovedEmailText(name, portalUrl),
-      });
+      await deliverOrQueue(
+        {
+          to: email,
+          subject: 'Your ICEFLU membership has been approved — São Irineu',
+          text: buildUserApprovedEmailText(name, portalUrl),
+        },
+        { kind: 'user-approved', id: `user-decision-${event.id}`, guard }
+      );
       return;
     }
 
     const note = typeof after.adminNote === 'string' ? after.adminNote.trim() : '';
     const profileUrl = `${portalUrl}/profile`;
-    await sendPortalMail({
-      to: email,
-      subject: 'Your ICEFLU membership needs revision — São Irineu',
-      text: buildUserNeedsInfoEmailText(name, note, profileUrl),
-    });
+    await deliverOrQueue(
+      {
+        to: email,
+        subject: 'Your ICEFLU membership needs revision — São Irineu',
+        text: buildUserNeedsInfoEmailText(name, note, profileUrl),
+      },
+      { kind: 'user-needs-info', id: `user-decision-${event.id}`, guard }
+    );
   }
 );
 
@@ -514,13 +550,16 @@ export const onRegistrationBothApproved = onDocumentWritten(
     const locale = normalizeLeaderEmailLocale(after.locale);
     const message = finalApprovalEmail[locale];
     try {
-      await sendPortalMail({
-        to: email,
-        subject: message.subject,
-        text: message.body,
-      });
+      await deliverOrQueue(
+        { to: email, subject: message.subject, text: message.body },
+        {
+          kind: 'registration-approved',
+          id: `registration-approved-${event.id}`,
+          guard: { type: 'docField', path: `events/${event.params.eventId}/registrations/${event.params.id}`, field: 'status', oneOf: ['approved'] },
+        }
+      );
     } catch (error) {
-      console.error('Failed to send final approval email', error);
+      console.error('Failed to queue final approval email', error);
     }
   }
 );
@@ -550,11 +589,19 @@ export const onUserApprovalPending = onDocumentWritten(
 
     const recipients = await loadNotificationRecipients();
 
-    await sendPortalMail({
-      to: recipients,
-      subject: `ICEFLU portal user approval — ${after.email ?? event.params.uid}`,
-      text: buildUserApprovalEmailBody({ uid: event.params.uid, data: after, reviewUrl }),
-    });
+    await deliverOrQueue(
+      {
+        to: recipients,
+        subject: `ICEFLU portal user approval — ${after.email ?? event.params.uid}`,
+        text: buildUserApprovalEmailBody({ uid: event.params.uid, data: after, reviewUrl }),
+      },
+      {
+        kind: 'approval-pending',
+        id: `approval-pending-${event.id}`,
+        // Pointless once someone has already reviewed the submission.
+        guard: { type: 'docField', path: `users/${event.params.uid}`, field: 'approvalStatus', oneOf: ['pending'] },
+      }
+    );
   }
 );
 
@@ -693,20 +740,27 @@ export const onEventRegistration = onDocumentCreated(
       // Whoever handles it decides whether this is fraud or someone who is
       // genuinely their own centre's leader.
       try {
-        await sendPortalMail({
-          to: await loadNotificationRecipients(),
-          subject: `Registration needs a reference church — ${name}`,
-          text: [
-            `${name} registered for ${eventId} giving their own address as the reference church leader (${leaderEmail}).`,
-            ``,
-            `No approval link was sent, because it would have gone to the applicant.`,
-            `Please confirm who the reference church leader is and re-issue the link.`,
-            ``,
-            `Registration: ${id}`,
-          ].join('\n'),
-        });
+        await deliverOrQueue(
+          {
+            to: await loadNotificationRecipients(),
+            subject: `Registration needs a reference church — ${name}`,
+            text: [
+              `${name} registered for ${eventId} giving their own address as the reference church leader (${leaderEmail}).`,
+              ``,
+              `No approval link was sent, because it would have gone to the applicant.`,
+              `Please confirm who the reference church leader is and re-issue the link.`,
+              ``,
+              `Registration: ${id}`,
+            ].join('\n'),
+          },
+          {
+            kind: 'leader-self-nominated',
+            id: `leader-self-nominated-${event.id}`,
+            guard: { type: 'docField', path: `events/${eventId}/registrations/${id}`, field: 'leaderReviewBlocked', oneOf: ['self-nominated'] },
+          }
+        );
       } catch (error) {
-        console.error('Failed to send the self-nomination notice', error);
+        console.error('Failed to queue the self-nomination notice', error);
       }
       return;
     }
@@ -715,11 +769,19 @@ export const onEventRegistration = onDocumentCreated(
     const reviewUrl = buildLeaderReviewUrl(id, token, eventId);
     const locale = normalizeLeaderEmailLocale(data.locale);
 
-    await sendPortalMail({
-      to: leaderEmail,
-      subject: `Registration approval request — ${name}`,
-      text: buildLeaderEmailBody({ leaderName: leaderName || 'leader', reviewUrl, locale }),
-    });
+    await deliverOrQueue(
+      {
+        to: leaderEmail,
+        subject: `Registration approval request — ${name}`,
+        text: buildLeaderEmailBody({ leaderName: leaderName || 'leader', reviewUrl, locale }),
+      },
+      {
+        kind: 'leader-review',
+        id: `leader-review-${event.id}`,
+        // Stop once the leader has answered (or the registration is gone).
+        guard: { type: 'docField', path: `events/${eventId}/registrations/${id}`, field: 'leaderApproval', oneOf: [null] },
+      }
+    );
   }
 );
 
@@ -1026,13 +1088,15 @@ export const leaderRespond = onCall(
         const locale = normalizeLeaderEmailLocale(data.locale);
         const message = applicantOutcomeEmail[locale][outcome];
         try {
-          await sendPortalMail({
-            to: applicantEmail,
-            subject: message.subject,
-            text: message.body,
-          });
+          await deliverOrQueue(
+            { to: applicantEmail, subject: message.subject, text: message.body },
+            {
+              kind: 'applicant-outcome',
+              guard: { type: 'docField', path: ref.path, field: 'leaderApproval', oneOf: [plan.leaderApproval] },
+            }
+          );
         } catch (error) {
-          console.error('Failed to send applicant outcome email', error);
+          console.error('Failed to queue applicant outcome email', error);
         }
       }
     }
@@ -1043,13 +1107,20 @@ export const leaderRespond = onCall(
       const paymentToken = signPaymentToken(ref.id, leaderTokenSecret.value(), payload.eventId as string);
       const paymentReviewUrl = buildPaymentReviewUrl(ref.id, paymentToken, payload.eventId as string);
       try {
-        await sendPortalMail({
-          to: PAYMENT_ADMIN_EMAIL,
-          subject: `Payment verification — ${applicantName}`,
-          text: buildPaymentAdminEmail({ name: applicantName, reviewUrl: paymentReviewUrl }),
-        });
+        await deliverOrQueue(
+          {
+            to: PAYMENT_ADMIN_EMAIL,
+            subject: `Payment verification — ${applicantName}`,
+            text: buildPaymentAdminEmail({ name: applicantName, reviewUrl: paymentReviewUrl }),
+          },
+          {
+            kind: 'payment-review',
+            // Stop once the administration has verified the payment.
+            guard: { type: 'docField', path: ref.path, field: 'paymentApproval', oneOf: [null] },
+          }
+        );
       } catch (error) {
-        console.error('Failed to send payment-admin email', error);
+        console.error('Failed to queue payment-admin email', error);
       }
     }
 
@@ -1195,26 +1266,37 @@ export const sendVerificationEmailCallable = onCall(
       link = await admin.auth().generateEmailVerificationLink(email, { url: `${base}/login` });
     } catch (error) {
       console.error('Failed to generate the verification link', error);
+      // Firebase refuses links requested in quick succession; that is a "wait a
+      // moment", not a fault, and the login page says so.
+      if (String((error as Error)?.message ?? '').includes('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+        throw new HttpsError('resource-exhausted', 'Confirmation links were requested too quickly. Please wait a few minutes.', {
+          reason: 'link-throttled',
+        });
+      }
       throw new HttpsError('internal', 'Could not generate the confirmation link.', {
         reason: 'link-failed',
       });
     }
 
-    // Any throw from here reached the client as a bare "INTERNAL". Give the
-    // login page a reason it can turn into a sentence the person can act on.
+    // One queued confirmation per account: a newer link replaces an older one still
+    // waiting for the relay. Retries stop as soon as the address is confirmed, which
+    // usually happens through the Firebase email the login page sends as a fallback.
+    let outcome: QueueOutcome;
     try {
-      await sendPortalMail({
-        to: email,
-        subject: 'Confirm your email — São Irineu',
-        text: buildVerificationEmailText(link),
-      });
+      outcome = await deliverOrQueue(
+        { to: email, subject: 'Confirm your email — São Irineu', text: buildVerificationEmailText(link) },
+        { kind: 'verification', id: `verification-${uid}`, guard: { type: 'emailUnverified', uid }, replace: true }
+      );
     } catch (error) {
-      console.error('Failed to send the verification email', error);
+      console.error('Failed to queue the verification email', error);
       throw new HttpsError('unavailable', `Could not deliver the confirmation email to ${email}.`, {
-        reason: 'smtp-failed',
+        reason: 'queue-failed',
       });
     }
 
-    return { sent: true, email };
+    // 'queued': not delivered yet, retried automatically. The login page then also
+    // asks Firebase to send its own confirmation email.
+    const status = outcome === 'sent' ? 'sent' : outcome === 'cancelled' ? 'already-verified' : 'queued';
+    return { sent: status === 'sent', status, email };
   }
 );

@@ -625,6 +625,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Outbound mail queue (Cloud Functions only, through the admin SDK). Queued emails
+    // carry confirmation and review links, so no client reads them, not even admins.
+    match /mailQueue/{id} {
+      allow read, write: if false;
+    }
+
     // Default deny anything not matched above.
     match /{document=**} {
       allow read, write: if false;

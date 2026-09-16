@@ -14,46 +14,63 @@ import {
 
 import { auth, functions, googleProvider } from '../lib/firebase';
 import { syncUserProfileForLogin } from '../lib/users';
-import { AuthContext, type AuthContextValue } from './auth-context';
+import { AuthContext, type AuthContextValue, type VerificationDelivery } from './auth-context';
 
 function isPopupBlockedError(error: unknown) {
   return error instanceof Error && error.message.includes('block the window');
 }
 
 /**
- * The branded confirmation email goes out through the organization's own SMTP
- * relay, which can refuse mail from the Cloud Functions egress (it has). Nobody
- * should be locked out of a new account by that, so fall back to the message
- * Firebase sends itself — plainer and from a firebaseapp.com address, but it
- * always leaves. Returns false only when both paths fail.
+ * The branded confirmation email goes out through the organization's mail relay,
+ * whose hosting intermittently refuses Cloud Functions. The function queues it and
+ * keeps retrying, but a person waiting on this screen should not depend on that, so
+ * whenever ours did not leave at once, also ask Firebase to send its own message —
+ * plainer, in English, from noreply@sao-irineu.firebaseapp.com, but it leaves now.
+ * The queued retry stops by itself once the address is confirmed.
  */
-async function deliverVerificationEmail(user: User): Promise<{ sent: boolean; detail?: string }> {
+async function deliverVerificationEmail(user: User): Promise<VerificationDelivery> {
   let brandedDetail = '';
+  let queued = false;
+  let tooMany = false;
   try {
-    await httpsCallable(functions, 'sendVerificationEmailCallable')();
-    return { sent: true };
+    const result = await httpsCallable<unknown, { status?: string }>(functions, 'sendVerificationEmailCallable')();
+    const status = result.data?.status;
+    // Deployments before the queue answer { sent: true } with no status.
+    if (!status || status === 'sent' || status === 'already-verified') return { state: 'sent' };
+    queued = true;
   } catch (brandedError) {
     console.warn('Branded confirmation email failed; falling back to Firebase', brandedError);
     brandedDetail = errorDetail(brandedError);
+    tooMany = errorCodeOf(brandedError) === 'functions/resource-exhausted';
   }
 
   try {
     await sendEmailVerification(user, {
       url: `${window.location.origin}${import.meta.env.BASE_URL}`
     });
-    return { sent: true };
+    return { state: 'sent' };
   } catch (fallbackError) {
     console.error('Firebase confirmation email failed too', fallbackError);
+    // Ours is still being retried: the person only has to wait.
+    if (queued) return { state: 'queued' };
     // Both routes are out, so report both: the branded one says why the
     // organization's relay refused, the fallback why Google would not stand in.
-    return { sent: false, detail: [brandedDetail, errorDetail(fallbackError)].filter(Boolean).join(' | ') };
+    return {
+      state: 'failed',
+      tooMany: tooMany || errorCodeOf(fallbackError) === 'auth/too-many-requests',
+      detail: [brandedDetail, errorDetail(fallbackError)].filter(Boolean).join(' | ')
+    };
   }
 }
 
-function errorDetail(error: unknown) {
-  const code = typeof error === 'object' && error !== null && 'code' in error
+function errorCodeOf(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code?: unknown }).code ?? '')
     : '';
+}
+
+function errorDetail(error: unknown) {
+  const code = errorCodeOf(error);
   const message = error instanceof Error ? error.message : String(error ?? '');
   return code && !message.includes(code) ? `${code}: ${message}` : message;
 }
@@ -102,8 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Stay signed in even when the mail fails: the confirmation modal's resend
       // button needs the session, and signing out here would leave the account
       // stranded with no way to ask for the link again.
-      const { sent, detail } = await deliverVerificationEmail(credential.user);
-      return { verificationSent: sent, verificationDetail: detail };
+      return deliverVerificationEmail(credential.user);
     },
     sendPasswordReset: email => sendPasswordResetEmail(auth, email).then(() => undefined),
     refreshCurrentUser: async () => {
@@ -118,10 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     sendVerificationEmail: async () => {
       if (!auth.currentUser) {
-        throw new Error('No signed-in account to confirm.');
+        return { state: 'failed', detail: 'No signed-in account to confirm.' };
       }
-      const { sent, detail } = await deliverVerificationEmail(auth.currentUser);
-      if (!sent) throw new Error(detail || 'Could not send the confirmation email.');
+      return deliverVerificationEmail(auth.currentUser);
     },
     signOut: () => firebaseSignOut(auth)
   };

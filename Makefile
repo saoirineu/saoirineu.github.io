@@ -2,7 +2,7 @@ PORT ?= 5174
 FIREBASE_PROJECT ?= sao-irineu
 FIREBASE ?= $(shell which firebase 2>/dev/null || echo npx firebase)
 
-.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean leader-token-secret regenerate-leader-token leader-link test-rules test
+.PHONY: serve up aup firestore-rules storage-rules firebase-rules deploy-functions deploy-backend backup migrate-dry migrate migrate-and-clean leader-token-secret regenerate-leader-token leader-link test-rules test test-mail-queue
 
 serve:
 	npm --prefix frontend run dev -- --host --port $(PORT)
@@ -22,8 +22,14 @@ tests/rules/node_modules:
 test-rules: tests/rules/node_modules
 	./tests/rules/run.sh
 
+# The outbound mail queue (claims, retries, guards, expiry) against a throwaway
+# Firestore emulator with a fake relay. Needs a JDK 21+, like test-rules.
+test-mail-queue:
+	npm --prefix functions run build
+	$(FIREBASE) emulators:exec --only firestore --project sao-irineu-test "node --test functions/lib/mailQueueRuntime.emulator.js"
+
 # Everything that can run without credentials.
-test: test-rules
+test: test-rules test-mail-queue
 	npm --prefix frontend test
 	npm --prefix functions test
 

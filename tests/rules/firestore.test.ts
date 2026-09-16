@@ -821,6 +821,22 @@ describe('guard — ICEFLU donations are church-scoped', () => {
   });
 });
 
+describe('guard — outbound mail queue', () => {
+  it('[guard] no client reads queued mail, not even a superadmin', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'mailQueue', 'verification-alice'), { kind: 'verification', text: 'link' });
+    });
+    await assertFails(getDoc(doc(as(SUPERADMIN), 'mailQueue', 'verification-alice')));
+    await assertFails(getDoc(doc(as(ALICE), 'mailQueue', 'verification-alice')));
+    await assertFails(getDocs(collection(as(ADMIN), 'mailQueue')));
+  });
+
+  it('[guard] no client can queue or alter mail', async () => {
+    await assertFails(setDoc(doc(as(ALICE), 'mailQueue', 'forged'), { kind: 'user-approved', to: ['x@example.com'] }));
+    await assertFails(setDoc(doc(as(SUPERADMIN), 'mailQueue', 'forged'), { kind: 'user-approved', to: ['x@example.com'] }));
+  });
+});
+
 describe('guard — default deny', () => {
   it('[guard] an unmatched collection is denied to anonymous callers', async () => {
     await assertFails(getDoc(doc(anon(), 'somethingNew', 'x')));

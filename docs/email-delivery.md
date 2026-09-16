@@ -92,21 +92,72 @@ version they were deployed with.
 
 ## Failure modes
 
-`sendPortalMail()` throws when the relay answers anything other than 2xx, and
-the message includes the status and body, so Cloud Logging shows the reason
-rather than a bare `INTERNAL`.
+Since September 2026 the hosting's bot protection intermittently refuses requests
+from Google Cloud before they reach `relay.php`: some get a `403` page titled
+"Visitor anti-robot validation", others never open a connection (`fetch failed`
+after ~10 s). The relay's own log has no line for those requests. A support
+ticket to Serverplan asks them to exempt `/portal-mail/` from that protection.
 
-There is **no fallback** for the shared paths: if the hosting is down, mail
-stops. The one exception is account confirmation — the frontend falls back to
-Firebase's own `sendEmailVerification` when the callable fails
-(`deliverVerificationEmail()` in
-[`frontend/src/providers/AuthProvider.tsx`](../frontend/src/providers/AuthProvider.tsx)),
-so nobody is locked out of a new account by a mail outage.
+`sendPortalMail()` throws when the relay answers anything other than 2xx. It is
+called only by the mail queue; everything else calls `deliverOrQueue()`.
 
-If the hosting ever becomes unreliable, the alternative is a transactional
-provider (Brevo, Resend, Mailchimp Transactional). That is a `sendPortalMail()`
-change plus new secrets; the existing SPF/DKIM already cover sending as
-`info@santodaime.it`.
+## The mail queue
+
+Every portal email goes through `deliverOrQueue()`
+([`functions/src/mailQueueRuntime.ts`](../functions/src/mailQueueRuntime.ts)),
+which writes it to `mailQueue/{id}` and tries it at once. When the relay refuses,
+`retryQueuedMail` (every 5 minutes) keeps trying:
+
+| After failed attempt | 1 | 2 | 3 | 4 | 5 | 6+ |
+| --- | --- | --- | --- | --- | --- | --- |
+| Most emails | 2 min | 5 min | 10 min | 15 min | 30 min | hourly |
+| Confirmation email | 10 min | 20 min | 30 min | hourly | | |
+
+An email stops being retried when:
+
+- **it is delivered** (`status: sent`);
+- **it no longer applies** (`cancelled`): before every attempt a guard re-checks the
+  data, so a late email never contradicts it — a decision email only goes out if the
+  profile still has that status, an admin notice only while the submission is still
+  pending, a review request only until the leader or the administration has answered,
+  a confirmation link only while the address is unconfirmed;
+- **it expires** (`failed`, logged as `MAIL_GAVE_UP`): after 24 hours for a
+  confirmation link, 7 days for leader and payment review requests, 3 days otherwise.
+
+Queueing is idempotent for triggers (the document id comes from the event id, so a
+redelivered event does not send twice), and each attempt is claimed in a transaction,
+so the immediate attempt and a scheduled retry never send the same email together.
+If the relay accepts an email but the response is lost, the retry sends it again:
+a rare duplicate is preferred to a lost email.
+
+The queue is closed to every client in the rules: queued emails contain confirmation
+and review links.
+
+### Account confirmation
+
+A person waiting on the login page should not depend on retries, so:
+
+1. The callable queues our confirmation email (one per account, a newer link
+   replaces an older one) and tries it at once.
+2. If ours did not leave, the login page also asks Firebase to send its own
+   confirmation email right away (plainer, in English, from
+   `noreply@sao-irineu.firebaseapp.com`). Ours keeps retrying in the background but
+   waits 10 minutes first, and stops as soon as the address is confirmed — usually
+   through Firebase's link — so most people get one email, not two.
+3. The modal then says one of three things:
+   - **sent** (either email left): check your inbox and spam; the sender is
+     info@santodaime.it or noreply@sao-irineu.firebaseapp.com;
+   - **queued** (Firebase refused too, ours is retrying): nothing to do, it usually
+     arrives within half an hour; resend if nothing came after an hour;
+   - **failed** (nothing went out, nothing queued): try again in a few minutes, or
+     wait longer if too many requests were made.
+4. The resend button waits a minute after every attempt (five after "too many
+   requests"): Firebase refuses links requested in quick succession, which is how both
+   routes failed together on 2026-09-14.
+
+If the hosting stays unreliable, the lasting alternative is a transactional
+provider (Brevo, Resend, Mailchimp Transactional): a `sendPortalMail()` change plus
+new secrets, with SPF/DKIM added for `info@santodaime.it`.
 
 ## Diagnosing
 
@@ -118,6 +169,15 @@ curl -s -o /dev/null -w '%{http_code}\n' https://www.santodaime.it/portal-mail/r
 gcloud logging read 'resource.labels.service_name="sendverificationemailcallable" AND severity>=WARNING' \
   --project sao-irineu --limit 10 --freshness=1h
 ```
+
+```bash
+# emails the queue is retrying, delivered late, cancelled, or gave up on
+gcloud logging read 'textPayload:"MAIL_RETRY_SCHEDULED" OR textPayload:"MAIL_DELIVERED_AFTER_RETRY" OR textPayload:"MAIL_CANCELLED" OR textPayload:"MAIL_GAVE_UP"' \
+  --project sao-irineu --limit 50 --freshness=1d
+```
+
+The queue documents themselves (recipients, subject, attempts, `lastError`) are in
+the Firebase console under Firestore → `mailQueue`.
 
 The relay's own audit log is at `~/portal-mail-data/relay.log` on the hosting
 (File Manager, one level above `public_html`), one tab-separated line per

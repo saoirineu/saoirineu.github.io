@@ -7,12 +7,22 @@
 >
 > **Implementadas:** `users`, `churches`, `beverageBatches`, `trabalhos`, `members`, `events`
 > (+ subcolecoes `registrations`/`capacity`), `users/{uid}/consents`, `sacramentItems`,
-> `sacramentStocks`, `sacramentTransactions`, `churchManagers`, `catalogs`, `icefluDonations`.
+> `sacramentStocks`, `sacramentTransactions`, `churchManagers`, `catalogs`, `icefluDonations`, `mailQueue`.
 > **Planejadas:** `pessoas`, `hinarios`, `hinos`, `conceitos`.
 > **Removidas:** `europeanGatheringRegistrations` e `europeanGatheringRooms` (cutover do Encontro
 > Europeu para `events/encontro-europeu-2026`; código e regras retirados — junho/2026).
 
 ## Colecoes
+
+### mailQueue (fila de envio de email — so Cloud Functions)
+Todo email do portal passa por aqui (`deliverOrQueue()` em `functions/src/mailQueueRuntime.ts`);
+detalhes em [email-delivery.md](email-delivery.md#the-mail-queue). Nenhum cliente le ou escreve.
+- kind, to: string[], subject, text
+- guard: condicao reavaliada antes de cada tentativa (`docField` path/field/oneOf, ou `emailUnverified` uid)
+- status: `pending` | `sent` | `cancelled` | `failed`; closedReason?
+- attempts, nextAttemptAt (so enquanto `pending`), expiresAt, lastError?, lastErrorAt?, sentAt?
+- createdAt, updatedAt
+- ids: `verification-{uid}` (um por conta), `{kind}-{eventId}` para gatilhos (idempotente), automatico nos demais
 
 ### users (perfil do auth)
 - uid (igual ao auth)

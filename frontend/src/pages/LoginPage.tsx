@@ -5,6 +5,12 @@ import { BrandMark } from '../components/BrandMark';
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
+import {
+  formatCountdown,
+  verificationCooldownMs,
+  verificationView,
+  type VerificationAttempt
+} from './login/verification';
 
 const copyByLocale = {
   pt: {
@@ -60,10 +66,13 @@ const copyByLocale = {
       `Enviamos um link de confirmação para ${address}. Abra o link para ativar sua conta e depois faça login.`,
     verificationFailedBody: (address: string) =>
       `Sua conta foi criada, mas não conseguimos enviar o link de confirmação para ${address}. Use o botão abaixo para tentar de novo.`,
-    verificationSpamHint: 'A mensagem pode levar alguns minutos. Se não encontrar, verifique a pasta de SPAM ou lixo eletrônico.',
+    verificationQueuedBody: (address: string) =>
+      `Sua conta foi criada. O email de confirmação para ${address} não saiu na hora, mas vamos tentar de novo automaticamente: não é preciso fazer nada. Normalmente chega em meia hora. Se depois de uma hora não tiver chegado, use o botão abaixo.`,
+    verificationSpamHint: 'A mensagem pode levar alguns minutos. Se não encontrar, verifique a pasta de SPAM ou lixo eletrônico: o remetente é info@santodaime.it ou noreply@sao-irineu.firebaseapp.com.',
     resend: 'Reenviar email',
     resendSent: 'Email de confirmação reenviado.',
-    resendError: 'Ainda não foi possível enviar o email. Tente novamente em alguns minutos.'
+    resendError: 'Ainda não foi possível enviar o email. Tente novamente em alguns minutos.',
+    resendTooMany: 'Você pediu muitos envios em pouco tempo. Aguarde alguns minutos antes de tentar de novo.'
   },
   en: {
     title: 'São Irineu Portal',
@@ -118,10 +127,13 @@ const copyByLocale = {
       `We sent a confirmation link to ${address}. Open it to activate your account, then sign in.`,
     verificationFailedBody: (address: string) =>
       `Your account was created, but we could not send the confirmation link to ${address}. Use the button below to try again.`,
-    verificationSpamHint: 'The message can take a few minutes. If you do not see it, check your SPAM or junk folder.',
+    verificationQueuedBody: (address: string) =>
+      `Your account has been created. The confirmation email to ${address} could not go out right away, but we will keep retrying automatically — there is nothing you need to do. It usually arrives within half an hour. If it has not arrived after an hour, use the button below.`,
+    verificationSpamHint: 'The message can take a few minutes. If you do not see it, check your SPAM or junk folder: it comes from info@santodaime.it or noreply@sao-irineu.firebaseapp.com.',
     resend: 'Resend email',
     resendSent: 'Confirmation email sent again.',
-    resendError: 'We still could not send the email. Try again in a few minutes.'
+    resendError: 'We still could not send the email. Try again in a few minutes.',
+    resendTooMany: 'Too many emails were requested in a short time. Wait a few minutes before trying again.'
   },
   es: {
     title: 'Portal São Irineu',
@@ -176,10 +188,13 @@ const copyByLocale = {
       `Enviamos un enlace de confirmación a ${address}. Ábralo para activar su cuenta y después inicie sesión.`,
     verificationFailedBody: (address: string) =>
       `Su cuenta fue creada, pero no pudimos enviar el enlace de confirmación a ${address}. Use el botón de abajo para intentarlo de nuevo.`,
-    verificationSpamHint: 'El mensaje puede tardar unos minutos. Si no lo encuentra, revise la carpeta de SPAM o correo no deseado.',
+    verificationQueuedBody: (address: string) =>
+      `Su cuenta ha sido creada. El correo de confirmación para ${address} no salió enseguida, pero lo reintentaremos automáticamente: no tiene que hacer nada. Normalmente llega en media hora. Si después de una hora no ha llegado, use el botón de abajo.`,
+    verificationSpamHint: 'El mensaje puede tardar unos minutos. Si no lo encuentra, revise la carpeta de SPAM o correo no deseado: el remitente es info@santodaime.it o noreply@sao-irineu.firebaseapp.com.',
     resend: 'Reenviar correo',
     resendSent: 'Correo de confirmación reenviado.',
-    resendError: 'Todavía no fue posible enviar el correo. Inténtelo de nuevo en unos minutos.'
+    resendError: 'Todavía no fue posible enviar el correo. Inténtelo de nuevo en unos minutos.',
+    resendTooMany: 'Ha pedido demasiados envíos en poco tiempo. Espere unos minutos antes de volver a intentarlo.'
   },
   it: {
     title: 'Portale São Irineu',
@@ -234,10 +249,13 @@ const copyByLocale = {
       `Abbiamo inviato un link di conferma a ${address}. Aprilo per attivare il tuo account e poi accedi.`,
     verificationFailedBody: (address: string) =>
       `Il tuo account è stato creato, ma non siamo riusciti a inviare il link di conferma a ${address}. Usa il pulsante qui sotto per riprovare.`,
-    verificationSpamHint: 'Il messaggio può richiedere qualche minuto. Se non lo trovi, controlla la cartella SPAM o posta indesiderata.',
+    verificationQueuedBody: (address: string) =>
+      `Il tuo account è stato creato. L'email di conferma per ${address} non è partita subito, ma riproveremo automaticamente: non serve fare nulla. Di solito arriva entro mezz'ora. Se dopo un'ora non l'hai ricevuta, usa il pulsante qui sotto.`,
+    verificationSpamHint: 'Il messaggio può richiedere qualche minuto. Se non lo trovi, controlla la cartella SPAM o posta indesiderata: il mittente è info@santodaime.it oppure noreply@sao-irineu.firebaseapp.com.',
     resend: 'Reinvia email',
     resendSent: 'Email di conferma reinviata.',
-    resendError: 'Non è stato ancora possibile inviare l\'email. Riprova tra qualche minuto.'
+    resendError: 'Non è stato ancora possibile inviare l\'email. Riprova tra qualche minuto.',
+    resendTooMany: 'Hai richiesto troppi invii in poco tempo. Aspetta qualche minuto prima di riprovare.'
   }
 } as const;
 
@@ -354,14 +372,32 @@ export function LoginPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [messageModal, setMessageModal] = useState<MessageModal | null>(null);
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
-  const [resendStatus, setResendStatus] = useState<'idle' | 'failed' | 'sent' | 'error'>('idle');
-  const [resendDetail, setResendDetail] = useState<string | null>(null);
+  const [verificationAttempt, setVerificationAttempt] = useState<VerificationAttempt | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
+  // Resend waits between requests: Firebase refuses links asked for in quick succession.
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [clock, setClock] = useState(() => Date.now());
   const [submitting, setSubmitting] = useState(false);
 
   const verificationOpen = verificationEmail !== null;
-  // Nothing reached the inbox, so the modal must not also claim it was sent.
-  const sendFailed = resendStatus === 'failed' || resendStatus === 'error';
+  const view = verificationView(verificationAttempt);
+  const coolingDown = cooldownUntil > clock;
+
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setClock(current);
+      if (current >= cooldownUntil) window.clearInterval(timer);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldownUntil]);
+
+  function startCooldown(attempt: VerificationAttempt) {
+    const current = Date.now();
+    setClock(current);
+    setCooldownUntil(current + verificationCooldownMs(attempt.result));
+  }
   const gateHandled = useRef(false);
 
   // Arriving from AuthGate means the session is unconfirmed. Reload first: the
@@ -381,7 +417,7 @@ export function LoginPage() {
       }
       if (!refreshed?.email) return;
       setEmail(refreshed.email);
-      setResendStatus('idle');
+      setVerificationAttempt(null);
       setVerificationEmail(refreshed.email);
     })();
 
@@ -417,18 +453,19 @@ export function LoginPage() {
       if (mode === 'signin') {
         const signedIn = await emailSignIn(email, password);
         if (signedIn.email && !signedIn.emailVerified) {
-          setResendStatus('idle');
+          setVerificationAttempt(null);
           setVerificationEmail(signedIn.email);
           return;
         }
         navigate(from, { replace: true });
       } else {
-        const { verificationSent, verificationDetail } = await emailSignUp(email, password);
+        const result = await emailSignUp(email, password);
+        const attempt: VerificationAttempt = { source: 'signup', result };
         setMode('signin');
         setPassword('');
         setPasswordConfirmation('');
-        setResendStatus(verificationSent ? 'idle' : 'failed');
-        setResendDetail(verificationDetail ?? null);
+        setVerificationAttempt(attempt);
+        startCooldown(attempt);
         setVerificationEmail(email);
       }
     } catch (err) {
@@ -475,14 +512,14 @@ export function LoginPage() {
 
   const handleResendVerification = async () => {
     setResendBusy(true);
-    setResendStatus('idle');
-    setResendDetail(null);
     try {
-      await sendVerificationEmail();
-      setResendStatus('sent');
-    } catch (err) {
-      setResendStatus('error');
-      setResendDetail(err instanceof Error ? err.message : null);
+      const result = await sendVerificationEmail().catch((err: unknown) => ({
+        state: 'failed' as const,
+        detail: err instanceof Error ? err.message : undefined
+      }));
+      const attempt: VerificationAttempt = { source: 'resend', result };
+      setVerificationAttempt(attempt);
+      startCooldown(attempt);
     } finally {
       setResendBusy(false);
     }
@@ -620,11 +657,13 @@ export function LoginPage() {
             {copy.verificationTitle}
           </h2>
           <p className="mt-3 text-sm leading-6 text-[color:rgba(36,54,77,0.76)]">
-            {sendFailed
+            {view.body === 'failed'
               ? copy.verificationFailedBody(verificationEmail ?? '')
-              : copy.verificationBody(verificationEmail ?? '')}
+              : view.body === 'queued'
+                ? copy.verificationQueuedBody(verificationEmail ?? '')
+                : copy.verificationBody(verificationEmail ?? '')}
           </p>
-          {!sendFailed && (
+          {view.body !== 'failed' && (
             <p className="mt-2 text-sm font-semibold leading-6 text-[color:var(--brand-blue-deep)]">
               {copy.verificationSpamHint}
             </p>
@@ -632,18 +671,19 @@ export function LoginPage() {
 
           <button
             type="button"
-            disabled={resendBusy}
+            disabled={resendBusy || coolingDown}
             className="mt-6 w-full rounded-2xl bg-[color:var(--brand-blue-deep)] px-4 py-2.5 text-sm font-semibold text-[color:var(--brand-white)] transition hover:bg-[color:var(--brand-green)] disabled:opacity-70"
             onClick={handleResendVerification}
           >
-            {copy.resend}
+            {coolingDown ? `${copy.resend} (${formatCountdown(cooldownUntil - clock)})` : copy.resend}
           </button>
 
-          {resendStatus === 'sent' && <p className="mt-3 text-sm text-green-700">{copy.resendSent}</p>}
-          {resendStatus === 'error' && <p className="mt-3 text-sm text-red-600">{copy.resendError}</p>}
-          {sendFailed && resendDetail && (
+          {view.notice === 'sent' && <p className="mt-3 text-sm text-green-700">{copy.resendSent}</p>}
+          {view.notice === 'error' && <p className="mt-3 text-sm text-red-600">{copy.resendError}</p>}
+          {view.notice === 'too-many' && <p className="mt-3 text-sm text-red-600">{copy.resendTooMany}</p>}
+          {view.showDetail && verificationAttempt?.result.detail && (
             <p className="mt-3 break-words text-xs leading-5 text-[color:rgba(36,54,77,0.56)]">
-              {copy.technicalDetail} {resendDetail}
+              {copy.technicalDetail} {verificationAttempt.result.detail}
             </p>
           )}
         </ModalShell>
