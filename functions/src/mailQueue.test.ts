@@ -6,6 +6,7 @@ import {
   describeSendError,
   docFieldGuardAllows,
   mailLifetimeMs,
+  nextRetryDelayMs,
   retryDelayMs
 } from './mailQueue';
 
@@ -18,6 +19,18 @@ test('retries start quickly and settle at an hour', () => {
 
 test('a confirmation email gives the Firebase fallback time before retrying', () => {
   assert.deepEqual([1, 2, 3, 4, 9].map(n => retryDelayMs('verification', n) / MINUTE), [10, 20, 30, 60, 60]);
+});
+
+test('attempts made on the spot do not advance the retry schedule', () => {
+  // First attempt failed.
+  assert.equal(nextRetryDelayMs('verification', { attempts: 1, immediateAttempts: 1 }), 10 * MINUTE);
+  // Quick second try failed too: still the first scheduled delay.
+  assert.equal(nextRetryDelayMs('verification', { attempts: 2, immediateAttempts: 2 }), 10 * MINUTE);
+  // Then the schedule advances with each background retry.
+  assert.equal(nextRetryDelayMs('verification', { attempts: 3, immediateAttempts: 2 }), 20 * MINUTE);
+  assert.equal(nextRetryDelayMs('verification', { attempts: 4, immediateAttempts: 2 }), 30 * MINUTE);
+  assert.equal(nextRetryDelayMs('verification', { attempts: 5, immediateAttempts: 2 }), 60 * MINUTE);
+  assert.equal(nextRetryDelayMs('user-approved', { attempts: 2, immediateAttempts: 2 }), 2 * MINUTE);
 });
 
 test('attempt counts below one are treated as the first failure', () => {

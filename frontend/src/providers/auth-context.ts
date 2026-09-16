@@ -2,12 +2,13 @@ import { createContext } from 'react';
 import type { User } from 'firebase/auth';
 
 /**
- * Outcome of mailing a confirmation link. `sent`: an email left (ours, or Firebase's
- * own as a fallback). `queued`: neither left yet, but ours is retried automatically.
- * `failed`: nothing went out and nothing is queued; `tooMany` means wait before asking again.
+ * Outcome of mailing a confirmation link. `sent`: ours left. `fallback-sent`: our mail
+ * server refused twice, Firebase's own email left instead and ours is retried later.
+ * `queued`: nothing left yet, ours is retried automatically. `failed`: nothing went out
+ * and nothing is queued; `tooMany` means wait before asking again.
  */
 export type VerificationDelivery = {
-  state: 'sent' | 'queued' | 'failed';
+  state: 'sent' | 'fallback-sent' | 'queued' | 'failed';
   tooMany?: boolean;
   detail?: string;
 };

@@ -105,8 +105,12 @@ called only by the mail queue; everything else calls `deliverOrQueue()`.
 
 Every portal email goes through `deliverOrQueue()`
 ([`functions/src/mailQueueRuntime.ts`](../functions/src/mailQueueRuntime.ts)),
-which writes it to `mailQueue/{id}` and tries it at once. When the relay refuses,
-`retryQueuedMail` (every 5 minutes) keeps trying:
+which writes it to `mailQueue/{id}` and tries it at once. Account confirmation and the
+Firestore-trigger emails (membership decisions, admin notices, review requests) get a
+second try two seconds later, because the hosting's refusals are often per request;
+the emails sent while a leader answers a review do not, to keep that page quick. When
+the relay still refuses, `retryQueuedMail` (every 5 minutes) keeps trying. Attempts
+made on the spot do not advance the schedule:
 
 | After failed attempt | 1 | 2 | 3 | 4 | 5 | 6+ |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -138,17 +142,21 @@ and review links.
 A person waiting on the login page should not depend on retries, so:
 
 1. The callable queues our confirmation email (one per account, a newer link
-   replaces an older one) and tries it at once.
-2. If ours did not leave, the login page also asks Firebase to send its own
+   replaces an older one), tries it at once and, if refused, once more two seconds
+   later. The page says the email is being sent and can take up to 30 seconds.
+2. If ours still did not leave, the login page asks Firebase to send its own
    confirmation email right away (plainer, in English, from
-   `noreply@sao-irineu.firebaseapp.com`). Ours keeps retrying in the background but
-   waits 10 minutes first, and stops as soon as the address is confirmed — usually
-   through Firebase's link — so most people get one email, not two.
-3. The modal then says one of three things:
-   - **sent** (either email left): check your inbox and spam; the sender is
-     info@santodaime.it or noreply@sao-irineu.firebaseapp.com;
-   - **queued** (Firebase refused too, ours is retrying): nothing to do, it usually
-     arrives within half an hour; resend if nothing came after an hour;
+   `noreply@sao-irineu.firebaseapp.com`). Ours keeps retrying in the background after
+   10, 20 and 30 minutes, then hourly, and stops as soon as the address is
+   confirmed — usually through Firebase's link — so most people get one email.
+3. The modal then says one of four things:
+   - **sent** (ours left): check your inbox and spam;
+   - **fallback sent** (ours refused twice, Firebase's left): our mail server is
+     temporarily overloaded, an alternative email came from
+     noreply@sao-irineu.firebaseapp.com, and ours will follow after 10, 20, 30 minutes
+     and then hourly until the account is confirmed;
+   - **queued** (Firebase refused too): our mail server is temporarily overloaded,
+     nothing to do, ours is retried after 10, 20, 30 minutes and then hourly;
    - **failed** (nothing went out, nothing queued): try again in a few minutes, or
      wait longer if too many requests were made.
 4. The resend button waits a minute after every attempt (five after "too many

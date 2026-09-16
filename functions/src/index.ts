@@ -508,7 +508,7 @@ export const onUserApprovalDecision = onDocumentWritten(
           subject: 'Your ICEFLU membership has been approved — São Irineu',
           text: buildUserApprovedEmailText(name, portalUrl),
         },
-        { kind: 'user-approved', id: `user-decision-${event.id}`, guard }
+        { kind: 'user-approved', id: `user-decision-${event.id}`, guard, retryAtOnce: true }
       );
       return;
     }
@@ -521,7 +521,7 @@ export const onUserApprovalDecision = onDocumentWritten(
         subject: 'Your ICEFLU membership needs revision — São Irineu',
         text: buildUserNeedsInfoEmailText(name, note, profileUrl),
       },
-      { kind: 'user-needs-info', id: `user-decision-${event.id}`, guard }
+      { kind: 'user-needs-info', id: `user-decision-${event.id}`, guard, retryAtOnce: true }
     );
   }
 );
@@ -555,6 +555,7 @@ export const onRegistrationBothApproved = onDocumentWritten(
         {
           kind: 'registration-approved',
           id: `registration-approved-${event.id}`,
+          retryAtOnce: true,
           guard: { type: 'docField', path: `events/${event.params.eventId}/registrations/${event.params.id}`, field: 'status', oneOf: ['approved'] },
         }
       );
@@ -598,6 +599,7 @@ export const onUserApprovalPending = onDocumentWritten(
       {
         kind: 'approval-pending',
         id: `approval-pending-${event.id}`,
+        retryAtOnce: true,
         // Pointless once someone has already reviewed the submission.
         guard: { type: 'docField', path: `users/${event.params.uid}`, field: 'approvalStatus', oneOf: ['pending'] },
       }
@@ -756,6 +758,7 @@ export const onEventRegistration = onDocumentCreated(
           {
             kind: 'leader-self-nominated',
             id: `leader-self-nominated-${event.id}`,
+            retryAtOnce: true,
             guard: { type: 'docField', path: `events/${eventId}/registrations/${id}`, field: 'leaderReviewBlocked', oneOf: ['self-nominated'] },
           }
         );
@@ -778,6 +781,7 @@ export const onEventRegistration = onDocumentCreated(
       {
         kind: 'leader-review',
         id: `leader-review-${event.id}`,
+        retryAtOnce: true,
         // Stop once the leader has answered (or the registration is gone).
         guard: { type: 'docField', path: `events/${eventId}/registrations/${id}`, field: 'leaderApproval', oneOf: [null] },
       }
@@ -1285,7 +1289,8 @@ export const sendVerificationEmailCallable = onCall(
     try {
       outcome = await deliverOrQueue(
         { to: email, subject: 'Confirm your email — São Irineu', text: buildVerificationEmailText(link) },
-        { kind: 'verification', id: `verification-${uid}`, guard: { type: 'emailUnverified', uid }, replace: true }
+        // A second try on the spot while the person waits; after that, the schedule.
+        { kind: 'verification', id: `verification-${uid}`, guard: { type: 'emailUnverified', uid }, replace: true, retryAtOnce: true }
       );
     } catch (error) {
       console.error('Failed to queue the verification email', error);

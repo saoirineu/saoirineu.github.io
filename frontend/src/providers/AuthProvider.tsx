@@ -48,7 +48,7 @@ async function deliverVerificationEmail(user: User): Promise<VerificationDeliver
     await sendEmailVerification(user, {
       url: `${window.location.origin}${import.meta.env.BASE_URL}`
     });
-    return { state: 'sent' };
+    return { state: queued ? 'fallback-sent' : 'sent' };
   } catch (fallbackError) {
     console.error('Firebase confirmation email failed too', fallbackError);
     // Ours is still being retried: the person only has to wait.

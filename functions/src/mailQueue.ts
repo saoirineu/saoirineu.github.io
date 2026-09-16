@@ -54,6 +54,18 @@ export function retryDelayMs(kind: MailKind, failedAttempts: number): number {
   return schedule[index] * MINUTE_MS;
 }
 
+/** Pause before the second attempt made while the caller waits. */
+export const IMMEDIATE_RETRY_DELAY_MS = 2 * 1000;
+
+/**
+ * Delay before the next scheduled retry. Attempts made on the spot (the first one, and
+ * the quick second try while someone waits) do not advance the schedule: after both
+ * fail, a confirmation email still waits 10 minutes, not 20.
+ */
+export function nextRetryDelayMs(kind: MailKind, args: { attempts: number; immediateAttempts: number }): number {
+  return retryDelayMs(kind, args.attempts - args.immediateAttempts + 1);
+}
+
 /**
  * How long an email is worth retrying. A confirmation link is only useful while the
  * person is still waiting for it; review links carry their own 60-day token, but a

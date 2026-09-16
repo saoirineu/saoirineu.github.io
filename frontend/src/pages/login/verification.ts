@@ -15,8 +15,11 @@ export function verificationCooldownMs(result: VerificationDelivery) {
 export type VerificationAttempt = { source: 'signup' | 'resend'; result: VerificationDelivery };
 
 export type VerificationView = {
-  /** Main text: link sent, sending retried automatically, or nothing went out. */
-  body: 'sent' | 'queued' | 'failed';
+  /**
+   * Main text: our link sent; our mail server overloaded but Firebase's email sent; our
+   * mail server overloaded and nothing sent yet (retried automatically); nothing went out.
+   */
+  body: 'sent' | 'fallback-sent' | 'queued' | 'failed';
   /** Line under the resend button, if any. */
   notice: 'sent' | 'error' | 'too-many' | null;
   showDetail: boolean;

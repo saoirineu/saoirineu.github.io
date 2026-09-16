@@ -26,16 +26,23 @@ const quiet = { log: () => undefined, warn: () => undefined, error: () => undefi
 
 let clock = Date.parse('2026-09-16T12:00:00Z');
 let relayUp = true;
+let failuresLeft = 0;
+let sleeps: number[] = [];
 let sent: { to: string[]; subject: string }[] = [];
 let verified = new Map<string, boolean | null>();
 
 const queue = createMailQueue({
   db,
   now: () => clock,
+  sleep: async ms => {
+    sleeps.push(ms);
+    clock += ms;
+  },
   log: quiet,
   isEmailVerified: async uid => (verified.has(uid) ? verified.get(uid)! : false),
   send: async mail => {
-    if (!relayUp) {
+    if (failuresLeft > 0 || !relayUp) {
+      failuresLeft = Math.max(0, failuresLeft - 1);
       throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'UND_ERR_CONNECT_TIMEOUT', message: 'Connect Timeout Error' } });
     }
     sent.push({ to: mail.to, subject: mail.subject });
@@ -54,6 +61,8 @@ beforeEach(async () => {
   await db.doc('users/u1').set({ approvalStatus: 'approved' });
   clock = Date.parse('2026-09-16T12:00:00Z');
   relayUp = true;
+  failuresLeft = 0;
+  sleeps = [];
   sent = [];
   verified = new Map();
 });
@@ -104,6 +113,39 @@ test('backoff grows with each failed attempt', async () => {
   }
   assert.deepEqual(gaps, [2, 5, 10]);
   assert.equal((await queued('backoff')).attempts, 4);
+});
+
+test('a quick second try delivers what the first attempt could not', async () => {
+  failuresLeft = 1;
+  assert.equal(await queue.deliverOrQueue(mail('Confirm'), { kind: 'verification', id: 'verification-quick', guard: { type: 'emailUnverified', uid: 'u9' }, replace: true, retryAtOnce: true }), 'sent');
+  assert.deepEqual(sleeps, [2000]);
+  const doc = await queued('verification-quick');
+  assert.equal(doc.status, 'sent');
+  assert.equal(doc.attempts, 2);
+  assert.equal(sent.length, 1);
+});
+
+test('after two refusals on the spot, the first background retry still waits its full delay', async () => {
+  relayUp = false;
+  assert.equal(await queue.deliverOrQueue(mail('Confirm'), { kind: 'verification', id: 'verification-slow', guard: { type: 'emailUnverified', uid: 'u8' }, replace: true, retryAtOnce: true }), 'queued');
+  let doc = await queued('verification-slow');
+  assert.equal(doc.attempts, 2);
+  assert.equal(doc.immediateAttempts, 2);
+  assert.equal(doc.nextAttemptAt.toMillis(), clock + 10 * MINUTE);
+
+  clock = doc.nextAttemptAt.toMillis();
+  await queue.retryDue();
+  doc = await queued('verification-slow');
+  assert.equal(doc.attempts, 3);
+  assert.equal(doc.nextAttemptAt.toMillis(), clock + 20 * MINUTE);
+  assert.equal(sent.length, 0);
+});
+
+test('without retryAtOnce a refusal goes straight to the schedule', async () => {
+  relayUp = false;
+  assert.equal(await queue.deliverOrQueue(mail(), { kind: 'user-approved', id: 'no-quick' }), 'queued');
+  assert.deepEqual(sleeps, []);
+  assert.equal((await queued('no-quick')).attempts, 1);
 });
 
 test('an email that no longer matches the data is cancelled, not sent', async () => {

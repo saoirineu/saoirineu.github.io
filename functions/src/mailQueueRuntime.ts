@@ -6,11 +6,12 @@ import { FieldValue, Timestamp, type DocumentReference, type Firestore } from 'f
 
 import {
   ATTEMPT_LEASE_MS,
+  IMMEDIATE_RETRY_DELAY_MS,
   decideAttempt,
   describeSendError,
   docFieldGuardAllows,
   mailLifetimeMs,
-  retryDelayMs,
+  nextRetryDelayMs,
   type MailGuard,
   type MailKind
 } from './mailQueue';
@@ -25,11 +26,13 @@ export type MailQueueDeps = {
   /** Whether the account's address is confirmed; null when the account is gone. */
   isEmailVerified: (uid: string) => Promise<boolean | null>;
   now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
   log?: Pick<Console, 'log' | 'warn' | 'error'>;
 };
 
 export function createMailQueue(deps: MailQueueDeps) {
   const now = deps.now ?? (() => Date.now());
+  const sleep = deps.sleep ?? (ms => new Promise<void>(resolve => setTimeout(resolve, ms)));
   const log = deps.log ?? console;
   const collection = () => deps.db.collection('mailQueue');
 
@@ -50,7 +53,10 @@ export function createMailQueue(deps: MailQueueDeps) {
    * retry never send the same email at the same time; if an attempt dies midway, the
    * lease runs out and the next retry picks the email up again.
    */
-  async function attempt(ref: DocumentReference): Promise<QueueOutcome> {
+  async function attempt(
+    ref: DocumentReference,
+    options: { immediate?: boolean; ignoreSchedule?: boolean } = {}
+  ): Promise<QueueOutcome> {
     const startedAt = now();
     const claim = await deps.db.runTransaction(async transaction => {
       const data = (await transaction.get(ref)).data();
@@ -59,7 +65,8 @@ export function createMailQueue(deps: MailQueueDeps) {
       const decision = decideAttempt({
         now: startedAt,
         status: data.status,
-        nextAttemptAt: millis(data.nextAttemptAt),
+        // The quick second try runs right after our own failed attempt set the schedule.
+        nextAttemptAt: options.ignoreSchedule ? null : millis(data.nextAttemptAt),
         expiresAt: millis(data.expiresAt)
       });
       if (decision === 'expire') {
@@ -73,13 +80,18 @@ export function createMailQueue(deps: MailQueueDeps) {
       }
       if (decision !== 'attempt') return { decision, data };
 
-      const attempts = (typeof data.attempts === 'number' ? data.attempts : 0) + 1;
+      const attemptsBefore = typeof data.attempts === 'number' ? data.attempts : 0;
+      const attempts = attemptsBefore + 1;
+      // Emails queued before this field existed had exactly one immediate attempt.
+      const immediateBefore = typeof data.immediateAttempts === 'number' ? data.immediateAttempts : Math.min(attemptsBefore, 1);
+      const immediateAttempts = immediateBefore + (options.immediate ? 1 : 0);
       transaction.update(ref, {
         attempts,
+        immediateAttempts,
         nextAttemptAt: Timestamp.fromMillis(startedAt + ATTEMPT_LEASE_MS),
         updatedAt: FieldValue.serverTimestamp()
       });
-      return { decision, data, attempts };
+      return { decision, data, attempts, immediateAttempts };
     });
 
     if (!claim) return 'skipped';
@@ -112,7 +124,7 @@ export function createMailQueue(deps: MailQueueDeps) {
       await deps.send({ to: data.to, subject: data.subject, text: data.text });
     } catch (error) {
       const reason = describeSendError(error);
-      const nextAttemptAt = startedAt + retryDelayMs(kind, attempts);
+      const nextAttemptAt = startedAt + nextRetryDelayMs(kind, { attempts, immediateAttempts: claim.immediateAttempts ?? 1 });
       await ref.update({
         nextAttemptAt: Timestamp.fromMillis(nextAttemptAt),
         lastError: reason,
@@ -143,10 +155,12 @@ export function createMailQueue(deps: MailQueueDeps) {
    * `id` makes queueing idempotent: triggers pass one derived from the event, so a
    * redelivered event finds its email already queued instead of sending it twice.
    * `replace` overwrites a previous email with the same id (a newer confirmation link).
+   * `retryAtOnce` makes a second attempt two seconds after a refusal, before leaving the
+   * email to the schedule: the hosting's refusals are often per request.
    */
   async function deliverOrQueue(
     mail: PortalMail,
-    options: { kind: MailKind; id?: string; guard?: MailGuard; replace?: boolean }
+    options: { kind: MailKind; id?: string; guard?: MailGuard; replace?: boolean; retryAtOnce?: boolean }
   ): Promise<QueueOutcome> {
     const ref = options.id ? collection().doc(options.id.replace(/\//g, '_')) : collection().doc();
     const createdAt = now();
@@ -158,6 +172,7 @@ export function createMailQueue(deps: MailQueueDeps) {
       guard: options.guard ?? null,
       status: 'pending',
       attempts: 0,
+      immediateAttempts: 0,
       nextAttemptAt: Timestamp.fromMillis(createdAt),
       expiresAt: Timestamp.fromMillis(createdAt + mailLifetimeMs(options.kind)),
       createdAt: FieldValue.serverTimestamp(),
@@ -176,7 +191,11 @@ export function createMailQueue(deps: MailQueueDeps) {
       }
     }
 
-    return attempt(ref);
+    const outcome = await attempt(ref, { immediate: true });
+    if (outcome !== 'queued' || !options.retryAtOnce) return outcome;
+
+    await sleep(IMMEDIATE_RETRY_DELAY_MS);
+    return attempt(ref, { immediate: true, ignoreSchedule: true });
   }
 
   /** Attempts every email whose next attempt is due. One at a time: the relay caps the domain at 120 an hour. */
