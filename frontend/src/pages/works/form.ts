@@ -114,7 +114,7 @@ export function sacramentItemLabel(item: SacramentItem, stock: Pick<SacramentSto
 
 /** Stocks linked to the church, i.e. the ones its managers may draw Daime from. */
 export function stocksForChurch(stocks: readonly SacramentStock[], churchId: string) {
-  return churchId ? stocks.filter(stock => stock.churchId === churchId) : [];
+  return churchId ? stocks.filter(stock => stock.churchIds?.includes(churchId)) : [];
 }
 
 /**

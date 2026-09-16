@@ -4,6 +4,7 @@ import type { ChurchManager } from '../../lib/churchManagers';
 import type { UserProfile } from '../../lib/users';
 import type { Work, WorkReviewStatus } from '../../lib/works';
 import { OTHER_WORK_TYPE_ID, newWorkTypeId, type WorkType, type WorkTypeCatalog } from '../../lib/workTypes';
+import { ChurchChecklist } from '../../components/ChurchChecklist';
 import type { ChurchOption } from '../../providers/useChurchRecordAccess';
 import { formatQuantity, inputCls, labelCls } from '../sacrament/form';
 import type { WorksCopy } from './copy';
@@ -556,33 +557,6 @@ type ChurchManagersPanelProps = {
 function userLabel(user: Pick<UserProfile, 'displayName' | 'fullName' | 'email' | 'uid'>) {
   const name = user.fullName || user.displayName;
   return name && user.email ? `${name} <${user.email}>` : name || user.email || user.uid;
-}
-
-function ChurchChecklist({
-  churches,
-  selected,
-  onChange
-}: {
-  churches: ChurchOption[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  return (
-    <div className="grid max-h-48 grid-cols-1 gap-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 sm:grid-cols-2">
-      {churches.map(church => (
-        <label key={church.id} className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={selected.includes(church.id)}
-            onChange={event => onChange(
-              event.target.checked ? [...selected, church.id] : selected.filter(id => id !== church.id)
-            )}
-          />
-          {church.name}
-        </label>
-      ))}
-    </div>
-  );
 }
 
 export function ChurchManagersPanel({ copy, managers, users, churches, loading, saving, error, onSave }: ChurchManagersPanelProps) {

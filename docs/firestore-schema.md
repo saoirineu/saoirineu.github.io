@@ -87,7 +87,7 @@ Comportamento, permissoes e limitacoes: [work-records.md](work-records.md).
 - attendees: { total, initiated } (inteiros, initiated <= total). Os "bianchi" (nao fardados)
   sao derivados como total - initiated e nao sao gravados
 - sacrament?: { stockId, itemId, itemLabel?, quantity, unit: `L`|`kg` }: lote de um estoque
-  vinculado a igreja (`sacramentStocks.churchId`); `kg` para itens `gel`. Obrigatorio no formulario
+  vinculado a igreja (`sacramentStocks.churchIds`); `kg` para itens `gel`. Obrigatorio no formulario
 - contributions: { collected, icefluBrazilQuota } em euros (a quota inclui o feitio)
 - reviewStatus: `pre-approved` | `reviewed`; reviewedAt?, reviewedBy? (so quando `reviewed`)
 - createdBy, createdAt, updatedBy, updatedAt
@@ -132,9 +132,9 @@ Listas de opcoes editaveis por admins; leitura para usuarios verificados.
 ### sacramentStocks / sacramentItems / sacramentTransactions (Sacramento)
 Controle de estoque do Sacramento, acessivel ao papel `custodian` (e `admin`/`superadmin`).
 Fonte de verdade dos campos: `frontend/src/lib/sacrament.ts`.
-- `sacramentStocks/{id}`: name, location?, notes?, churchId?, churchName?, createdAt, updatedAt — locais/depositos
-  de estoque. `churchId` vincula o estoque a uma igreja: seus gestores usam o Daime dele nos registros
-  de trabalho. So admins alteram o vinculo.
+- `sacramentStocks/{id}`: name, location?, notes?, churchIds?, churchNames?, createdAt, updatedAt — locais/depositos
+  de estoque. `churchIds` lista as igrejas que o estoque atende (pode ser mais de uma): os gestores delas usam
+  o Daime dele nos registros de trabalho. So admins alteram o vinculo.
 - `sacramentItems/{id}`: stockId, degree, concentration?, form (`liquid`|`gel`), originChurchId?,
   originChurchName?, responsiblePerson?, feitioDate?, feitioDateEnd?, notes?, createdAt, updatedAt.
 - `sacramentTransactions/{id}`: itemId, stockId, type (`entry`|`exit`), date, missionaryName?,

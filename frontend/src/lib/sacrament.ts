@@ -18,6 +18,7 @@ import {
   asOptionalString,
   asOptionalTimestamp,
   asRecord,
+  asStringArray,
   removeUndefinedDeep,
 } from './firestoreData';
 
@@ -29,9 +30,9 @@ export type SacramentStock = {
   name: string;
   location?: string;
   notes?: string;
-  /** Links the stock to a church: its managers draw Daime from it when recording works. */
-  churchId?: string;
-  churchName?: string;
+  /** The churches this stock serves: their managers draw Daime from it when recording works. */
+  churchIds?: string[];
+  churchNames?: string[];
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -80,8 +81,8 @@ function mapStock(id: string, value: unknown): SacramentStock {
     name: asOptionalString(data.name) ?? '',
     location: asOptionalString(data.location),
     notes: asOptionalString(data.notes),
-    churchId: asOptionalString(data.churchId),
-    churchName: asOptionalString(data.churchName),
+    churchIds: asStringArray(data.churchIds),
+    churchNames: asStringArray(data.churchNames),
     createdAt: asOptionalTimestamp(data.createdAt) ?? undefined,
     updatedAt: asOptionalTimestamp(data.updatedAt) ?? undefined,
   };
@@ -139,8 +140,8 @@ export async function createStock(data: Omit<SacramentStock, 'id'>): Promise<str
       name: data.name,
       location: data.location,
       notes: data.notes,
-      churchId: data.churchId,
-      churchName: data.churchName,
+      churchIds: data.churchIds?.length ? data.churchIds : undefined,
+      churchNames: data.churchIds?.length ? data.churchNames : undefined,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
@@ -152,12 +153,12 @@ export async function updateStock(
   id: string,
   data: Partial<Omit<SacramentStock, 'id'>>,
 ): Promise<void> {
-  // An empty churchId unlinks the stock; undefined leaves the link as it is.
-  const unlink = data.churchId === '';
+  // An empty list unlinks the stock from every church; undefined leaves the links as they are.
+  const unlink = data.churchIds?.length === 0;
   await updateDoc(doc(stocksRef, id), removeUndefinedDeep({
     ...data,
-    churchId: unlink ? deleteField() : data.churchId,
-    churchName: unlink ? deleteField() : data.churchName,
+    churchIds: unlink ? deleteField() : data.churchIds,
+    churchNames: unlink ? deleteField() : data.churchNames,
     updatedAt: serverTimestamp(),
   }));
 }

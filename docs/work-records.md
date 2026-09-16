@@ -43,7 +43,8 @@ Taken with the requester on 2026-09-16:
    (`churchManagers/{uid}`). That account records works for those churches only. This is the
    first step towards item 1.1 (logging in on behalf of a church), not a replacement for it.
 2. **Daime comes from the church's own stock and is deducted.** A stock can be linked to a
-   church (`sacramentStocks.churchId`). Saving a work books an exit movement in the ledger.
+   church, and one stock can serve several churches (`sacramentStocks.churchIds`). Saving a
+   work books an exit movement in the ledger.
 3. **The work-type menu is a draft that admins edit.** The official calendar entries were
    drafted, not taken from an ICEFLU source, and are editable in the portal.
 4. **No approval gate.** Records are saved `pre-approved` and count straight away. Admins mark
@@ -58,7 +59,7 @@ Taken with the requester on 2026-09-16:
 | `trabalhos/{id}` | managers of the record's church, admins | the work records |
 | `churchManagers/{uid}` | admins | which churches an account acts for |
 | `catalogs/workTypes` | admins | the work-type menu |
-| `sacramentStocks/{id}.churchId` | admins | links a stock to a church |
+| `sacramentStocks/{id}.churchIds` | admins | the churches a stock serves |
 | `sacramentTransactions/work-{workId}` | the `onWorkSacramentChange` Cloud Function | the Daime exit for a record |
 
 The collection keeps its Portuguese name `trabalhos`, as recorded in
@@ -77,7 +78,7 @@ prototype page was replaced.
 | Delete a record | only while `pre-approved` | always | no |
 | Assign church managers | no | yes | no |
 | Edit the work-type menu | no | yes | no |
-| Link a stock to a church | no | yes (custodians cannot) | no |
+| Link a stock to churches | no | yes (custodians cannot) | no |
 | Write Daime ledger movements | never directly | yes (existing rule) | custodians, as before |
 
 `useradmin` and `eventadmin` get nothing here beyond what other members have. Rules also
@@ -123,7 +124,8 @@ buttons, since the next save of the record would overwrite any change made there
   participants, fardati, litres/kg, contributions, ICEFLU share) over the filtered records.
 - **Admin tabs**: *Gestori delle chiese* (pick an account, tick churches) and *Tipi di lavoro*
   (rename, regroup, reorder, deactivate, add; "Altro" is built in and always last).
-- **Sacrament page**: *Chiesa collegata* selector when creating or editing a stock (admins).
+- **Sacrament page**: *Chiese collegate* checklist when creating or editing a stock (admins),
+  showing city/country so churches registered under the same name can be told apart.
 - UI copy is in pt/en/es/it ([copy.ts](../frontend/src/pages/works/copy.ts)). Work-type names
   are single-language (Portuguese proper names).
 
@@ -133,8 +135,10 @@ buttons, since the next save of the record would overwrite any change made there
    anyone records a work: records saved while it is missing never get a movement (see
    [limitations](#ledger-and-stock)).
 2. Deploy the frontend as usual.
-3. On the Sacrament page, link each church's stock to the church, and make sure it holds
-   batches. As of 2026-09-16 no stock is linked and the *Italia* stock has no batches, so
+3. On the Sacrament page, open *Modifica scorta* on each stock and tick the churches it
+   serves (several are allowed), and make sure it holds batches. Tick the same church entry
+   used for the managers in step 4: the registry has churches with the same name, told apart
+   by the city/country shown next to them. As of 2026-09-16 no stock is linked and the *Italia* stock has no batches, so
    **nobody can save a record until this is done** (the Daime field is required).
 4. In *Lavori → Gestori delle chiese*, link the managers' accounts.
 5. In *Lavori → Tipi di lavoro*, have ICEFLU Italia correct the draft and press save. Until
@@ -165,9 +169,6 @@ buttons, since the next save of the record would overwrite any change made there
 
 ### Ledger and stock
 
-- **One church per stock.** A shared depot (e.g. a national *Italia* stock used by several
-  centres) can serve only one church. Supporting several means turning `churchId` into a list
-  in the stock, the rules and the UI.
 - **Daime is required.** A church with no linked stock cannot record anything, and a work that
   used Daime which is not in the ledger cannot be recorded.
 - **Balance is a warning, not a limit.** Rules cannot check stock levels, so a record can
@@ -243,6 +244,5 @@ Item 3 (donations sent to ICEFLU Brazil) is implemented separately: see
 Follow-ups that came out of this work:
 
 - a recount/repair script for work movements, modelled on `scripts/recount-event-capacity.mjs`;
-- stocks shared by several churches, if the depots are meant to be shared;
 - export of records (CSV) for the association's accounts;
 - edit history or reviewed snapshots, if reviewed figures must be preserved.

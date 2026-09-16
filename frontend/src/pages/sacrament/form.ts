@@ -166,11 +166,23 @@ export type SetItemField = <K extends keyof ItemFormState>(key: K, value: ItemFo
 
 // ─── stock form ────────────────────────────────────────────────────────────────
 
-export type StockFormState = { name: string; location: string; notes: string; churchId: string };
-export const initialStockForm: StockFormState = { name: '', location: '', notes: '', churchId: '' };
+export type StockFormState = { name: string; location: string; notes: string; churchIds: string[] };
+export const initialStockForm: StockFormState = { name: '', location: '', notes: '', churchIds: [] };
 
 export function stockToStockForm(stock: SacramentStock): StockFormState {
-  return { name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '', churchId: stock.churchId ?? '' };
+  return { name: stock.name, location: stock.location ?? '', notes: stock.notes ?? '', churchIds: stock.churchIds ?? [] };
+}
+
+/** Church options for linking a stock, with city/country to tell same-named churches apart. */
+export function churchLinkOptions(churches: ChurchInfo[]) {
+  return churches
+    .map(church => ({ id: church.id, name: church.name, detail: [church.city, church.country].filter(Boolean).join(', ') }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.detail.localeCompare(b.detail));
+}
+
+/** Names for the linked ids, in the order they were ticked, falling back to the stored names. */
+export function linkedChurchNames(churchIds: string[], churches: ChurchInfo[], storedNames: string[] = []) {
+  return churchIds.map((id, index) => churches.find(church => church.id === id)?.name ?? storedNames[index] ?? id);
 }
 
 // ─── batch sorting ─────────────────────────────────────────────────────────────

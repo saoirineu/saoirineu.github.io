@@ -21,7 +21,7 @@ import {
   type WorkFormState
 } from './form';
 
-const stock: SacramentStock = { id: 'stock-1', name: 'Stella Azzurra', churchId: 'church-1' };
+const stock: SacramentStock = { id: 'stock-1', name: 'Stella Azzurra', churchIds: ['church-1'] };
 const item: SacramentItem = {
   id: 'item-1',
   stockId: 'stock-1',
@@ -216,9 +216,15 @@ describe('works payload', () => {
 });
 
 describe('works Daime options', () => {
-  it('offers only the stocks linked to the church', () => {
-    const stocks: SacramentStock[] = [stock, { id: 'stock-2', name: 'Barcelona', churchId: 'church-2' }, { id: 'stock-3', name: 'Italia' }];
-    expect(stocksForChurch(stocks, 'church-1').map(entry => entry.id)).toEqual(['stock-1']);
+  it('offers only the stocks linked to the church, including shared ones', () => {
+    const stocks: SacramentStock[] = [
+      stock,
+      { id: 'stock-2', name: 'Barcelona', churchIds: ['church-2'] },
+      { id: 'stock-3', name: 'Italia' },
+      { id: 'stock-4', name: 'Deposito nazionale', churchIds: ['church-2', 'church-1'] }
+    ];
+    expect(stocksForChurch(stocks, 'church-1').map(entry => entry.id)).toEqual(['stock-1', 'stock-4']);
+    expect(stocksForChurch(stocks, 'church-2').map(entry => entry.id)).toEqual(['stock-2', 'stock-4']);
     expect(stocksForChurch(stocks, '')).toEqual([]);
   });
 

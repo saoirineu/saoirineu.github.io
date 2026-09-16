@@ -20,6 +20,8 @@ import {
   type SacramentTransaction,
   type TransactionType,
 } from '../../lib/sacrament';
+import { ChurchChecklist } from '../../components/ChurchChecklist';
+import { InfoTooltip } from '../../components/InfoTooltip';
 import { createChurch, type ChurchInfo } from '../../lib/works';
 import { ChurchFormSection, type ChurchesCopy } from '../churches/ChurchesSections';
 import { buildChurchPayload, initialChurchForm, type ChurchFormState } from '../churches/form';
@@ -40,7 +42,9 @@ import {
   initialItemForm,
   inputCls,
   itemToItemForm,
+  churchLinkOptions,
   labelCls,
+  linkedChurchNames,
   stockToStockForm,
   toDateInputValue,
   type BatchSort,
@@ -864,6 +868,47 @@ function BatchTable({ items, balanceByItem, churches, copy, uid, isAdmin, onRequ
 
 // ─── StockCard ────────────────────────────────────────────────────────────────
 
+/**
+ * The churches a stock serves, folded by default: the registry lists every church, and a
+ * stock usually serves a few. Folded, it still shows how many are linked and which.
+ */
+export function LinkedChurchesField({
+  copy,
+  churches,
+  selected,
+  onChange,
+}: {
+  copy: Copy;
+  churches: ChurchInfo[];
+  selected: string[];
+  onChange: (churchIds: string[]) => void;
+}) {
+  const names = linkedChurchNames(selected, churches);
+
+  return (
+    <div>
+      <div className="mb-0.5 flex items-center gap-1.5">
+        <span className="text-xs font-medium text-slate-500">{copy.linkedChurch}</span>
+        <InfoTooltip compact title={copy.linkedChurch} body={copy.linkedChurchInfo} />
+      </div>
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+          <span className="shrink-0 rounded-full bg-slate-100 px-2 text-xs font-semibold text-slate-600">{selected.length}</span>
+          <span className={`min-w-0 flex-1 truncate ${names.length ? '' : 'text-slate-400'}`}>
+            {names.length ? names.join(', ') : copy.noLinkedChurch}
+          </span>
+          <svg viewBox="0 0 20 20" aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400 transition group-open:rotate-180">
+            <path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        <div className="mt-2">
+          <ChurchChecklist churches={churchLinkOptions(churches)} selected={selected} onChange={onChange} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
 type StockCardProps = {
   stock: SacramentStock;
   churches: ChurchInfo[];
@@ -923,9 +968,9 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
         name: stockEditForm.name.trim(),
         location: stockEditForm.location.trim() || undefined,
         notes: stockEditForm.notes.trim(),
-        // '' unlinks; see updateStock.
-        churchId: stockEditForm.churchId,
-        churchName: churches.find(church => church.id === stockEditForm.churchId)?.name,
+        // [] unlinks every church; see updateStock.
+        churchIds: stockEditForm.churchIds,
+        churchNames: linkedChurchNames(stockEditForm.churchIds, churches),
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['sacramentStocks'] });
@@ -966,18 +1011,12 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls()}>{copy.linkedChurch}</label>
-                <select
-                  className={inputCls('w-full')}
-                  value={stockEditForm.churchId}
-                  onChange={e => setStockEditForm(prev => ({ ...prev, churchId: e.target.value }))}
-                >
-                  <option value="">{copy.noLinkedChurch}</option>
-                  {churches.map(church => (
-                    <option key={church.id} value={church.id}>{church.name}</option>
-                  ))}
-                </select>
-                <p className="mt-0.5 text-xs text-slate-400">{copy.linkedChurchHint}</p>
+                <LinkedChurchesField
+                  copy={copy}
+                  churches={churches}
+                  selected={stockEditForm.churchIds}
+                  onChange={churchIds => setStockEditForm(prev => ({ ...prev, churchIds }))}
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls()}>{copy.notes}</label>
@@ -995,14 +1034,14 @@ export function StockCard({ stock, churches, copy, uid, isAdmin, onRequestCreate
               {stock.location && (
                 <p className="text-xs text-slate-500">{stock.location}</p>
               )}
-              {stock.churchId && (
+              {stock.churchIds?.length ? (
                 <p className="text-xs text-slate-500">
                   {copy.linkedChurch}:{' '}
                   <span className="font-medium text-slate-700">
-                    {churches.find(church => church.id === stock.churchId)?.name ?? stock.churchName ?? stock.churchId}
+                    {linkedChurchNames(stock.churchIds, churches, stock.churchNames).join(', ')}
                   </span>
                 </p>
-              )}
+              ) : null}
               {stock.notes && (
                 <p className="mt-1 text-xs text-slate-500">{stock.notes}</p>
               )}

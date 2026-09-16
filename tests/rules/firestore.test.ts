@@ -114,8 +114,11 @@ beforeEach(async () => {
     await setDoc(doc(db, 'users', CUSTODIAN.uid), profile(CUSTODIAN.email, { systemRoles: ['custodian'] }));
     await setDoc(doc(db, 'users', MANAGER.uid), profile(MANAGER.email));
     await setDoc(doc(db, 'churchManagers', MANAGER.uid), { churchIds: ['church-1'], churchNames: ['Stella Azzurra'] });
-    await setDoc(doc(db, 'sacramentStocks', 'stock-1'), { name: 'Stella Azzurra', churchId: 'church-1' });
-    await setDoc(doc(db, 'sacramentStocks', 'stock-2'), { name: 'Barcelona', churchId: 'church-2' });
+    await setDoc(doc(db, 'sacramentStocks', 'stock-1'), { name: 'Stella Azzurra', churchIds: ['church-1'] });
+    await setDoc(doc(db, 'sacramentStocks', 'stock-2'), { name: 'Barcelona', churchIds: ['church-2'] });
+    // A shared depot serving both churches.
+    await setDoc(doc(db, 'sacramentStocks', 'stock-shared'), { name: 'Italia', churchIds: ['church-2', 'church-1'] });
+    await setDoc(doc(db, 'sacramentItems', 'item-shared'), { stockId: 'stock-shared', degree: '2', form: 'liquid' });
     await setDoc(doc(db, 'sacramentItems', 'item-1'), { stockId: 'stock-1', degree: '2', form: 'liquid' });
     await setDoc(doc(db, 'sacramentItems', 'item-gel'), { stockId: 'stock-1', degree: '1', form: 'gel' });
     await setDoc(doc(db, 'sacramentItems', 'item-2'), { stockId: 'stock-2', degree: '3', form: 'liquid' });
@@ -547,6 +550,15 @@ describe('guard — work records are church-scoped', () => {
     );
   });
 
+  it('[guard] a stock linked to several churches serves each of them', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
+        ...workFixture({ sacrament: { stockId: 'stock-shared', itemId: 'item-shared', quantity: 0.5, unit: 'L' } }),
+        ...created(MANAGER)
+      })
+    );
+  });
+
   it('[guard] a manager cannot book Daime from another church\'s stock', async () => {
     await assertFails(
       setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
@@ -645,7 +657,7 @@ describe('guard — work records are church-scoped', () => {
 
   it('[guard] unlinking a stock does not lock the records that already used it', async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
-      await updateDoc(doc(context.firestore(), 'sacramentStocks', 'stock-1'), { churchId: deleteField() });
+      await updateDoc(doc(context.firestore(), 'sacramentStocks', 'stock-1'), { churchIds: deleteField() });
     });
     const ref = doc(as(MANAGER), 'trabalhos', 'work-pre');
     await assertSucceeds(updateDoc(ref, { hymnalText: 'Nova Jerusalém', ...edited(MANAGER) }));
@@ -698,9 +710,9 @@ describe('guard — work records are church-scoped', () => {
   });
 
   it('[guard] a custodian cannot relink a stock to a church, an admin can', async () => {
-    await assertFails(updateDoc(doc(as(CUSTODIAN), 'sacramentStocks', 'stock-2'), { churchId: 'church-1' }));
+    await assertFails(updateDoc(doc(as(CUSTODIAN), 'sacramentStocks', 'stock-2'), { churchIds: ['church-2', 'church-1'] }));
     await assertSucceeds(updateDoc(doc(as(CUSTODIAN), 'sacramentStocks', 'stock-2'), { notes: 'Deposito' }));
-    await assertSucceeds(updateDoc(doc(as(ADMIN), 'sacramentStocks', 'stock-2'), { churchId: 'church-1' }));
+    await assertSucceeds(updateDoc(doc(as(ADMIN), 'sacramentStocks', 'stock-2'), { churchIds: ['church-2', 'church-1'] }));
   });
 
   it('[guard] the work-type catalog is readable by members and written by admins only', async () => {

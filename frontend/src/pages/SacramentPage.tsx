@@ -8,8 +8,8 @@ import { useAuth } from '../providers/useAuth';
 import { useSystemRole } from '../providers/useSystemRole';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { churchFormCopyByLocale, copyByLocale, requiredChurchNameByLocale } from './sacrament/copy';
-import { initialStockForm, inputCls, labelCls, type StockFormState } from './sacrament/form';
-import { AddChurchModal, StockCard, type AddChurchModalState } from './sacrament/SacramentSections';
+import { initialStockForm, inputCls, labelCls, linkedChurchNames, type StockFormState } from './sacrament/form';
+import { AddChurchModal, LinkedChurchesField, StockCard, type AddChurchModalState } from './sacrament/SacramentSections';
 
 export default function SacramentPage() {
   const { locale } = useSiteLocale();
@@ -42,8 +42,8 @@ export default function SacramentPage() {
         name: stockForm.name.trim(),
         location: stockForm.location.trim() || undefined,
         notes: stockForm.notes.trim(),
-        churchId: stockForm.churchId || undefined,
-        churchName: churches.find(church => church.id === stockForm.churchId)?.name,
+        churchIds: stockForm.churchIds,
+        churchNames: linkedChurchNames(stockForm.churchIds, churches),
       });
     },
     onSuccess: async () => {
@@ -97,18 +97,12 @@ export default function SacramentPage() {
               />
             </div>
             <div className="col-span-2">
-              <label className={labelCls()}>{copy.linkedChurch}</label>
-              <select
-                className={inputCls('w-full')}
-                value={stockForm.churchId}
-                onChange={e => setStockForm(prev => ({ ...prev, churchId: e.target.value }))}
-              >
-                <option value="">{copy.noLinkedChurch}</option>
-                {churches.map(church => (
-                  <option key={church.id} value={church.id}>{church.name}</option>
-                ))}
-              </select>
-              <p className="mt-0.5 text-xs text-slate-400">{copy.linkedChurchHint}</p>
+              <LinkedChurchesField
+                copy={copy}
+                churches={churches}
+                selected={stockForm.churchIds}
+                onChange={churchIds => setStockForm(prev => ({ ...prev, churchIds }))}
+              />
             </div>
             <div className="col-span-2">
               <label className={labelCls()}>{copy.notes}</label>

@@ -6,7 +6,12 @@ import { fetchChurches } from '../lib/works';
 import { useChurchManager } from './useChurchManager';
 import { useSystemRole } from './useSystemRole';
 
-export type ChurchOption = { id: string; name: string };
+export type ChurchOption = {
+  id: string;
+  name: string;
+  /** City and country, to tell apart churches registered under the same name. */
+  detail?: string;
+};
 
 /**
  * Who may keep a church's records (works, donations) and for which churches:
@@ -23,7 +28,9 @@ export function useChurchRecordAccess() {
   const churchOptions: ChurchOption[] = useMemo(() => {
     const churches = churchesQuery.data ?? [];
     if (isAdmin) {
-      return churches.map(church => ({ id: church.id, name: church.name })).sort((a, b) => a.name.localeCompare(b.name));
+      return churches
+        .map(church => ({ id: church.id, name: church.name, detail: [church.city, church.country].filter(Boolean).join(', ') }))
+        .sort((a, b) => a.name.localeCompare(b.name) || a.detail.localeCompare(b.detail));
     }
     return managedChurchIds.map((id, index) => ({
       id,

@@ -188,7 +188,8 @@ service cloud.firestore {
           && (wasReviewed || (data.reviewedBy == request.auth.uid && data.reviewedAt == request.time)));
     }
 
-    // The Daime must come from a stock linked to the work's church. Checked only when
+    // The Daime must come from a stock linked to the work's church (a stock can serve
+    // several churches). Checked only when
     // the Daime changes, so unlinking a stock later does not lock its old records.
     function hasValidWorkSacrament() {
       let data = request.resource.data;
@@ -207,7 +208,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/sacramentItems/$(data.sacrament.itemId)).data.stockId == data.sacrament.stockId
           && (get(/databases/$(database)/documents/sacramentItems/$(data.sacrament.itemId)).data.get('form', 'liquid') == 'gel')
             == (data.sacrament.unit == 'kg')
-          && get(/databases/$(database)/documents/sacramentStocks/$(data.sacrament.stockId)).data.get('churchId', '') == data.churchId);
+          && get(/databases/$(database)/documents/sacramentStocks/$(data.sacrament.stockId)).data.get('churchIds', []).hasAny([data.churchId]));
     }
 
     // A donation sent to ICEFLU Brazil. The receipt (bank statement for a transfer,
@@ -599,14 +600,14 @@ service cloud.firestore {
       }
     }
 
-    // churchId links a stock to a church, which lets that church's managers book
+    // churchIds links a stock to the churches it serves, which lets their managers book
     // Daime from it when recording works — a grant, so only admins may change it.
     match /sacramentStocks/{id} {
       allow read: if isSignedIn();
       allow create: if isAdmin();
       allow update: if isAdmin()
         || (isCustodianOrHigher()
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['churchId', 'churchName']));
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['churchIds', 'churchNames']));
       allow delete: if isAdmin();
     }
 
