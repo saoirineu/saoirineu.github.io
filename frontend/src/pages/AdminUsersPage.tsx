@@ -26,6 +26,7 @@ import {
 } from '../lib/users';
 import { useAuth } from '../providers/useAuth';
 import { DeleteUserDialog } from './admin/DeleteUserDialog';
+import { PrivilegesInfoButton, PrivilegesInfoModal } from './admin/PrivilegesInfoModal';
 import { UserProfileReviewModal } from './admin/UserProfileReviewModal';
 import { approvalStatusButtonClass, profileLabelsByLocale } from './admin/userReview';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -367,6 +368,7 @@ export default function AdminUsersPage() {
   const canDeleteUsers = hasRequiredRole(role, 'superadmin');
   // An unconfirmed signup has no profile document, so the dialog gets the account itself.
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
+  const [privilegesInfoOpen, setPrivilegesInfoOpen] = useState(false);
   const canApproveUsers = hasRequiredRole(role, 'useradmin');
   const [searchTerm, setSearchTerm] = useState('');
   const [approvalFilter, setApprovalFilter] = useState<ApprovalFilter>('all');
@@ -721,7 +723,12 @@ export default function AdminUsersPage() {
               <th className="px-4 py-3 font-medium">{copy.email}</th>
               <th className="px-4 py-3 font-medium">{copy.approval}</th>
               {canApproveUsers ? <th className="px-4 py-3 font-medium">{copy.notify.column}</th> : null}
-              <th className="px-4 py-3 font-medium">{copy.privileges}</th>
+              <th className="px-4 py-3 font-medium">
+                <span className="inline-flex items-center gap-1.5">
+                  {copy.privileges}
+                  <PrivilegesInfoButton locale={locale} onClick={() => setPrivilegesInfoOpen(true)} />
+                </span>
+              </th>
               {canDeleteUsers ? <th className="px-4 py-3 font-medium">{copy.remove.column}</th> : null}
             </tr>
           </thead>
@@ -804,6 +811,10 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+
+      {privilegesInfoOpen ? (
+        <PrivilegesInfoModal locale={locale} onClose={() => setPrivilegesInfoOpen(false)} />
+      ) : null}
 
       {deleteTarget ? (
         <DeleteUserDialog
