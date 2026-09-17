@@ -332,7 +332,7 @@ export function PrivilegesInfoButton({ locale, onClick }: { locale: SiteLocale; 
       aria-label={label}
       aria-haspopup="dialog"
       title={label}
-      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition hover:border-[color:var(--brand-blue-deep)] hover:text-[color:var(--brand-blue-deep)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-blue-deep)]"
+      className="relative inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition after:absolute after:-inset-2 hover:border-[color:var(--brand-blue-deep)] hover:text-[color:var(--brand-blue-deep)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-blue-deep)]"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
         <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />

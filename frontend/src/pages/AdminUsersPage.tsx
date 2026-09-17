@@ -527,6 +527,68 @@ export default function AdminUsersPage() {
     roleMutation.mutate({ uid, systemRoles: selected.length ? selected : ['user'] });
   };
 
+  // The per-account controls, shared by the phone cards and the table; cards get roomier tap targets.
+  const userControls = (user: UserProfile, layout: 'card' | 'table') => {
+    const systemRoles = normalizeSystemRoles(user.systemRoles, user.systemRole);
+    const approvalStatus = user.approvalStatus ?? 'needs-profile';
+
+    return {
+      approval: canApproveUsers ? (
+        <button
+          type="button"
+          className={approvalStatusButtonClass(approvalStatus)}
+          onClick={() => setReviewUid(user.uid)}
+        >
+          {copy.approvalStatus[approvalStatus]}
+        </button>
+      ) : (
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+          {copy.approvalStatus[approvalStatus]}
+        </span>
+      ),
+      notify: canApproveUsers ? (
+        <input
+          type="checkbox"
+          className={`${layout === 'card' ? 'h-5 w-5' : 'h-4 w-4'} rounded border-slate-300 disabled:opacity-50`}
+          checked={notificationSettings.recipientUserIds.includes(user.uid)}
+          disabled={notificationMutation.isPending || !user.email}
+          title={user.email ?? copy.noEmail}
+          onChange={() => toggleRecipient(user.uid)}
+        />
+      ) : null,
+      privileges: (
+        <div className="flex flex-wrap gap-2">
+          {privilegedSystemRoleOptions.map(option => (
+            <label
+              key={option}
+              className={`inline-flex items-center rounded-full border border-slate-200 bg-white text-slate-700 ${layout === 'card' ? 'gap-2 px-3 py-2 text-sm' : 'gap-1 px-2 py-1 text-xs'}`}
+            >
+              <input
+                type="checkbox"
+                className={`${layout === 'card' ? 'h-4 w-4' : 'h-3.5 w-3.5'} rounded border-slate-300`}
+                checked={systemRoles.includes(option)}
+                disabled={!canManagePrivileges || roleMutation.isPending}
+                onChange={() => toggleRole(user.uid, systemRoles, option)}
+              />
+              {option}
+            </label>
+          ))}
+        </div>
+      ),
+      remove: canDeleteUsers ? (
+        <button
+          type="button"
+          className={`rounded-lg border border-red-200 font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 ${layout === 'card' ? 'px-3 py-2 text-sm' : 'px-2 py-1 text-xs'}`}
+          disabled={user.uid === currentUser?.uid}
+          title={user.uid === currentUser?.uid ? copy.remove.notSelf : undefined}
+          onClick={() => setDeleteTarget(user)}
+        >
+          {copy.remove.action}
+        </button>
+      ) : null
+    };
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -614,7 +676,37 @@ export default function AdminUsersPage() {
           ) : null}
 
           {unverifiedSignups.length ? (
-            <div className="overflow-x-auto rounded-lg border border-amber-200 bg-white">
+            <ul className="space-y-2 lg:hidden">
+              {unverifiedSignups.map(account => (
+                <li key={account.uid} className="space-y-1 rounded-lg border border-amber-200 bg-white p-3 text-sm">
+                  <div className="font-medium text-slate-900 [overflow-wrap:anywhere]">{account.email}</div>
+                  <div className="text-slate-600">{account.displayName ?? copy.noName}</div>
+                  <dl className="grid grid-cols-[auto,1fr] gap-x-3 text-xs text-slate-500">
+                    <dt>{copy.unverified.created}</dt>
+                    <dd>{formatMoment(account.createdAt)}</dd>
+                    <dt>{copy.unverified.lastSignIn}</dt>
+                    <dd>{formatMoment(account.lastSignInAt)}</dd>
+                    <dt>{copy.unverified.provider}</dt>
+                    <dd>{account.providers.join(', ') || '—'}</dd>
+                  </dl>
+                  {canDeleteUsers ? (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                        onClick={() => setDeleteTarget({ uid: account.uid, email: account.email, displayName: account.displayName ?? undefined })}
+                      >
+                        {copy.remove.action}
+                      </button>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {unverifiedSignups.length ? (
+            <div className="hidden overflow-x-auto rounded-lg border border-amber-200 bg-white lg:block">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50 text-left text-slate-600">
                   <tr>
@@ -714,7 +806,47 @@ export default function AdminUsersPage() {
         <p className="text-xs text-slate-500 lg:col-span-4">{copy.filters.count(users.length, allUsers?.length ?? 0)}</p>
       </section>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Phones and tablets get one card per account; the table's action columns would not fit beside the names. */}
+      <ul className="space-y-3 lg:hidden">
+        {users.map(user => {
+          const controls = userControls(user, 'card');
+          return (
+            <li key={user.uid} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-slate-900">{user.displayName ?? copy.noName}</div>
+                  <div className="text-slate-600 [overflow-wrap:anywhere]">{user.email ?? copy.noEmail}</div>
+                  <div className="font-mono text-xs text-slate-400 [overflow-wrap:anywhere]">{user.uid}</div>
+                </div>
+                <div className="shrink-0">{controls.approval}</div>
+              </div>
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {copy.privileges}
+                  <PrivilegesInfoButton locale={locale} onClick={() => setPrivilegesInfoOpen(true)} />
+                </div>
+                {controls.privileges}
+              </div>
+              {controls.notify || controls.remove ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                  {controls.notify ? (
+                    <label className="inline-flex items-center gap-2 text-slate-700">
+                      {controls.notify}
+                      {copy.notify.column}
+                    </label>
+                  ) : <span />}
+                  {controls.remove}
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+        {usersQuery.isSuccess && !users.length ? (
+          <li className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600 shadow-sm">{copy.filters.empty}</li>
+        ) : null}
+      </ul>
+
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm lg:block">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>
@@ -734,70 +866,16 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {users.map(user => {
-              const systemRoles = normalizeSystemRoles(user.systemRoles, user.systemRole);
-              const approvalStatus = user.approvalStatus ?? 'needs-profile';
-
+              const controls = userControls(user, 'table');
               return (
                 <tr key={user.uid}>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{user.uid}</td>
                   <td className="px-4 py-3 text-slate-900">{user.displayName ?? copy.noName}</td>
                   <td className="px-4 py-3 text-slate-600">{user.email ?? copy.noEmail}</td>
-                  <td className="px-4 py-3">
-                    {canApproveUsers ? (
-                      <button
-                        type="button"
-                        className={approvalStatusButtonClass(approvalStatus)}
-                        onClick={() => setReviewUid(user.uid)}
-                      >
-                        {copy.approvalStatus[approvalStatus]}
-                      </button>
-                    ) : (
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                        {copy.approvalStatus[approvalStatus]}
-                      </span>
-                    )}
-                  </td>
-                  {canApproveUsers ? (
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 disabled:opacity-50"
-                        checked={notificationSettings.recipientUserIds.includes(user.uid)}
-                        disabled={notificationMutation.isPending || !user.email}
-                        title={user.email ?? copy.noEmail}
-                        onChange={() => toggleRecipient(user.uid)}
-                      />
-                    </td>
-                  ) : null}
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      {privilegedSystemRoleOptions.map(option => (
-                        <label key={option} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
-                          <input
-                            type="checkbox"
-                            className="h-3.5 w-3.5 rounded border-slate-300"
-                            checked={systemRoles.includes(option)}
-                            disabled={!canManagePrivileges || roleMutation.isPending}
-                            onChange={() => toggleRole(user.uid, systemRoles, option)}
-                          />
-                          {option}
-                        </label>
-                      ))}
-                    </div>
-                  </td>
-                  {canDeleteUsers ? (
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
-                        disabled={user.uid === currentUser?.uid}
-                        title={user.uid === currentUser?.uid ? copy.remove.notSelf : undefined}
-                        onClick={() => setDeleteTarget(user)}
-                      >
-                        {copy.remove.action}
-                      </button>
-                    </td>
-                  ) : null}
+                  <td className="px-4 py-3">{controls.approval}</td>
+                  {controls.notify ? <td className="px-4 py-3">{controls.notify}</td> : null}
+                  <td className="px-4 py-3">{controls.privileges}</td>
+                  {controls.remove ? <td className="px-4 py-3">{controls.remove}</td> : null}
                 </tr>
               );
             })}

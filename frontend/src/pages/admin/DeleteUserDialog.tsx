@@ -69,44 +69,46 @@ export function DeleteUserDialog({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">{copy.title}</h2>
-        <p className="mt-2 text-sm text-slate-600">{copy.warning}</p>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 px-4 py-6">
+      <div className="flex min-h-full items-center justify-center">
+        <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <h2 className="text-lg font-semibold text-slate-900">{copy.title}</h2>
+          <p className="mt-2 text-sm text-slate-600">{copy.warning}</p>
 
-        <p className="mt-4 text-sm font-medium text-slate-800">{expected}</p>
-        <label className="mt-2 block text-xs text-slate-600">
-          {copy.typeToConfirm(expected)}
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={typed}
-            autoFocus
-            onChange={event => {
-              setTyped(event.target.value);
-              setErrorMsg('');
-            }}
-          />
-        </label>
+          <p className="mt-4 text-sm font-medium text-slate-800">{expected}</p>
+          <label className="mt-2 block text-xs text-slate-600">
+            {copy.typeToConfirm(expected)}
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={typed}
+              autoFocus
+              onChange={event => {
+                setTyped(event.target.value);
+                setErrorMsg('');
+              }}
+            />
+          </label>
 
-        {errorMsg ? <p className="mt-2 text-sm text-red-600">{errorMsg}</p> : null}
+          {errorMsg ? <p className="mt-2 text-sm text-red-600">{errorMsg}</p> : null}
 
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={onClose}
-            disabled={deleteMutation.isPending}
-          >
-            {copy.cancel}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            disabled={!confirmed || deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            {deleteMutation.isPending ? copy.removing : copy.remove}
-          </button>
+          <div className="mt-5 flex justify-end gap-3">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={onClose}
+              disabled={deleteMutation.isPending}
+            >
+              {copy.cancel}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              disabled={!confirmed || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? copy.removing : copy.remove}
+            </button>
+          </div>
         </div>
       </div>
     </div>

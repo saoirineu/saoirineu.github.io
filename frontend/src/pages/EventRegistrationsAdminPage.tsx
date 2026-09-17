@@ -149,9 +149,9 @@ export default function EventRegistrationsAdminPage() {
                 <div className="mt-2 flex flex-wrap gap-2">{leaderBadge(registration)}{paymentBadge(registration)}</div>
               </div>
               <div className="flex flex-col items-start gap-2 sm:items-end">
-                <div className={`inline-flex rounded-xl border px-3 py-2 text-sm ${statusAccent[registration.status]}`}>
+                <div className={`inline-flex rounded-xl border text-sm ${statusAccent[registration.status]}`}>
                   <select
-                    className="bg-transparent text-sm font-medium focus:outline-none"
+                    className="bg-transparent px-3 py-2 text-sm font-medium focus:outline-none"
                     value={registration.status}
                     disabled={statusMutation.isPending || deleteMutation.isPending}
                     onChange={e => statusMutation.mutate({ id: registration.id, status: e.target.value as EventRegistrationStatus })}

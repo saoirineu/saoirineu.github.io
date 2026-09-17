@@ -256,7 +256,7 @@ export function DashboardPage() {
             {card.desc ? <p className="mt-1 text-sm text-slate-600">{card.desc}</p> : null}
             <Link
               to={card.to}
-              className="mt-3 block text-xs font-medium text-blue-700 hover:underline"
+              className="mt-2 inline-block py-1 text-xs font-medium text-blue-700 hover:underline"
             >
               {card.to === '/profile' ? copy.reviewProfile : copy.enter}
             </Link>

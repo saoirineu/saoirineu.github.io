@@ -243,6 +243,43 @@ export default function MembersPage() {
     setMergePreview(null);
   };
 
+  // Shared by the phone cards and the table.
+  const sourceBadges = (member: MemberRecord) => (
+    <div className="flex flex-wrap gap-1">
+      {member.sources.map((source, index) => (
+        <span
+          key={`${source.file}-${source.code ?? index}`}
+          className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${sourceBadgeClasses(source.file)}`}
+        >
+          {sourceBadgeLabels[source.file]}
+        </span>
+      ))}
+      {member.firstWorkDate ? (
+        <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+          {copy.firstWork} {member.firstWorkDate}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const reviewBadges = (member: MemberRecord) =>
+    member.needsReview ? (
+      <div className="flex flex-wrap gap-1">
+        {member.reviewReasons.map(reason => (
+          <span
+            key={reason}
+            className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700"
+          >
+            {copy.reason[reason] ?? reason}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">
+        {copy.ok}
+      </span>
+    );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -352,7 +389,44 @@ export default function MembersPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{copy.loadError}</div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Phones and tablets get one card per member; eight table columns leave the names a few letters wide. */}
+      <ul className="space-y-3 lg:hidden">
+        {members.map(member => (
+          <li key={member.id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-medium text-slate-900">{formatFullName(member) || '—'}</div>
+                <div className="font-mono text-xs text-slate-500">{member.fiscalCode ?? '—'}</div>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setSelectedId(member.id)}
+              >
+                {copy.details}
+              </button>
+            </div>
+            <dl className="grid grid-cols-[auto,minmax(0,1fr)] gap-x-3 gap-y-1 text-slate-700">
+              <dt className="text-slate-500">{copy.colEmail}</dt>
+              <dd className="[overflow-wrap:anywhere]">{member.email ?? '—'}</dd>
+              <dt className="text-slate-500">{copy.colCity}</dt>
+              <dd>{member.city ?? '—'}</dd>
+              <dt className="text-slate-500">{copy.colStatus}</dt>
+              <dd>{member.memberStatus ?? '—'}</dd>
+              {member.birthDate ? (
+                <>
+                  <dt className="text-slate-500">{memberFieldLabel(locale, 'birthDate')}</dt>
+                  <dd>{member.birthDate}</dd>
+                </>
+              ) : null}
+            </dl>
+            {sourceBadges(member)}
+            {reviewBadges(member)}
+          </li>
+        ))}
+      </ul>
+
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm lg:block">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>
@@ -377,41 +451,8 @@ export default function MembersPage() {
                 <td className="px-4 py-3 text-slate-700">{member.email ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-700">{member.city ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-700">{member.memberStatus ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1">
-                    {member.sources.map((source, index) => (
-                      <span
-                        key={`${source.file}-${source.code ?? index}`}
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${sourceBadgeClasses(source.file)}`}
-                      >
-                        {sourceBadgeLabels[source.file]}
-                      </span>
-                    ))}
-                    {member.firstWorkDate ? (
-                      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        {copy.firstWork} {member.firstWorkDate}
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  {member.needsReview ? (
-                    <div className="flex flex-wrap gap-1">
-                      {member.reviewReasons.map(reason => (
-                        <span
-                          key={reason}
-                          className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700"
-                        >
-                          {copy.reason[reason] ?? reason}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">
-                      {copy.ok}
-                    </span>
-                  )}
-                </td>
+                <td className="px-4 py-3">{sourceBadges(member)}</td>
+                <td className="px-4 py-3">{reviewBadges(member)}</td>
                 <td className="px-4 py-3">
                   <button
                     type="button"

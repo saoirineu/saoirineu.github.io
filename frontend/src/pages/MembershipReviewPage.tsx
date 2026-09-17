@@ -239,46 +239,78 @@ export default function MembershipReviewPage() {
       ) : rows.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">{copy.empty}</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium">{copy.name}</th>
-                <th className="px-4 py-3 font-medium">{copy.email}</th>
-                <th className="px-4 py-3 font-medium">{copy.submitted}</th>
-                <th className="px-4 py-3 font-medium">{copy.status}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map(user => {
-                const status = user.approvalStatus ?? 'needs-profile';
-                return (
-                  <tr
-                    key={user.uid}
-                    className="cursor-pointer hover:bg-slate-50"
+        <>
+          {/* Phones get a tappable card per person; the table would hide the status column off screen. */}
+          <ul className="space-y-2 md:hidden">
+            {rows.map(user => {
+              const status = user.approvalStatus ?? 'needs-profile';
+              return (
+                <li key={user.uid}>
+                  <button
+                    type="button"
+                    className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-left text-sm shadow-sm transition hover:bg-slate-50"
                     onClick={() => setReviewUid(user.uid)}
                   >
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-slate-900">{displayNameOf(user)}</span>
-                      {user.fiscalCode ? (
-                        <span className="ml-2 font-mono text-xs text-slate-400">{user.fiscalCode}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{user.email ?? '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {user.approvalSubmittedAt
-                        ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString(locale)
-                        : copy.neverSubmitted}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={approvalStatusButtonClass(status)}>{copy.filters[status]}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 font-medium text-slate-900">{displayNameOf(user)}</span>
+                      <span className={`shrink-0 ${approvalStatusButtonClass(status)}`}>{copy.filters[status]}</span>
+                    </div>
+                    <div className="text-slate-600 [overflow-wrap:anywhere]">{user.email ?? '—'}</div>
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-500">
+                      {user.fiscalCode ? <span className="font-mono">{user.fiscalCode}</span> : null}
+                      <span>
+                        {copy.submitted}:{' '}
+                        {user.approvalSubmittedAt
+                          ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString(locale)
+                          : copy.neverSubmitted}
+                      </span>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 font-medium">{copy.name}</th>
+                  <th className="px-4 py-3 font-medium">{copy.email}</th>
+                  <th className="px-4 py-3 font-medium">{copy.submitted}</th>
+                  <th className="px-4 py-3 font-medium">{copy.status}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map(user => {
+                  const status = user.approvalStatus ?? 'needs-profile';
+                  return (
+                    <tr
+                      key={user.uid}
+                      className="cursor-pointer hover:bg-slate-50"
+                      onClick={() => setReviewUid(user.uid)}
+                    >
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-slate-900">{displayNameOf(user)}</span>
+                        {user.fiscalCode ? (
+                          <span className="ml-2 font-mono text-xs text-slate-400">{user.fiscalCode}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{user.email ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {user.approvalSubmittedAt
+                          ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString(locale)
+                          : copy.neverSubmitted}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={approvalStatusButtonClass(status)}>{copy.filters[status]}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {reviewUser ? (

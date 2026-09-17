@@ -336,26 +336,28 @@ function ModalShell({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.42)] p-6"
+      className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(15,23,42,0.42)] p-4 sm:p-6"
       onClick={onClose}
       role="presentation"
     >
-      <div
-        aria-labelledby={labelledBy}
-        aria-modal="true"
-        className="relative w-full max-w-sm rounded-3xl border border-[color:var(--brand-sand)] bg-white p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
-        onClick={event => event.stopPropagation()}
-        role="dialog"
-      >
-        <button
-          type="button"
-          aria-label={closeLabel}
-          className="absolute right-4 top-3 text-xl leading-none text-[color:rgba(36,54,77,0.5)] transition hover:text-[color:var(--brand-ink)]"
-          onClick={onClose}
+      <div className="flex min-h-full items-center justify-center">
+        <div
+          aria-labelledby={labelledBy}
+          aria-modal="true"
+          className="relative w-full max-w-sm rounded-3xl border border-[color:var(--brand-sand)] bg-white p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+          onClick={event => event.stopPropagation()}
+          role="dialog"
         >
-          ×
-        </button>
-        {children}
+          <button
+            type="button"
+            aria-label={closeLabel}
+            className="absolute right-2 top-1 p-2 text-xl leading-none text-[color:rgba(36,54,77,0.5)] transition hover:text-[color:var(--brand-ink)]"
+            onClick={onClose}
+          >
+            ×
+          </button>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -538,10 +540,10 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#fbfaf5_0%,#fbfaf5_34%,#dcebf7_34%,#c4def2_67%,#dbece4_67%,#c7dfd3_100%)] p-6">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#fbfaf5_0%,#fbfaf5_34%,#dcebf7_34%,#c4def2_67%,#dbece4_67%,#c7dfd3_100%)] p-4 sm:p-6">
       <div className="pointer-events-none absolute left-[8%] top-[8%] h-40 w-40 rounded-full bg-[rgba(232,194,76,0.22)] blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute right-[10%] top-[28%] h-48 w-48 rounded-full bg-[rgba(63,132,194,0.15)] blur-3xl" aria-hidden />
-      <div className="relative w-full max-w-md rounded-[28px] border border-[color:var(--brand-sand)] bg-[rgba(255,255,255,0.92)] p-8 pt-14 shadow-[0_24px_80px_var(--brand-shadow)]">
+      <div className="relative w-full max-w-md rounded-[28px] border border-[color:var(--brand-sand)] bg-[rgba(255,255,255,0.92)] p-6 pt-14 shadow-[0_24px_80px_var(--brand-shadow)] sm:p-8 sm:pt-14">
         <label className="absolute right-5 top-5">
           <span className="sr-only">{copy.language}</span>
           <select
@@ -613,7 +615,7 @@ export function LoginPage() {
               <button
                 type="button"
                 disabled={submitting}
-                className="text-xs font-semibold text-[color:var(--brand-blue-deep)] underline decoration-[color:var(--brand-gold)] underline-offset-4 disabled:opacity-70"
+                className="py-1 text-xs font-semibold text-[color:var(--brand-blue-deep)] underline decoration-[color:var(--brand-gold)] underline-offset-4 disabled:opacity-70"
                 onClick={handlePasswordReset}
               >
                 {copy.forgotPassword}

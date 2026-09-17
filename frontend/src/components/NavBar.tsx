@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useId, useRef, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { hasRequiredRole } from '../lib/systemRole';
@@ -47,7 +48,9 @@ const copyByLocale = {
     registrations: 'Inscrições',
     dev: 'Dev',
     signOut: 'Sair',
-    language: 'Idioma'
+    language: 'Idioma',
+    openMenu: 'Abrir menu',
+    closeMenu: 'Fechar menu'
   },
   en: {
     home: 'Home',
@@ -64,7 +67,9 @@ const copyByLocale = {
     registrations: 'Registrations',
     dev: 'Dev',
     signOut: 'Sign out',
-    language: 'Language'
+    language: 'Language',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu'
   },
   es: {
     home: 'Home',
@@ -81,7 +86,9 @@ const copyByLocale = {
     registrations: 'Inscripciones',
     dev: 'Dev',
     signOut: 'Salir',
-    language: 'Idioma'
+    language: 'Idioma',
+    openMenu: 'Abrir menú',
+    closeMenu: 'Cerrar menú'
   },
   it: {
     home: 'Home',
@@ -98,18 +105,24 @@ const copyByLocale = {
     registrations: 'Iscrizioni',
     dev: 'Dev',
     signOut: 'Esci',
-    language: 'Lingua'
+    language: 'Lingua',
+    openMenu: 'Apri menu',
+    closeMenu: 'Chiudi menu'
   }
 } as const;
 
 export function NavBar() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { role } = useSystemRole();
   const { churchIds: managedChurchIds } = useChurchManager();
   const { canToggleDevMode, devModeEnabled, setDevModeEnabled } = useDevMode();
   const { locale, setLocale } = useSiteLocale();
   const copy = copyByLocale[locale];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const menuId = useId();
 
   const navigationLinks = [
     ...stableLinks.map(link => ({ to: link.to, label: copy[link.key] })),
@@ -125,67 +138,148 @@ export function NavBar() {
       : [])
   ];
 
+  // The small-screen menu closes on navigation, on Escape and on a tap outside the header.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [menuOpen]);
+
+  const handleSignOut = () => signOut().then(() => navigate('/login'));
+
+  const languageSelect = (
+    <select
+      aria-label={copy.language}
+      className="rounded-full border border-[color:var(--brand-sand)] bg-white/90 px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm"
+      value={locale}
+      onChange={event => setLocale(event.target.value as typeof locale)}
+    >
+      {siteLocaleOptions.map(option => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  const devSwitch = canToggleDevMode ? (
+    <label className="flex items-center gap-2 rounded-full border border-[color:var(--brand-sand)] bg-white/70 px-3 py-2 text-xs font-medium text-[color:var(--brand-ink)]">
+      <span>{copy.dev}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={devModeEnabled}
+        onClick={() => setDevModeEnabled(!devModeEnabled)}
+        className={`relative h-6 w-11 rounded-full transition ${devModeEnabled ? 'bg-[color:var(--brand-green)]' : 'bg-[rgba(42,98,143,0.24)]'}`}
+      >
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${devModeEnabled ? 'left-5' : 'left-0.5'}`} />
+      </button>
+    </label>
+  ) : null;
+
+  const signOutButton = (
+    <button
+      type="button"
+      onClick={handleSignOut}
+      className="shrink-0 rounded-full bg-[color:var(--brand-green)] px-4 py-2 text-sm font-semibold text-[color:var(--brand-white)] shadow-sm transition hover:bg-[color:var(--brand-green-deep)]"
+    >
+      {copy.signOut}
+    </button>
+  );
+
   return (
-    <header className="sticky top-0 z-10 border-b border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.9)] backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
+    <header ref={headerRef} className="sticky top-0 z-10 border-b border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.9)] backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3">
           <BrandMark className="h-9 w-9 shrink-0" decorative />
-          <div className="text-lg font-semibold tracking-tight text-[color:var(--brand-ink)]">São Irineu</div>
+          <div className="whitespace-nowrap text-lg font-semibold tracking-tight text-[color:var(--brand-ink)]">São Irineu</div>
         </div>
-        <nav className="hidden items-center gap-4 text-sm font-medium text-[color:var(--brand-ink)] sm:flex">
+        {/* Wide screens: links wrap onto a second line rather than overflow when an account has many privileges. */}
+        <nav className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 text-sm font-medium text-[color:var(--brand-ink)] lg:flex">
           {navigationLinks.map(link => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) =>
-                `rounded-full px-3 py-2 transition hover:bg-[rgba(63,132,194,0.12)] ${isActive ? 'bg-[color:var(--brand-blue-deep)] text-[color:var(--brand-white)] shadow-sm' : ''}`
+                `whitespace-nowrap rounded-full px-3 py-2 transition hover:bg-[rgba(63,132,194,0.12)] ${isActive ? 'bg-[color:var(--brand-blue-deep)] text-[color:var(--brand-white)] shadow-sm' : ''}`
               }
             >
               {link.label}
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
-          <label className="hidden items-center gap-2 md:flex">
-            <span className="sr-only">{copy.language}</span>
-            <select
-              className="rounded-full border border-[color:var(--brand-sand)] bg-white/90 px-3 py-2 text-sm text-[color:var(--brand-ink)] shadow-sm"
-              value={locale}
-              onChange={event => setLocale(event.target.value as typeof locale)}
-            >
-              {siteLocaleOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {canToggleDevMode ? (
-            <label className="hidden items-center gap-2 rounded-full border border-[color:var(--brand-sand)] bg-white/70 px-3 py-2 text-xs font-medium text-[color:var(--brand-ink)] md:flex">
-              <span>{copy.dev}</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={devModeEnabled}
-                onClick={() => setDevModeEnabled(!devModeEnabled)}
-                className={`relative h-6 w-11 rounded-full transition ${devModeEnabled ? 'bg-[color:var(--brand-green)]' : 'bg-[rgba(42,98,143,0.24)]'}`}
-              >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${devModeEnabled ? 'left-5' : 'left-0.5'}`} />
-              </button>
-            </label>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => signOut().then(() => navigate('/login'))}
-            className="rounded-full bg-[color:var(--brand-green)] px-3 py-2 text-sm font-semibold text-[color:var(--brand-white)] shadow-sm transition hover:bg-[color:var(--brand-green-deep)]"
-          >
-            {copy.signOut}
-          </button>
+        <div className="hidden shrink-0 items-center gap-3 lg:flex">
+          {languageSelect}
+          {devSwitch}
+          {signOutButton}
           {user ? (
-            <span className="hidden text-xs text-slate-500 md:block">{user.displayName ?? user.email}</span>
+            <span className="hidden max-w-[10rem] truncate text-xs text-slate-500 xl:block">{user.displayName ?? user.email}</span>
           ) : null}
         </div>
+        <button
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls={menuId}
+          aria-label={menuOpen ? copy.closeMenu : copy.openMenu}
+          onClick={() => setMenuOpen(current => !current)}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--brand-sand)] bg-white/80 text-[color:var(--brand-ink)] shadow-sm transition hover:bg-white lg:hidden"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+            {menuOpen ? (
+              <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+            ) : (
+              <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+            )}
+          </svg>
+        </button>
       </div>
+      {menuOpen ? (
+        <div id={menuId} className="max-h-[calc(100dvh-4.25rem)] overflow-y-auto border-t border-[color:var(--brand-sand)] lg:hidden">
+          <div className="mx-auto max-w-6xl space-y-4 px-4 pb-5 pt-3">
+            <nav className="grid gap-1 text-base font-medium text-[color:var(--brand-ink)] sm:grid-cols-2">
+              {navigationLinks.map(link => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  className={({ isActive }) =>
+                    `rounded-xl px-4 py-3 transition hover:bg-[rgba(63,132,194,0.12)] ${isActive ? 'bg-[color:var(--brand-blue-deep)] text-[color:var(--brand-white)] shadow-sm' : ''}`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="flex flex-wrap items-center gap-3 border-t border-[color:var(--brand-sand)] pt-4">
+              {languageSelect}
+              {devSwitch}
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              {user ? (
+                <span className="min-w-0 truncate text-sm text-slate-600">{user.displayName ?? user.email}</span>
+              ) : (
+                <span />
+              )}
+              {signOutButton}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

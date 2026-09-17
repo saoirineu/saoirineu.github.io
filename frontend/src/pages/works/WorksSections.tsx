@@ -761,9 +761,9 @@ export function WorkTypesPanel({ copy, catalog, saving, saved, error, onSave }: 
                 {copy.active}
               </label>
               <div className="flex gap-1">
-                <button type="button" title={copy.moveUp} aria-label={copy.moveUp} disabled={index === 0} onClick={() => move(index, -1)} className="rounded border border-slate-200 px-2 text-xs text-slate-600 disabled:opacity-30">↑</button>
-                <button type="button" title={copy.moveDown} aria-label={copy.moveDown} disabled={index === items.length - 1} onClick={() => move(index, 1)} className="rounded border border-slate-200 px-2 text-xs text-slate-600 disabled:opacity-30">↓</button>
-                <button type="button" title={copy.remove} aria-label={copy.remove} onClick={() => setItems(prev => prev.filter((_, position) => position !== index))} className="rounded border border-red-100 px-2 text-xs text-red-500">✕</button>
+                <button type="button" title={copy.moveUp} aria-label={copy.moveUp} disabled={index === 0} onClick={() => move(index, -1)} className="rounded border border-slate-200 px-2.5 py-1 text-xs text-slate-600 disabled:opacity-30">↑</button>
+                <button type="button" title={copy.moveDown} aria-label={copy.moveDown} disabled={index === items.length - 1} onClick={() => move(index, 1)} className="rounded border border-slate-200 px-2.5 py-1 text-xs text-slate-600 disabled:opacity-30">↓</button>
+                <button type="button" title={copy.remove} aria-label={copy.remove} onClick={() => setItems(prev => prev.filter((_, position) => position !== index))} className="rounded border border-red-100 px-2.5 py-1 text-xs text-red-500">✕</button>
               </div>
             </li>
           ))}

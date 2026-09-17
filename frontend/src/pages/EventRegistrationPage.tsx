@@ -359,13 +359,13 @@ export default function EventRegistrationPage() {
       ) : null}
 
       <form
-        className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]"
+        className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]"
         onSubmit={e => {
           e.preventDefault();
           mutation.mutate();
         }}
       >
-        <section className="space-y-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="space-y-8 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{copy.personalTitle}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -446,7 +446,7 @@ export default function EventRegistrationPage() {
         </section>
 
         <aside className="space-y-6">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">{copy.resourcesTitle}</h2>
             <div className="mt-4 grid gap-2">
               {event.resources?.programUrl ? (
@@ -462,7 +462,7 @@ export default function EventRegistrationPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-900">{copy.documentsTitle}</h2>
               <InfoTooltip body={copy.fileInfoBody} title={copy.fileInfoTitle} />
@@ -471,7 +471,8 @@ export default function EventRegistrationPage() {
               <FileUploadField {...fileProps('paymentProof', <span className="inline-flex items-center gap-2"><span>{copy.paymentProof}</span><InfoTooltip compact body={copy.paymentTooltip} title={copy.paymentProof} /></span>)} />
               {consentNeeded ? (
                 <div className="sm:col-span-2 space-y-2">
-                  <FileUploadField {...fileProps('consentDocument', copy.consentDocument)} />
+                  {/* Not h-full: stretched to this wrapper's height, it would push the note below out of the card. */}
+                  <FileUploadField {...fileProps('consentDocument', copy.consentDocument)} className="flex flex-col" />
                   <p className="text-xs leading-5 text-amber-800">
                     {copy.consentNote}
                     {event.resources?.consentFormUrl ? (
@@ -486,19 +487,19 @@ export default function EventRegistrationPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">{copy.priceTableTitle}</h2>
             <div className="mt-4 space-y-5 text-sm">
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">{copy.priceTableWorksHeading}</h3>
-                <div className="overflow-hidden rounded-2xl border border-slate-200">
-                  <table className="w-full border-collapse text-sm">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full border-collapse text-xs sm:text-sm">
                     <thead>
                       <tr className="bg-slate-50 text-slate-600">
-                        <th className="px-3 py-2 text-left font-medium"></th>
-                        <th className="px-3 py-2 text-right font-medium">{copy.priceTierStandard}</th>
-                        <th className="px-3 py-2 text-right font-medium">{copy.priceTierFardado}</th>
-                        <th className="px-3 py-2 text-right font-medium">{copy.priceTierIceflu}</th>
+                        <th className="px-1.5 py-2 sm:px-3 text-left font-medium"></th>
+                        <th className="px-1.5 py-2 sm:px-3 text-right font-medium">{copy.priceTierStandard}</th>
+                        <th className="px-1.5 py-2 sm:px-3 text-right font-medium">{copy.priceTierFardado}</th>
+                        <th className="px-1.5 py-2 sm:px-3 text-right font-medium">{copy.priceTierIceflu}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -506,10 +507,10 @@ export default function EventRegistrationPage() {
                         const count = index + 1;
                         return (
                           <tr key={count} className="border-t border-slate-100">
-                            <td className="px-3 py-2 text-slate-600">{copy.priceTableWorksCount.replace('{count}', String(count))}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.anyone[count] ?? 0)}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.initiated[count] ?? 0)}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.iceflu[count] ?? 0)}</td>
+                            <td className="px-1.5 py-2 sm:px-3 text-slate-600">{copy.priceTableWorksCount.replace('{count}', String(count))}</td>
+                            <td className="px-1.5 py-2 sm:px-3 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.anyone[count] ?? 0)}</td>
+                            <td className="px-1.5 py-2 sm:px-3 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.initiated[count] ?? 0)}</td>
+                            <td className="px-1.5 py-2 sm:px-3 text-right font-semibold text-slate-900">{formatCurrency(event.pricing.worksByCount.iceflu[count] ?? 0)}</td>
                           </tr>
                         );
                       })}
@@ -535,7 +536,7 @@ export default function EventRegistrationPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">{copy.contributionTitle}</h2>
             <dl className="mt-4 grid gap-3 text-sm">
               {[[copy.nights, String(contribution!.nights)], [copy.lodging, formatCurrency(contribution!.lodging)], [copy.spiritualWorks, formatCurrency(contribution!.spiritualWorks)], [copy.extras, formatCurrency(contribution!.extras)]].map(([k, v]) => (
@@ -576,19 +577,21 @@ export default function EventRegistrationPage() {
       </form>
 
       {isPaymentModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-label={copy.paymentInfoButton}>
-          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <h2 className="text-xl font-semibold text-slate-900">{copy.paymentInfoButton}</h2>
-              <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600">{copy.close}</button>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 px-4 py-6" role="dialog" aria-modal="true" aria-label={copy.paymentInfoButton}>
+          <div className="flex min-h-full items-center justify-center">
+            <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-xl font-semibold text-slate-900">{copy.paymentInfoButton}</h2>
+                <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600">{copy.close}</button>
+              </div>
+              <dl className="mt-5 grid gap-3 text-sm">
+                {event.payment.beneficiary ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">{copy.paymentBeneficiary}</dt><dd className="mt-1 font-semibold text-slate-900">{event.payment.beneficiary}</dd></div> : null}
+                {event.payment.causale ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">{copy.paymentCausale}</dt><dd className="mt-1 font-semibold text-slate-900">{event.payment.causale}</dd></div> : null}
+                {event.payment.iban ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">IBAN</dt><dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">{event.payment.iban}</dd></div> : null}
+                {event.payment.swift ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">SWIFT</dt><dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">{event.payment.swift}</dd></div> : null}
+              </dl>
+              <p className="mt-4 text-xs leading-5 text-slate-500">{copy.paymentNote}</p>
             </div>
-            <dl className="mt-5 grid gap-3 text-sm">
-              {event.payment.beneficiary ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">{copy.paymentBeneficiary}</dt><dd className="mt-1 font-semibold text-slate-900">{event.payment.beneficiary}</dd></div> : null}
-              {event.payment.causale ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">{copy.paymentCausale}</dt><dd className="mt-1 font-semibold text-slate-900">{event.payment.causale}</dd></div> : null}
-              {event.payment.iban ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">IBAN</dt><dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">{event.payment.iban}</dd></div> : null}
-              {event.payment.swift ? <div className="rounded-2xl bg-slate-50 px-4 py-3"><dt className="text-xs font-medium text-slate-500">SWIFT</dt><dd className="mt-1 font-mono font-semibold tracking-wide text-slate-900">{event.payment.swift}</dd></div> : null}
-            </dl>
-            <p className="mt-4 text-xs leading-5 text-slate-500">{copy.paymentNote}</p>
           </div>
         </div>
       ) : null}

@@ -1,4 +1,4 @@
-import { useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { isValidOptionalFiscalCode } from '../../lib/fiscalCode';
 import {
@@ -182,20 +182,55 @@ function selectChurchName(churches: ChurchInfo[] | undefined, id: string) {
  */
 function InfoIcon({ title }: { title: string }) {
   const tooltipId = useId();
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [shiftX, setShiftX] = useState(0);
+
+  // Touch screens have no hover, and iOS Safari does not focus a tapped button, so a tap
+  // toggles the hint; a tap anywhere else closes it.
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [open]);
+
+  // Centered under the icon, the hint would cross the screen edge for icons near it.
+  // Its width mirrors the w-56 / max-w-[70vw] classes below. While closed it is display:none,
+  // not transparent: even invisible, a hint near the edge would widen the page.
+  const placeTooltip = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    const viewportWidth = document.documentElement.clientWidth;
+    const width = Math.min(224, viewportWidth * 0.7);
+    const margin = 12;
+    const rect = container.getBoundingClientRect();
+    const left = rect.left + rect.width / 2 - width / 2;
+    setShiftX(Math.min(Math.max(margin - left, 0), viewportWidth - margin - width - left));
+  };
+
   return (
-    <span className="group relative ml-1 inline-block">
+    <span ref={containerRef} className="group relative ml-1 inline-block" onPointerEnter={placeTooltip} onFocus={placeTooltip}>
       <button
         type="button"
         aria-describedby={tooltipId}
-        onClick={event => event.preventDefault()}
-        className="cursor-help text-slate-400 transition hover:text-slate-600 focus:text-slate-600 focus:outline-none"
+        aria-expanded={open}
+        onClick={event => {
+          event.preventDefault();
+          placeTooltip();
+          setOpen(current => !current);
+        }}
+        className="relative cursor-help text-slate-400 transition after:absolute after:-inset-x-2 after:-inset-y-1.5 hover:text-slate-600 focus:text-slate-600 focus:outline-none"
       >
         ⓘ
       </button>
       <span
         id={tooltipId}
         role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-56 max-w-[70vw] -translate-x-1/2 rounded-lg bg-slate-900 px-2 py-1.5 text-xs font-normal leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        style={shiftX ? { marginLeft: shiftX } : undefined}
+        className={`pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-56 max-w-[70vw] -translate-x-1/2 rounded-lg bg-slate-900 px-2 py-1.5 text-xs font-normal leading-snug text-white shadow-lg ${open ? 'block' : 'hidden group-hover:block group-focus-within:block'}`}
       >
         {title}
       </span>

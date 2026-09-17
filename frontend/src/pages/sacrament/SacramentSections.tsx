@@ -256,7 +256,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
       {/* new transaction form */}
       {showForm && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
               <label className={labelCls()}>{copy.movementType}</label>
               <select
@@ -278,7 +278,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
               <label className={labelCls()}>{copy.missionary}</label>
               <input
@@ -354,8 +354,9 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
       ) : transactions.length === 0 ? (
         <p className="text-xs text-slate-400">{copy.noTransactions}</p>
       ) : (
-        <table className="w-full text-xs">
-          <thead>
+        // On phones the rows stack as small cards: six columns do not fit an expanded batch.
+        <table className="block w-full text-xs md:table">
+          <thead className="hidden md:table-header-group">
             <tr className="border-b border-slate-100 text-left text-slate-400">
               <th className="py-1 pr-2 font-medium">{copy.date}</th>
               <th className="py-1 pr-2 font-medium">{copy.movementType}</th>
@@ -367,13 +368,13 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
               <th className="py-1" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block md:table-row-group">
             {transactions.map(tx => (
               editingTxId === tx.id ? (
-                <tr key={tx.id} className="border-b border-blue-50 bg-blue-50/40">
-                  <td colSpan={6} className="py-2 pr-2">
+                <tr key={tx.id} className="block border-b border-blue-50 bg-blue-50/40 md:table-row">
+                  <td colSpan={6} className="block py-2 md:table-cell md:pr-2">
                     <div className="space-y-1.5">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <div>
                           <label className={labelCls()}>{copy.movementType}</label>
                           <select className={inputCls('w-full')} value={editType} onChange={e => setEditType(e.target.value as TransactionType)}>
@@ -386,7 +387,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                           <input type="date" className={inputCls('w-full')} value={editDate} onChange={e => setEditDate(e.target.value)} />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <div>
                           <label className={labelCls()}>{copy.missionary}</label>
                           <input type="text" className={inputCls('w-full')} value={editMissionary} onChange={e => setEditMissionary(e.target.value)} />
@@ -421,15 +422,19 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                   </td>
                 </tr>
               ) : (
-                <tr key={tx.id} className="border-b border-slate-50">
-                  <td className="py-1 pr-2 text-slate-600">{formatSacramentDate(tx.date) || '—'}</td>
-                  <td className="py-1 pr-2">
+                <tr key={tx.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-slate-100 py-2 md:table-row md:border-slate-50 md:py-0">
+                  <td className="text-slate-600 md:py-1 md:pr-2">{formatSacramentDate(tx.date) || '—'}</td>
+                  <td className="md:py-1 md:pr-2">
                     <span className={`rounded-full px-1.5 py-0.5 font-medium ${tx.type === 'entry' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                       {tx.type === 'entry' ? copy.entry : copy.exit}
                     </span>
                   </td>
-                  <td className="py-1 pr-2 text-slate-600">{tx.missionaryName ?? '—'}</td>
-                  <td className="py-1 pr-2 text-slate-600">
+                  <td className={`order-last w-full text-slate-600 md:order-none md:w-auto md:py-1 md:pr-2 ${tx.missionaryName ? '' : 'hidden md:table-cell'}`}>
+                    <span className="text-slate-400 md:hidden">{copy.missionary}: </span>
+                    {tx.missionaryName ?? '—'}
+                  </td>
+                  <td className={`order-last w-full text-slate-600 md:order-none md:w-auto md:py-1 md:pr-2 ${tx.type === 'exit' || tx.workId ? '' : 'hidden md:table-cell'}`}>
+                    <span className="text-slate-400 md:hidden">{copy.destinationChurch}: </span>
                     {tx.type === 'exit' ? (tx.destinationChurchName ?? '—') : '—'}
                     {tx.workId ? (
                       <span title={copy.workMovementHint} className="ml-1 rounded-full bg-[rgba(63,132,194,0.12)] px-1.5 py-0.5 text-[color:var(--brand-blue-deep)]">
@@ -437,11 +442,12 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                       </span>
                     ) : null}
                   </td>
-                  <td className="py-1 pr-2 text-right font-medium text-slate-800">
+                  <td className="ml-auto text-right font-medium text-slate-800 md:ml-0 md:py-1 md:pr-2">
                     {tx.type === 'exit' ? '−' : '+'}
                     {tx.quantity.toFixed(2)}
+                    <span className="text-slate-400 md:hidden"> {unit}</span>
                   </td>
-                  <td className="py-1 text-right">
+                  <td className="order-last w-full text-right empty:hidden md:order-none md:w-auto md:py-1 md:empty:table-cell">
                     {canEditTx(tx) && (
                       <span className="inline-flex gap-1">
                         <button type="button" onClick={() => startEdit(tx)} className="rounded px-1.5 py-0.5 text-slate-400 hover:text-[color:var(--brand-blue-deep)]">
@@ -475,23 +481,30 @@ type SortableHeaderProps = {
   className?: string;
 };
 
+function SortButton({ label, sortKey, sort, onSort, className = '' }: SortableHeaderProps) {
+  const indicator = sort.key === sortKey ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[color:var(--brand-blue-deep)] ${className}`}
+    >
+      <span>{label}</span>
+      <span className="text-[10px] text-slate-400">{indicator}</span>
+    </button>
+  );
+}
+
 function SortableHeader({ label, sortKey, sort, onSort, className = '' }: SortableHeaderProps) {
   const active = sort.key === sortKey;
-  const indicator = active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
 
   return (
     <th
       className={`px-3 py-2 text-left font-medium ${className}`}
       aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
     >
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[color:var(--brand-blue-deep)]"
-      >
-        <span>{label}</span>
-        <span className="text-[10px] text-slate-400">{indicator}</span>
-      </button>
+      <SortButton label={label} sortKey={sortKey} sort={sort} onSort={onSort} />
     </th>
   );
 }
@@ -524,7 +537,7 @@ function BatchFormFields({ itemForm, churches, copy, onRequestCreateChurch, setF
                       : [...itemForm.degrees, d],
                   )
                 }
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                   checked
                     ? 'border-[color:var(--brand-blue-deep)] bg-[color:var(--brand-blue-deep)] text-white'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -676,7 +689,7 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
   return (
     <>
       <tr
-        className="cursor-pointer border-b border-slate-100 bg-white text-sm hover:bg-slate-50"
+        className="grid cursor-pointer grid-cols-2 gap-x-3 gap-y-2 border-b border-slate-100 bg-white p-3 text-sm hover:bg-slate-50 md:table-row md:p-0"
         tabIndex={0}
         aria-expanded={expanded}
         onClick={onToggle}
@@ -688,19 +701,30 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
           }
         }}
       >
-        <td className="px-3 py-2 font-semibold text-slate-800">{item.originChurchName ?? '—'}</td>
-        <td className="px-3 py-2 font-semibold text-slate-800">{formatFeitioDate(item)}</td>
-        <td className="px-3 py-2 text-slate-600">{item.responsiblePerson ?? '—'}</td>
-        <td className="px-3 py-2 text-slate-600">{item.degree ? `${item.degree}°` : '—'}</td>
-        <td className="px-3 py-2 text-slate-600">
+        <td className="col-span-2 font-semibold text-slate-800 md:px-3 md:py-2">
+          {item.originChurchName ?? '—'}
+          <div className="font-normal text-slate-600 md:hidden">{formatFeitioDate(item)}</div>
+        </td>
+        <td className="hidden font-semibold text-slate-800 md:table-cell md:px-3 md:py-2">{formatFeitioDate(item)}</td>
+        <td className="text-slate-600 md:px-3 md:py-2">
+          <span className="block text-xs text-slate-400 md:hidden">{copy.responsiblePerson}</span>
+          {item.responsiblePerson ?? '—'}
+        </td>
+        <td className="text-slate-600 md:px-3 md:py-2">
+          <span className="block text-xs text-slate-400 md:hidden">{copy.degree}</span>
+          {item.degree ? `${item.degree}°` : '—'}
+        </td>
+        <td className="text-slate-600 md:px-3 md:py-2">
+          <span className="block text-xs text-slate-400 md:hidden">{copy.concentration}</span>
           <div>{item.concentration ?? (item.form === 'gel' ? copy.gel : '—')}</div>
           {item.notes ? <div className="mt-0.5 text-xs text-slate-400">{item.notes}</div> : null}
         </td>
-        <td className="px-3 py-2 text-right font-medium text-slate-800">
+        <td className="font-medium text-slate-800 md:px-3 md:py-2 md:text-right">
+          <span className="block text-xs font-normal text-slate-400 md:hidden">{copy.currentBalance}</span>
           {formatQuantity(balance, unit)}
         </td>
-        <td className="px-3 py-2">
-          <div className="flex items-center justify-end gap-1">
+        <td className="col-span-2 md:px-3 md:py-2">
+          <div className="flex flex-wrap items-center gap-2 md:justify-end md:gap-1">
             <button
               type="button"
               onClick={event => {
@@ -747,8 +771,8 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
         </td>
       </tr>
       {editing && (
-        <tr className="border-b border-slate-100 bg-blue-50/30">
-          <td colSpan={7} className="px-3 py-3">
+        <tr className="block border-b border-slate-100 bg-blue-50/30 md:table-row">
+          <td colSpan={7} className="block px-3 py-3 md:table-cell">
             <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
               <BatchFormFields
                 itemForm={editForm}
@@ -787,8 +811,8 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
         </tr>
       )}
       {expanded && (
-        <tr className="border-b border-slate-100 bg-slate-50/70">
-          <td colSpan={7} className="px-3 py-3">
+        <tr className="block border-b border-slate-100 bg-slate-50/70 md:table-row">
+          <td colSpan={7} className="block px-3 py-3 md:table-cell">
             <TransactionList item={item} churches={churches} copy={copy} uid={uid} isAdmin={isAdmin} />
           </td>
         </tr>
@@ -831,21 +855,41 @@ function BatchTable({ items, balanceByItem, churches, copy, uid, isAdmin, onRequ
     );
   }
 
+  // Below md the table restyles itself as a card per batch (see BatchTableRow), so an
+  // expanded batch's movements and edit form get the whole screen width.
+  const sortColumns: Array<{ label: string; key: BatchSortKey }> = [
+    { label: copy.originChurch, key: 'casa' },
+    { label: copy.feitioDate, key: 'date' },
+    { label: copy.responsiblePerson, key: 'responsible' },
+    { label: copy.degree, key: 'degree' },
+    { label: copy.concentration, key: 'concentration' },
+    { label: copy.currentBalance, key: 'balance' },
+  ];
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-      <table className="w-full min-w-[760px] border-collapse text-sm">
-        <thead>
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm md:overflow-x-auto">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50 px-3 py-2 md:hidden">
+        {sortColumns.map(column => (
+          <SortButton key={column.key} label={column.label} sortKey={column.key} sort={sort} onSort={handleSort} className="py-1" />
+        ))}
+      </div>
+      <table className="block w-full border-collapse text-sm md:table md:min-w-[760px]">
+        <thead className="hidden md:table-header-group">
           <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-500">
-            <SortableHeader label={copy.originChurch} sortKey="casa" sort={sort} onSort={handleSort} />
-            <SortableHeader label={copy.feitioDate} sortKey="date" sort={sort} onSort={handleSort} />
-            <SortableHeader label={copy.responsiblePerson} sortKey="responsible" sort={sort} onSort={handleSort} />
-            <SortableHeader label={copy.degree} sortKey="degree" sort={sort} onSort={handleSort} />
-            <SortableHeader label={copy.concentration} sortKey="concentration" sort={sort} onSort={handleSort} />
-            <SortableHeader label={copy.currentBalance} sortKey="balance" sort={sort} onSort={handleSort} className="text-right" />
+            {sortColumns.map(column => (
+              <SortableHeader
+                key={column.key}
+                label={column.label}
+                sortKey={column.key}
+                sort={sort}
+                onSort={handleSort}
+                className={column.key === 'balance' ? 'text-right' : ''}
+              />
+            ))}
             <th className="px-3 py-2" />
           </tr>
         </thead>
-        <tbody>
+        <tbody className="block md:table-row-group">
           {sortedItems.map(item => (
             <BatchTableRow
               key={item.id}
