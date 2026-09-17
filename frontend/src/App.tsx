@@ -53,7 +53,12 @@ function ShellFrame({ children }: { children: ReactNode }) {
 }
 
 function DevOnlyRoute() {
-  const { devModeEnabled } = useDevMode();
+  const { devModeEnabled, loading } = useDevMode();
+
+  // Reloading a dev page must not bounce home while the role is still loading.
+  if (loading) {
+    return <RouteFallback />;
+  }
 
   if (!devModeEnabled) {
     return <Navigate to="/" replace />;
