@@ -239,7 +239,7 @@ export function DashboardPage() {
       ) : null}
 
       {!devModeEnabled && approvalStatus === 'approved' && profile?.uid ? (
-        <ConsentCard uid={profile.uid} locale={locale} />
+        <ConsentCard uid={profile.uid} locale={locale} birthDate={profile.birthDate} />
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">

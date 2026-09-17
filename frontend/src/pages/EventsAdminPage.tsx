@@ -289,7 +289,7 @@ export default function EventsAdminPage() {
 
         <div className="space-y-2 rounded-lg bg-slate-100 p-3">
           <span className="text-sm font-medium text-slate-700">Recursos (links por idioma — opcional)</span>
-          {([['programUrl', 'Programa'], ['directionsUrl', 'Como chegar'], ['consentFormUrl', 'Consentimento informado']] as const).map(([kind, label]) => (
+          {([['programUrl', 'Programa'], ['directionsUrl', 'Como chegar']] as const).map(([kind, label]) => (
             <div key={kind} className="grid gap-1">
               <span className="text-xs text-slate-600">{label}</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

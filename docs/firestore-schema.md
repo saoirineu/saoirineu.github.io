@@ -221,6 +221,10 @@ Fase 1 (`eventadmin`) **entregue**; o restante ainda **nao existe** (verdade de 
 - Regra de validade: consentimento e exigido na inscricao quando nao ha consentimento `approved`
   ou o ultimo `approvedAt` tem mais de 12 meses (`consentRequired`, `CONSENT_VALIDITY_MONTHS = 12`;
   exatamente 12 meses ainda vale). Anchor de envelhecimento: o `approvedAt` mais recente `approved`.
+- Maioridade: o formulario (adultos ou menores) e escolhido pelo `birthDate` do perfil
+  (`consentFormVariant`, `CONSENT_MAJORITY_AGE = 18`); um consentimento enviado antes dos 18 anos
+  deixa de valer no 18º aniversario (`consentValidUntil`). Derivado de `uploadedAt` + `birthDate`,
+  sem campo novo no documento.
 - Regras: dono cria `pending` (payload validado, `uploadedAt == request.time`); transicao para
   `approved`/`rejected` apenas por `isUserAdmin()`/`isEventAdmin()` (o fluxo do dirigente da Fase 3
   e server-side via callable). Leitura: dono/admin/eventadmin.

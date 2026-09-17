@@ -113,12 +113,6 @@ const event = {
       es: '/encontro-europeu/como-chegar-es.pdf',
       it: '/encontro-europeu/como-chegar-it.pdf',
     },
-    consentFormUrl: {
-      pt: '/encontro-europeu/consenso-informado-pt.pdf',
-      en: '/encontro-europeu/consenso-informado-en.pdf',
-      es: '/encontro-europeu/consenso-informado-es.pdf',
-      it: '/encontro-europeu/consenso-informado-it.pdf',
-    },
   },
   checkInSuggested: '2026-09-24',
   checkOutSuggested: '2026-10-01',

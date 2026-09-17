@@ -32,11 +32,11 @@ export type EventPricing = {
   worksByCount: { anyone: number[]; initiated: number[]; iceflu: number[] };
 };
 
-// Per-locale downloadable resource links (program, how-to-arrive, consent form to sign).
+// Per-locale downloadable resource links (program, how-to-arrive). The consent form to
+// sign is the association's, chosen by age (consentFormUrl in consents.ts), not the event's.
 export type EventResources = {
   programUrl?: LocalizedText;
   directionsUrl?: LocalizedText;
-  consentFormUrl?: LocalizedText;
 };
 
 export type EventInput = {
@@ -127,10 +127,8 @@ function mapResources(value: unknown): EventResources | undefined {
   const resources: EventResources = {};
   const program = mapResourceUrls(data.programUrl);
   const directions = mapResourceUrls(data.directionsUrl);
-  const consentForm = mapResourceUrls(data.consentFormUrl);
   if (program) resources.programUrl = program;
   if (directions) resources.directionsUrl = directions;
-  if (consentForm) resources.consentFormUrl = consentForm;
   return Object.keys(resources).length ? resources : undefined;
 }
 

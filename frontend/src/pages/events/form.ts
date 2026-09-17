@@ -44,7 +44,7 @@ export type EventFormValues = {
   worksAnyone: string;
   worksInitiated: string;
   worksIceflu: string;
-  resources: { programUrl: LocalizedText; directionsUrl: LocalizedText; consentFormUrl: LocalizedText };
+  resources: { programUrl: LocalizedText; directionsUrl: LocalizedText };
   checkInSuggested: string;
   checkOutSuggested: string;
   consentPolicy: EventConsentPolicy;
@@ -73,7 +73,7 @@ export const initialEventForm: EventFormValues = {
   worksAnyone: '',
   worksInitiated: '',
   worksIceflu: '',
-  resources: { programUrl: emptyLocalized(), directionsUrl: emptyLocalized(), consentFormUrl: emptyLocalized() },
+  resources: { programUrl: emptyLocalized(), directionsUrl: emptyLocalized() },
   checkInSuggested: '',
   checkOutSuggested: '',
   consentPolicy: 'standard'
@@ -88,10 +88,8 @@ function buildResources(values: EventFormValues['resources']): EventResources | 
   const out: EventResources = {};
   const programUrl = cleanLocalized(values.programUrl);
   const directionsUrl = cleanLocalized(values.directionsUrl);
-  const consentFormUrl = cleanLocalized(values.consentFormUrl);
   if (programUrl) out.programUrl = programUrl;
   if (directionsUrl) out.directionsUrl = directionsUrl;
-  if (consentFormUrl) out.consentFormUrl = consentFormUrl;
   return Object.keys(out).length ? out : undefined;
 }
 
@@ -192,8 +190,7 @@ export function prefillEventForm(record: EventRecord): EventFormValues {
     worksIceflu: record.pricing.worksByCount.iceflu.join(', '),
     resources: {
       programUrl: record.resources?.programUrl ?? emptyLocalized(),
-      directionsUrl: record.resources?.directionsUrl ?? emptyLocalized(),
-      consentFormUrl: record.resources?.consentFormUrl ?? emptyLocalized()
+      directionsUrl: record.resources?.directionsUrl ?? emptyLocalized()
     },
     checkInSuggested: record.checkInSuggested ?? '',
     checkOutSuggested: record.checkOutSuggested ?? '',

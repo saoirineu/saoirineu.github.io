@@ -131,7 +131,7 @@ export function UserProfileReviewModal({
           </div>
         </div>
 
-        <ConsentsPanel uid={user.uid} locale={locale} />
+        <ConsentsPanel uid={user.uid} locale={locale} birthDate={user.birthDate} />
 
         {/* Approved snapshot history */}
         <div className="border-t border-slate-100 px-6 py-4">

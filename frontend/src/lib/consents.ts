@@ -3,12 +3,55 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
 import { asOptionalString, asOptionalTimestamp, asRecord, removeUndefinedDeep } from './firestoreData';
+import type { SiteLocale } from './siteLocale';
 import { getUploadContentType, validateUploadFile } from './uploads';
 
 export type ConsentStatus = 'pending' | 'approved' | 'rejected';
 
 // A signed informed consent is valid for this many months after it was approved.
 export const CONSENT_VALIDITY_MONTHS = 12;
+
+// Below this age a member signs the minor form (with those holding parental
+// responsibility), and a consent signed on it stops counting on this birthday.
+export const CONSENT_MAJORITY_AGE = 18;
+
+export type ConsentFormVariant = 'adult' | 'minor';
+
+/**
+ * The blank consent form (effective 10.09.2026), one PDF per variant and
+ * language; French exists but the portal has no French locale. Read from
+ * Storage docs/ like the privacy notice and the statute, so a new version
+ * reaches members without a code deploy; uploaded with
+ * scripts/upload-documents.mjs as iceflu-consenso-informato-{adulti|minori}-{locale}.pdf.
+ * Not read from event data, since a member signs one consent for the
+ * association, not for a particular event.
+ */
+export function consentFormUrl(variant: ConsentFormVariant, locale: SiteLocale): string {
+  const name = `iceflu-consenso-informato-${variant === 'adult' ? 'adulti' : 'minori'}-${locale}.pdf`;
+  return `https://firebasestorage.googleapis.com/v0/b/sao-irineu.firebasestorage.app/o/docs%2F${name}?alt=media`;
+}
+
+/**
+ * The day someone born on `birthDate` (the profile's YYYY-MM-DD) comes of age,
+ * at local midnight, or null when the date is missing or not a real date.
+ */
+export function majorityDate(birthDate: string | undefined): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate ?? '');
+  if (!match) return null;
+
+  const [year, month, day] = [Number(match[1]), Number(match[2]) - 1, Number(match[3])];
+  const born = new Date(year, month, day);
+  if (born.getMonth() !== month || born.getDate() !== day) return null;
+
+  return new Date(year + CONSENT_MAJORITY_AGE, month, day);
+}
+
+/** Which form the member signs today; null when the birth date is unknown, so both can be offered. */
+export function consentFormVariant(birthDate: string | undefined, now: Date = new Date()): ConsentFormVariant | null {
+  const majority = majorityDate(birthDate);
+  if (!majority) return null;
+  return now.getTime() < majority.getTime() ? 'minor' : 'adult';
+}
 
 export type ConsentRecord = {
   id: string;
@@ -54,28 +97,52 @@ function mapConsent(id: string, value: unknown): ConsentRecord {
   };
 }
 
+/** What the validity rules read from a consent; uploadedAt tells whether it was signed as a minor. */
+type ConsentValidityFields = Pick<ConsentRecord, 'status' | 'approvedAt'> & Partial<Pick<ConsentRecord, 'uploadedAt'>>;
+
+/** Whether a consent was sent before the member came of age, so on the minor form. */
+export function signedAsMinor(
+  consent: Pick<ConsentValidityFields, 'uploadedAt' | 'approvedAt'>,
+  birthDate: string | undefined
+): boolean {
+  const majority = majorityDate(birthDate);
+  const signedAt = consent.uploadedAt ?? consent.approvedAt;
+  return !!majority && !!signedAt && signedAt.getTime() < majority.getTime();
+}
+
+/**
+ * When the member's approved consents stop counting, or null if none is approved.
+ * An approval lasts {@link CONSENT_VALIDITY_MONTHS}; one signed as a minor also
+ * ends at majority, when the adult form becomes due. Without a birth date no
+ * consent is treated as a minor's.
+ */
+export function consentValidUntil(consents: ReadonlyArray<ConsentValidityFields>, birthDate?: string): Date | null {
+  const majority = majorityDate(birthDate);
+  const expiries = consents
+    .filter(consent => consent.status === 'approved' && consent.approvedAt)
+    .map(consent => {
+      const expiry = new Date(consent.approvedAt!);
+      expiry.setMonth(expiry.getMonth() + CONSENT_VALIDITY_MONTHS);
+      return majority && signedAsMinor(consent, birthDate) && majority < expiry ? majority : expiry;
+    });
+  if (!expiries.length) return null;
+
+  return new Date(Math.max(...expiries.map(expiry => expiry.getTime())));
+}
+
 /**
  * Item A: the signed informed consent must be asked for when the user has no
  * approved consent on file, or the most recently approved one is older than
- * {@link CONSENT_VALIDITY_MONTHS}. "Exactly 12 months old" still counts as valid.
+ * {@link CONSENT_VALIDITY_MONTHS} or was signed as a minor by someone who has
+ * since come of age. "Exactly 12 months old" still counts as valid.
  */
 export function consentRequired(
-  consents: ReadonlyArray<Pick<ConsentRecord, 'status' | 'approvedAt'>>,
-  now: Date = new Date()
+  consents: ReadonlyArray<ConsentValidityFields>,
+  now: Date = new Date(),
+  birthDate?: string
 ): boolean {
-  const approvedTimes = consents
-    .filter(consent => consent.status === 'approved' && consent.approvedAt)
-    .map(consent => consent.approvedAt!.getTime());
-
-  if (approvedTimes.length === 0) {
-    return true;
-  }
-
-  const cutoff = new Date(now);
-  cutoff.setMonth(cutoff.getMonth() - CONSENT_VALIDITY_MONTHS);
-
-  const latestApproved = Math.max(...approvedTimes);
-  return latestApproved < cutoff.getTime();
+  const validUntil = consentValidUntil(consents, birthDate);
+  return !validUntil || validUntil.getTime() < now.getTime();
 }
 
 /**
@@ -89,11 +156,12 @@ export function consentRequired(
 export function eventConsentNeeded(
   policy: 'standard' | 'noviceOnly' | undefined,
   isNovice: boolean,
-  consents: ReadonlyArray<Pick<ConsentRecord, 'status' | 'approvedAt'>>,
-  now: Date = new Date()
+  consents: ReadonlyArray<ConsentValidityFields>,
+  now: Date = new Date(),
+  birthDate?: string
 ): boolean {
   if (policy === 'noviceOnly') return isNovice;
-  return isNovice || consentRequired(consents, now);
+  return isNovice || consentRequired(consents, now, birthDate);
 }
 
 export async function fetchUserConsents(uid: string): Promise<ConsentRecord[]> {
@@ -117,18 +185,6 @@ export async function createConsentRecord(uid: string, input: ConsentCreateInput
 /** Latest consent by upload time, whatever its status — what the member sees. */
 export function latestConsent(consents: ReadonlyArray<ConsentRecord>): ConsentRecord | undefined {
   return [...consents].sort((a, b) => (b.uploadedAt?.getTime() ?? 0) - (a.uploadedAt?.getTime() ?? 0))[0];
-}
-
-/** When the most recent approved consent stops counting, or null if none is approved. */
-export function consentValidUntil(consents: ReadonlyArray<ConsentRecord>): Date | null {
-  const approved = consents
-    .filter(consent => consent.status === 'approved' && consent.approvedAt)
-    .map(consent => consent.approvedAt!.getTime());
-  if (!approved.length) return null;
-
-  const expiry = new Date(Math.max(...approved));
-  expiry.setMonth(expiry.getMonth() + CONSENT_VALIDITY_MONTHS);
-  return expiry;
 }
 
 /**

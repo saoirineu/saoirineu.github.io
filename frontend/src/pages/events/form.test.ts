@@ -41,17 +41,14 @@ describe('events form helpers', () => {
       totalSlots: '10',
       resources: {
         programUrl: { pt: '', en: '/program-en.pdf', es: '', it: '' },
-        directionsUrl: { pt: '', en: '', es: '', it: '' },
-        consentFormUrl: { pt: '/consent-pt.pdf', en: '', es: '', it: '' }
+        directionsUrl: { pt: '', en: '', es: '', it: '' }
       }
     });
     expect(withResources.resources?.programUrl?.en).toBe('/program-en.pdf');
     expect(withResources.resources?.directionsUrl).toBeUndefined();
-    expect(withResources.resources?.consentFormUrl?.pt).toBe('/consent-pt.pdf');
 
     const values = prefillEventForm({ id: 'x', ...withResources });
     expect(values.resources.programUrl.en).toBe('/program-en.pdf');
-    expect(values.resources.consentFormUrl.pt).toBe('/consent-pt.pdf');
   });
 
   it('round-trips through prefill', () => {

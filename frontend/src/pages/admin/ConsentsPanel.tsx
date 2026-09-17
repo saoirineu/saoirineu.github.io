@@ -5,6 +5,7 @@ import {
   decideConsent,
   fetchUserConsents,
   resolveConsentDocumentUrl,
+  signedAsMinor,
   type ConsentRecord
 } from '../../lib/consents';
 import type { SiteLocale } from '../../lib/siteLocale';
@@ -20,6 +21,7 @@ const copyByLocale = {
     approve: 'Aprovar',
     reject: 'Recusar',
     forEvent: 'evento',
+    minorForm: 'versão para menores',
     status: { pending: 'Aguardando revisão', approved: 'Aprovado', rejected: 'Recusado' }
   },
   en: {
@@ -31,6 +33,7 @@ const copyByLocale = {
     approve: 'Approve',
     reject: 'Reject',
     forEvent: 'event',
+    minorForm: 'form for minors',
     status: { pending: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' }
   },
   es: {
@@ -42,6 +45,7 @@ const copyByLocale = {
     approve: 'Aprobar',
     reject: 'Rechazar',
     forEvent: 'evento',
+    minorForm: 'versión para menores',
     status: { pending: 'A la espera de revisión', approved: 'Aprobado', rejected: 'Rechazado' }
   },
   it: {
@@ -53,6 +57,7 @@ const copyByLocale = {
     approve: 'Approva',
     reject: 'Rifiuta',
     forEvent: 'evento',
+    minorForm: 'versione per minorenni',
     status: { pending: 'In attesa di revisione', approved: 'Approvato', rejected: 'Rifiutato' }
   }
 } as const;
@@ -66,9 +71,11 @@ function statusClass(status: ConsentRecord['status']) {
 
 /**
  * Consents a member submitted, with the approve/reject decision. Approving is
- * what anchors the 12-month validity window used by consentRequired().
+ * what anchors the 12-month validity window used by consentRequired(). One sent
+ * before the member turned 18 is tagged as the minor form, which those holding
+ * parental responsibility must also sign, and stops counting at 18.
  */
-export function ConsentsPanel({ uid, locale }: { uid: string; locale: SiteLocale }) {
+export function ConsentsPanel({ uid, locale, birthDate }: { uid: string; locale: SiteLocale; birthDate?: string }) {
   const copy = copyByLocale[locale];
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -118,6 +125,9 @@ export function ConsentsPanel({ uid, locale }: { uid: string; locale: SiteLocale
                 </span>
               ) : null}
               {consent.eventId ? <span className="text-slate-400">· {copy.forEvent}: {consent.eventId}</span> : null}
+              {signedAsMinor(consent, birthDate) ? (
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">{copy.minorForm}</span>
+              ) : null}
 
               {consent.documentPath ? (
                 <button

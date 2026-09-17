@@ -104,6 +104,8 @@ export type RegistrationCopy = {
   draftSaved: string;
   draftLoaded: string;
   consentDownload: string;
+  consentDownloadAdult: string;
+  consentDownloadMinor: string;
   errors: Record<EventRegistrationValidationError, string>;
 };
 
@@ -211,6 +213,8 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     draftSaved: 'Rascunho salvo neste navegador. Arquivos não armazenados.',
     draftLoaded: 'Rascunho carregado automaticamente.',
     consentDownload: 'Baixe o termo de consentimento informado',
+    consentDownloadAdult: 'Baixe o termo para maiores de idade',
+    consentDownloadMinor: 'Baixe o termo para menores de idade',
     errors: {
       firstName: 'Preencha o nome.',
       lastName: 'Preencha o sobrenome.',
@@ -330,6 +334,8 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     draftSaved: 'Draft saved in this browser. Attached files not stored.',
     draftLoaded: 'Draft loaded automatically.',
     consentDownload: 'Download the informed consent form',
+    consentDownloadAdult: 'Download the adult consent form',
+    consentDownloadMinor: 'Download the consent form for minors',
     errors: {
       firstName: 'Please fill in the first name.',
       lastName: 'Please fill in the last name.',
@@ -449,6 +455,8 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     draftSaved: 'Borrador guardado en este navegador. Archivos adjuntos no almacenados.',
     draftLoaded: 'Borrador cargado automáticamente.',
     consentDownload: 'Descarga el consentimiento informado',
+    consentDownloadAdult: 'Descarga el consentimiento para mayores de edad',
+    consentDownloadMinor: 'Descarga el consentimiento para menores de edad',
     errors: {
       firstName: 'Complete el nombre.',
       lastName: 'Complete el apellido.',
@@ -568,6 +576,8 @@ export const registrationCopyByLocale: Record<EventLocale, RegistrationCopy> = {
     draftSaved: 'Bozza salvata in questo browser. File allegati non archiviati.',
     draftLoaded: 'Bozza caricata automaticamente.',
     consentDownload: 'Scarica il consenso informato',
+    consentDownloadAdult: 'Scarica il consenso per maggiorenni',
+    consentDownloadMinor: 'Scarica il consenso per minorenni',
     errors: {
       firstName: 'Compila il nome.',
       lastName: 'Compila il cognome.',

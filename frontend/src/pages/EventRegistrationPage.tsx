@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { FileUploadField } from '../components/FileUploadField';
 import { InfoTooltip } from '../components/InfoTooltip';
-import { eventConsentNeeded, fetchUserConsents } from '../lib/consents';
+import { consentFormUrl, consentFormVariant, eventConsentNeeded, fetchUserConsents } from '../lib/consents';
 import { fetchEvent, type EventLocale } from '../lib/events';
 import {
   calculateEventCautionDeposit,
@@ -65,6 +65,7 @@ function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
 }
 
 const inputClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm';
+const consentLinkClass = 'font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800';
 
 export default function EventRegistrationPage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -197,7 +198,8 @@ export default function EventRegistrationPage() {
   }, [existing]);
 
   const contribution = useMemo(() => (event ? calculateEventContribution(event, values) : null), [event, values]);
-  const consentNeeded = eventConsentNeeded(event?.consentPolicy, values.isNovice, consentsQuery.data ?? []);
+  const consentNeeded = eventConsentNeeded(event?.consentPolicy, values.isNovice, consentsQuery.data ?? [], new Date(), profile?.birthDate);
+  const consentForm = consentFormVariant(profile?.birthDate);
   const capacity = capacityQuery.data ?? (event ? [{ id: 'total', capacity: totalEventCapacity(event), reserved: 0, available: totalEventCapacity(event) }] : []);
   const slotsAvailable = totalEventSlotsAvailable(capacity);
   const slotCapacity = event ? totalEventCapacity(event) : 0;
@@ -474,13 +476,17 @@ export default function EventRegistrationPage() {
                   {/* Not h-full: stretched to this wrapper's height, it would push the note below out of the card. */}
                   <FileUploadField {...fileProps('consentDocument', copy.consentDocument)} className="flex flex-col" />
                   <p className="text-xs leading-5 text-amber-800">
-                    {copy.consentNote}
-                    {event.resources?.consentFormUrl ? (
+                    {copy.consentNote}{' '}
+                    {/* The association's form, not the event's: the birth date picks adult or minor, or both are offered. */}
+                    {consentForm ? (
+                      <a className={consentLinkClass} href={consentFormUrl(consentForm, locale)} target="_blank" rel="noreferrer">{consentForm === 'minor' ? copy.consentDownloadMinor : copy.consentDownload}</a>
+                    ) : (
                       <>
-                        {' '}
-                        <a className="font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800" href={localized(event.resources.consentFormUrl, locale)} target="_blank" rel="noreferrer">{copy.consentDownload}</a>
+                        <a className={consentLinkClass} href={consentFormUrl('adult', locale)} target="_blank" rel="noreferrer">{copy.consentDownloadAdult}</a>
+                        {' · '}
+                        <a className={consentLinkClass} href={consentFormUrl('minor', locale)} target="_blank" rel="noreferrer">{copy.consentDownloadMinor}</a>
                       </>
-                    ) : null}
+                    )}
                   </p>
                 </div>
               ) : null}
