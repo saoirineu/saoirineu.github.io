@@ -81,7 +81,6 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/events/:slug" element={<EventRegistrationPage />} />
             <Route element={<DevOnlyRoute />}>
-              <Route path="/churches" element={<ChurchesPage />} />
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/hymnals" element={<HymnsPage />} />
             </Route>
@@ -93,6 +92,7 @@ function App() {
             </Route>
             <Route element={<RoleGate requiredRole="admin" />}>
               <Route path="/admin/members" element={<MembersPage />} />
+              <Route path="/churches" element={<ChurchesPage />} />
             </Route>
             <Route element={<RoleGate requiredRole="eventadmin" />}>
               <Route path="/admin/events" element={<EventsAdminPage />} />
