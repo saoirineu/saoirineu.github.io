@@ -332,6 +332,9 @@ describe('profile form helpers', () => {
     expect(isProfileFormReadyForApproval({ ...nonItalianReady, idType: 'other', idTypeOther: 'Carteira de motorista' })).toBe(true);
     // Italians are not asked for a document type.
     expect(isProfileFormReadyForApproval({ ...italianReady, idType: '' })).toBe(true);
+    // The Declaration is only shown to, and required of, Italians.
+    expect(isProfileFormReadyForApproval({ ...nonItalianReady, declarationConsent: '' })).toBe(true);
+    expect(isProfileFormReadyForApproval({ ...italianReady, declarationConsent: '' })).toBe(false);
   });
 
   it('prefills only empty fields from the linked member and records the link', () => {

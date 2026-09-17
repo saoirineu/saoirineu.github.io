@@ -978,11 +978,17 @@ export function ProfileChurchesSection({
   );
 }
 
-/** ICEFLU "Informative": required Privacy + Declaration consents (agree / not agree). */
+/**
+ * ICEFLU "Informative": required Privacy + Declaration consents (agree / not agree).
+ * The Declaration asks to be admitted to ICEFLU Italia, so only Italian citizens
+ * or residents see it.
+ */
 export function ProfileConsentsSection({ copy, form, setField }: BaseSectionProps) {
   const items: Array<{ field: 'privacyConsent' | 'declarationConsent'; label: string; text: string }> = [
     { field: 'privacyConsent', label: copy.privacyLabel, text: copy.privacyText },
-    { field: 'declarationConsent', label: copy.declarationLabel, text: copy.declarationText }
+    ...(form.isItalian
+      ? [{ field: 'declarationConsent' as const, label: copy.declarationLabel, text: copy.declarationText }]
+      : [])
   ];
   return (
     <section className="space-y-4 rounded-lg bg-slate-100 p-3">

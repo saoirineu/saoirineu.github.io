@@ -242,8 +242,9 @@ export function missingRequiredProfileFields(form: ProfileFormState, hasSelected
     missing.push('identityDocumentPrimary');
   }
   // Privacy and Declaration must be explicitly agreed to (not just answered).
+  // Non-Italians are not shown the Declaration, so it is not asked of them.
   if (form.privacyConsent !== 'agree') missing.push('privacyConsent');
-  if (form.declarationConsent !== 'agree') missing.push('declarationConsent');
+  if (form.isItalian && form.declarationConsent !== 'agree') missing.push('declarationConsent');
   return missing;
 }
 
@@ -432,7 +433,8 @@ export function buildUserPayload(user: User, form: ProfileFormState): Partial<Us
     avatarUrl: form.avatarUrl || undefined,
     isItalian: form.isItalian,
     privacyConsent: form.privacyConsent || undefined,
-    declarationConsent: form.declarationConsent || undefined,
+    // Only the Italian variant shows the Declaration.
+    declarationConsent: form.isItalian ? form.declarationConsent || undefined : undefined,
     memberId: form.memberId || undefined,
     surname: form.surname || undefined,
     firstName: form.firstName || undefined,
