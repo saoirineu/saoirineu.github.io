@@ -9,6 +9,7 @@ import {
   type UserApprovalStatus,
   type UserProfile
 } from '../lib/users';
+import { formatDateTime } from '../lib/dateFormat';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { UserProfileReviewModal } from './admin/UserProfileReviewModal';
@@ -261,7 +262,7 @@ export default function MembershipReviewPage() {
                       <span>
                         {copy.submitted}:{' '}
                         {user.approvalSubmittedAt
-                          ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString(locale)
+                          ? formatDateTime(user.approvalSubmittedAt.toMillis(), locale)
                           : copy.neverSubmitted}
                       </span>
                     </div>
@@ -298,7 +299,7 @@ export default function MembershipReviewPage() {
                       <td className="px-4 py-3 text-slate-600">{user.email ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">
                         {user.approvalSubmittedAt
-                          ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString(locale)
+                          ? formatDateTime(user.approvalSubmittedAt.toMillis(), locale)
                           : copy.neverSubmitted}
                       </td>
                       <td className="px-4 py-3">

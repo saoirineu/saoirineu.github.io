@@ -8,6 +8,7 @@ import {
   type InterviewOutcome,
   type LeaderApprovalDecision
 } from '../lib/leaderReview';
+import { formatDateTime, formatIsoDate } from '../lib/dateFormat';
 import { siteLocaleOptions, type SiteLocale } from '../lib/siteLocale';
 import { useSiteLocale } from '../providers/useSiteLocale';
 
@@ -195,11 +196,6 @@ function decisionBadgeClasses(decision: LeaderApprovalDecision | null) {
   return 'bg-slate-50 text-slate-700 border-slate-200';
 }
 
-function formatDateTime(value: number | null, tag: string) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat(tag, { dateStyle: 'medium', timeStyle: 'short' }).format(value);
-}
-
 function formatCurrency(value: number, tag: string) {
   return new Intl.NumberFormat(tag, { style: 'currency', currency: 'EUR' }).format(value);
 }
@@ -332,7 +328,7 @@ export default function LeaderReviewPage() {
           </div>
           <div>
             <dt className="text-xs uppercase text-slate-500">{copy.stay}</dt>
-            <dd className="text-sm text-slate-800">{data.checkIn ?? '—'} → {data.checkOut ?? '—'}</dd>
+            <dd className="text-sm text-slate-800">{formatIsoDate(data.checkIn, locale) || '—'} → {formatIsoDate(data.checkOut, locale) || '—'}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase text-slate-500">{copy.selectedWorks}</dt>
@@ -363,7 +359,7 @@ export default function LeaderReviewPage() {
           </span>
         </div>
         {data.leaderApprovalRespondedAt ? (
-          <p className="text-xs text-slate-500">{copy.lastDecision.replace('{date}', formatDateTime(data.leaderApprovalRespondedAt, tag))}</p>
+          <p className="text-xs text-slate-500">{copy.lastDecision.replace('{date}', formatDateTime(data.leaderApprovalRespondedAt, locale))}</p>
         ) : null}
 
         <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">
@@ -382,7 +378,7 @@ export default function LeaderReviewPage() {
                 : data.interview.status === 'approved' ? copy.confirmedApproved : copy.confirmedRejected}
             </div>
             {data.interview.resolvedAt ? (
-              <div className="text-xs text-amber-700">{copy.resolved.replace('{date}', formatDateTime(data.interview.resolvedAt, tag))}</div>
+              <div className="text-xs text-amber-700">{copy.resolved.replace('{date}', formatDateTime(data.interview.resolvedAt, locale))}</div>
             ) : null}
           </div>
         ) : null}
@@ -447,7 +443,7 @@ export default function LeaderReviewPage() {
           ) : (
             (data.leaderComments ?? []).map((entry, index) => (
               <li key={`${entry.at ?? index}-${index}`} className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                <div className="text-xs text-slate-500">{formatDateTime(entry.at, tag)}</div>
+                <div className="text-xs text-slate-500">{entry.at ? formatDateTime(entry.at, locale) : '—'}</div>
                 <div className="whitespace-pre-line">{entry.text}</div>
               </li>
             ))

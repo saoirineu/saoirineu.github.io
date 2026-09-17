@@ -155,7 +155,7 @@ describe('works payload', () => {
       sacrament: {
         stockId: 'stock-1',
         itemId: 'item-1',
-        itemLabel: 'Stella Azzurra · 2° grau · 3x1 · Céu do Mapiá · 10/Mar/2025',
+        itemLabel: 'Stella Azzurra · 2° grau · 3x1 · Céu do Mapiá · 2025-03-10',
         quantity: 0.75,
         unit: 'L'
       },

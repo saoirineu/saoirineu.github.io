@@ -96,7 +96,7 @@ Comportamento, permissoes e limitacoes: [work-records.md](work-records.md).
 - venueText?, hymnalText?: luogo e innario, texto livre, opcionais
 - attendees: { total, initiated } (inteiros, initiated <= total). Os "bianchi" (nao fardados)
   sao derivados como total - initiated e nao sao gravados
-- sacrament?: { stockId, itemId, itemLabel?, quantity, unit: `L`|`kg` }: lote de um estoque
+- sacrament?: { stockId, itemId, itemLabel? (datas do feitio em AAAA-MM-DD, formatadas na exibição), quantity, unit: `L`|`kg` }: lote de um estoque
   vinculado a igreja (`sacramentStocks.churchIds`); `kg` para itens `gel`. Obrigatorio no formulario
 - contributions: { collected, icefluBrazilQuota } em euros (a quota inclui o feitio)
 - reviewStatus: `pre-approved` | `reviewed`; reviewedAt?, reviewedBy? (so quando `reviewed`)

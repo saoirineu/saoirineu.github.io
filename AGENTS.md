@@ -32,6 +32,7 @@ Agents working here should optimize for small, verified changes and preserve use
 
 - Prefer strict typing over `any` casts.
 - Keep Portuguese UI copy and the existing Tailwind-heavy styling approach.
+- Show dates through `frontend/src/lib/dateFormat.ts` and edit them with `components/DateInput.tsx`: dd/MMM/yyyy in pt/es/it, MMM/dd/yyyy in en, following the site language rather than the browser's. Avoid `toLocaleString` and visible native `type="date"` inputs. Store dates as YYYY-MM-DD.
 - Store pure form/payload helpers beside their page domain, using the `pages/<domain>/form.ts` pattern.
 - Add tests around pure helpers before expanding refactors; current baseline lives beside the helper modules as `*.test.ts`.
 - Link to existing docs instead of duplicating them in new instruction files.

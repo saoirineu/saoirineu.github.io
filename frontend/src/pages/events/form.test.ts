@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { validateEventInput } from '../../lib/events';
-import { buildEventInput, initialEventForm, parseNumberList, prefillEventForm } from './form';
+import { buildEventInput, initialEventForm, joinWorkDateTime, parseNumberList, prefillEventForm, splitWorkDateTime } from './form';
 
 describe('events form helpers', () => {
+  it('edits a work start as a date and a time', () => {
+    expect(splitWorkDateTime('2026-09-25T19:00')).toEqual({ date: '2026-09-25', time: '19:00' });
+    expect(splitWorkDateTime('')).toEqual({ date: '', time: '' });
+    expect(joinWorkDateTime('2026-09-25', '19:00')).toBe('2026-09-25T19:00');
+    expect(joinWorkDateTime('2026-09-25', '')).toBe('2026-09-25T');
+    expect(joinWorkDateTime('', '')).toBe('');
+  });
+
   it('parses comma-separated number lists, ignoring junk', () => {
     expect(parseNumberList('0, 100, 180')).toEqual([0, 100, 180]);
     expect(parseNumberList('')).toEqual([]);

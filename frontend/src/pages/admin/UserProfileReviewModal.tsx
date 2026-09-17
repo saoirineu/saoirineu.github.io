@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { UserDocumentLink } from '../../components/UserDocumentLink';
 import { fetchApprovedSnapshots, type ApprovedProfileSnapshot, type UserProfile } from '../../lib/users';
 import type { SiteLocale } from '../../lib/siteLocale';
+import { formatDateTime, formatIsoDate } from '../../lib/dateFormat';
 import { ProfileReadOnly } from '../profile/ProfileReadOnly';
 import { ConsentsPanel } from './ConsentsPanel';
 import { approvalStatusButtonClass, type ProfileLabels } from './userReview';
@@ -51,7 +52,7 @@ export function UserProfileReviewModal({
     user.fullName ?? user.displayName ?? ([user.firstName, user.surname].filter(Boolean).join(' ') || '—');
 
   const submittedAt = user.approvalSubmittedAt
-    ? new Date(user.approvalSubmittedAt.toMillis()).toLocaleString()
+    ? formatDateTime(user.approvalSubmittedAt.toMillis(), locale)
     : '—';
 
   const status = user.approvalStatus ?? 'needs-profile';
@@ -141,7 +142,7 @@ export function UserProfileReviewModal({
           ) : snapshotsQuery.data && snapshotsQuery.data.length > 0 ? (
             <div className="space-y-4">
               {snapshotsQuery.data.map(snap => (
-                <SnapshotCard key={snap.snapshotId} snapshot={snap} approvedOnLabel={labels.snapshotApprovedOn} noDocumentLabel={labels.noDocument} />
+                <SnapshotCard key={snap.snapshotId} snapshot={snap} locale={locale} approvedOnLabel={labels.snapshotApprovedOn} noDocumentLabel={labels.noDocument} />
               ))}
             </div>
           ) : (
@@ -187,12 +188,13 @@ export function UserProfileReviewModal({
   );
 }
 
-function SnapshotCard({ snapshot, approvedOnLabel, noDocumentLabel }: {
+function SnapshotCard({ snapshot, locale, approvedOnLabel, noDocumentLabel }: {
   snapshot: ApprovedProfileSnapshot;
+  locale: SiteLocale;
   approvedOnLabel: string;
   noDocumentLabel: string;
 }) {
-  const approvedAt = new Date(snapshot.approvedAt.toMillis()).toLocaleString();
+  const approvedAt = formatDateTime(snapshot.approvedAt.toMillis(), locale);
   const displayName = snapshot.fullName ?? snapshot.displayName ?? ([snapshot.firstName, snapshot.surname].filter(Boolean).join(' ') || '—');
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
@@ -201,9 +203,9 @@ function SnapshotCard({ snapshot, approvedOnLabel, noDocumentLabel }: {
         <span className="text-xs text-slate-500">{approvedOnLabel}: {approvedAt}</span>
       </div>
       {snapshot.email ? <div className="text-xs text-slate-600">{snapshot.email}</div> : null}
-      {snapshot.birthDate ? <div className="text-xs text-slate-600">{snapshot.birthDate}</div> : null}
+      {snapshot.birthDate ? <div className="text-xs text-slate-600">{formatIsoDate(snapshot.birthDate, locale)}</div> : null}
       {snapshot.currentChurchName ? <div className="text-xs text-slate-600">{snapshot.currentChurchName}</div> : null}
-      {snapshot.firstWorkDate ? <div className="text-xs text-slate-600">{snapshot.firstWorkDate}</div> : null}
+      {snapshot.firstWorkDate ? <div className="text-xs text-slate-600">{formatIsoDate(snapshot.firstWorkDate, locale)}</div> : null}
       {snapshot.firstWorkChurchName ? <div className="text-xs text-slate-600">{snapshot.firstWorkChurchName}</div> : null}
       <div className="pt-1">
         <UserDocumentLink

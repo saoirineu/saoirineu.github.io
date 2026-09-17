@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { DateInput } from '../components/DateInput';
 import { FileUploadField } from '../components/FileUploadField';
 import { InfoTooltip } from '../components/InfoTooltip';
+import { formatDateTime } from '../lib/dateFormat';
 import { consentFormUrl, consentFormVariant, eventConsentNeeded, fetchUserConsents } from '../lib/consents';
 import { fetchEvent, type EventLocale } from '../lib/events';
 import {
@@ -417,8 +419,8 @@ export default function EventRegistrationPage() {
 
             {values.attendanceMode !== 'spiritual' ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={copy.checkIn}><input type="date" className={inputClass} value={values.checkIn} onChange={e => setField('checkIn', e.target.value)} /></Field>
-                <Field label={copy.checkOut}><input type="date" className={inputClass} value={values.checkOut} onChange={e => setField('checkOut', e.target.value)} /></Field>
+                <Field label={copy.checkIn}><DateInput className={inputClass} value={values.checkIn} onChange={value => setField('checkIn', value)} /></Field>
+                <Field label={copy.checkOut}><DateInput className={inputClass} value={values.checkOut} onChange={value => setField('checkOut', value)} /></Field>
               </div>
             ) : null}
 
@@ -440,7 +442,7 @@ export default function EventRegistrationPage() {
               {event.works.map(work => (
                 <label key={work.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                   <input type="checkbox" checked={values.selectedWorks.includes(work.id)} onChange={() => toggleWork(work.id)} />
-                  {localized(work.label, locale) || new Date(work.dateTime).toLocaleString()}
+                  {localized(work.label, locale) || formatDateTime(work.dateTime, locale)}
                 </label>
               ))}
             </div>

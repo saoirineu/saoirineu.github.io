@@ -113,14 +113,15 @@ describe('date formatting', () => {
   });
 
   it('formats and falls back gracefully', () => {
-    expect(formatSacramentDate('2026-03-10')).toBe('10/Mar/2026');
-    expect(formatSacramentDate('not a date')).toBe('not a date');
+    expect(formatSacramentDate('2026-03-10', 'pt')).toBe('10/mar/2026');
+    expect(formatSacramentDate('2026-03-10T00:00:00', 'en')).toBe('Mar/10/2026');
+    expect(formatSacramentDate('not a date', 'pt')).toBe('not a date');
   });
 
   it('renders feitio single date and ranges', () => {
-    expect(formatFeitioDate(makeItem({ feitioDate: '2026-03-10', feitioDateEnd: undefined }))).toBe('10/Mar/2026');
-    expect(formatFeitioDate(makeItem({ feitioDate: '2026-03-10', feitioDateEnd: '2026-03-12' }))).toBe('10/Mar/2026 → 12/Mar/2026');
-    expect(formatFeitioDate(makeItem({ feitioDate: undefined, feitioDateEnd: undefined }))).toBe('—');
+    expect(formatFeitioDate(makeItem({ feitioDate: '2026-03-10', feitioDateEnd: undefined }), 'it')).toBe('10/mar/2026');
+    expect(formatFeitioDate(makeItem({ feitioDate: '2026-03-10', feitioDateEnd: '2026-03-12' }), 'en')).toBe('Mar/10/2026 → Mar/12/2026');
+    expect(formatFeitioDate(makeItem({ feitioDate: undefined, feitioDateEnd: undefined }), 'pt')).toBe('—');
   });
 });
 

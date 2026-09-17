@@ -12,6 +12,7 @@ import { FileUploadField } from '../components/FileUploadField';
 import { useAuth } from '../providers/useAuth';
 import { useSystemRole } from '../providers/useSystemRole';
 import { hasRequiredRole } from '../lib/systemRole';
+import { formatDate, formatIsoDate } from '../lib/dateFormat';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import { formatFullName } from './members/form';
 import { AddChurchModal, type AddChurchModalState } from './sacrament/SacramentSections';
@@ -228,7 +229,7 @@ export default function ProfilePage() {
                 <div className="text-sm text-slate-800">
                   <div className="font-medium">{formatFullName(candidate) || candidate.id}</div>
                   <div className="text-xs text-slate-500">
-                    {[candidate.birthDate, candidate.city].filter(Boolean).join(' · ')}
+                    {[formatIsoDate(candidate.birthDate, locale), candidate.city].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {linkedMember?.id === candidate.id ? (
@@ -260,7 +261,7 @@ export default function ProfilePage() {
         <section className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
           <h2 className="text-sm font-semibold text-emerald-900">{copy.snapshotSectionTitle}</h2>
           {snapshotsQuery.data.map(snap => {
-            const approvedAt = new Date(snap.approvedAt.toMillis()).toLocaleDateString();
+            const approvedAt = formatDate(snap.approvedAt.toMillis(), locale);
             const displayName = snap.fullName ?? snap.displayName ?? ([snap.firstName, snap.surname].filter(Boolean).join(' ') || '—');
             return (
               <div key={snap.snapshotId} className="rounded-lg border border-emerald-200 bg-white px-4 py-3 text-sm space-y-1">
@@ -270,7 +271,7 @@ export default function ProfilePage() {
                 </div>
                 {snap.email ? <div className="text-xs text-slate-600">{snap.email}</div> : null}
                 {snap.currentChurchName ? <div className="text-xs text-slate-600">{snap.currentChurchName}</div> : null}
-                {snap.firstWorkDate ? <div className="text-xs text-slate-600">{copy.sections.firstWorkDate}: {snap.firstWorkDate}</div> : null}
+                {snap.firstWorkDate ? <div className="text-xs text-slate-600">{copy.sections.firstWorkDate}: {formatIsoDate(snap.firstWorkDate, locale)}</div> : null}
                 {snap.firstWorkChurchName ? <div className="text-xs text-slate-600">{snap.firstWorkChurchName}</div> : null}
                 {snap.identityDocumentPrimaryPath ? (
                   <ProfileSnapshotDocumentLink name={snap.identityDocumentPrimaryName} path={snap.identityDocumentPrimaryPath} />

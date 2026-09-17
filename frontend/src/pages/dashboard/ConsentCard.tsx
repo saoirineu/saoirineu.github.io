@@ -11,6 +11,7 @@ import {
   majorityDate,
   uploadSignedConsent
 } from '../../lib/consents';
+import { formatDate } from '../../lib/dateFormat';
 import type { SiteLocale } from '../../lib/siteLocale';
 import { uploadAccept } from '../../lib/uploads';
 
@@ -147,7 +148,7 @@ export function ConsentCard({ uid, locale, birthDate }: { uid: string; locale: S
   const latest = latestConsent(consents);
 
   const { text, tone } = stillValid
-    ? { text: copy.statusApproved(validUntil!.toLocaleDateString(locale)), tone: 'ok' as const }
+    ? { text: copy.statusApproved(formatDate(validUntil!, locale)), tone: 'ok' as const }
     : latest?.status === 'pending'
       ? { text: copy.statusPending, tone: 'wait' as const }
       : latest?.status === 'rejected'

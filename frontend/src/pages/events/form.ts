@@ -93,6 +93,20 @@ function buildResources(values: EventFormValues['resources']): EventResources | 
   return Object.keys(out).length ? out : undefined;
 }
 
+/**
+ * A work starts at one YYYY-MM-DDTHH:mm value, edited as separate date and time
+ * fields so the date can be shown the portal's way. A half-filled value is kept
+ * while the admin types; validateEventInput rejects it.
+ */
+export function splitWorkDateTime(value: string) {
+  const [date = '', time = ''] = value.split('T');
+  return { date, time };
+}
+
+export function joinWorkDateTime(date: string, time: string) {
+  return date || time ? `${date}T${time}` : '';
+}
+
 export function parseNumberList(value: string): number[] {
   return value
     .split(',')

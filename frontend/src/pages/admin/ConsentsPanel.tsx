@@ -8,6 +8,7 @@ import {
   signedAsMinor,
   type ConsentRecord
 } from '../../lib/consents';
+import { formatDate } from '../../lib/dateFormat';
 import type { SiteLocale } from '../../lib/siteLocale';
 import { useAuth } from '../../providers/useAuth';
 
@@ -117,11 +118,11 @@ export function ConsentsPanel({ uid, locale, birthDate }: { uid: string; locale:
             <li key={consent.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
               <span className={statusClass(consent.status)}>{copy.status[consent.status]}</span>
               <span>
-                {copy.uploadedOn} {consent.uploadedAt ? consent.uploadedAt.toLocaleDateString(locale) : '—'}
+                {copy.uploadedOn} {consent.uploadedAt ? formatDate(consent.uploadedAt, locale) : '—'}
               </span>
               {consent.approvedAt ? (
                 <span>
-                  · {copy.approvedOn} {consent.approvedAt.toLocaleDateString(locale)}
+                  · {copy.approvedOn} {formatDate(consent.approvedAt, locale)}
                 </span>
               ) : null}
               {consent.eventId ? <span className="text-slate-400">· {copy.forEvent}: {consent.eventId}</span> : null}

@@ -1,7 +1,8 @@
 import type { SacramentItem, SacramentStock } from '../../lib/sacrament';
 import type { Work, WorkInput } from '../../lib/works';
 import { OTHER_WORK_TYPE_ID, type WorkType } from '../../lib/workTypes';
-import { formatFeitioDate, formatSacramentDate } from '../sacrament/form';
+import type { SiteLocale } from '../../lib/siteLocale';
+import { feitioDateRange, formatSacramentDate } from '../sacrament/form';
 
 // ─── form state ────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ export function sacramentItemLabel(item: SacramentItem, stock: Pick<SacramentSto
     item.degree ? `${item.degree}° grau` : '',
     item.form === 'gel' ? 'gel' : item.concentration ?? '',
     item.originChurchName ?? '',
-    item.feitioDate ? formatFeitioDate(item) : ''
+    feitioDateRange(item)
   ].filter(Boolean);
   return `${stock.name} · ${parts.join(' · ') || item.id}`;
 }
@@ -230,8 +231,8 @@ export function buildWorkInput(args: {
 
 // ─── display ───────────────────────────────────────────────────────────────────
 
-export function formatWorkDate(value: string) {
-  return formatSacramentDate(value) || '—';
+export function formatWorkDate(value: string, locale: SiteLocale) {
+  return formatSacramentDate(value, locale) || '—';
 }
 
 export function workTypeDisplay(work: Pick<Work, 'workTypeId' | 'workTypeLabel' | 'workTypeOther'>) {

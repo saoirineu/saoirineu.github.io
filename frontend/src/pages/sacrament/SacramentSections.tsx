@@ -21,8 +21,10 @@ import {
   type TransactionType,
 } from '../../lib/sacrament';
 import { ChurchChecklist } from '../../components/ChurchChecklist';
+import { DateInput } from '../../components/DateInput';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import { createChurch, type ChurchInfo } from '../../lib/works';
+import { useSiteLocale } from '../../providers/useSiteLocale';
 import { ChurchFormSection, type ChurchesCopy } from '../churches/ChurchesSections';
 import { buildChurchPayload, initialChurchForm, type ChurchFormState } from '../churches/form';
 import type { Copy } from './copy';
@@ -132,6 +134,7 @@ type TransactionListProps = {
 };
 
 function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionListProps) {
+  const { locale } = useSiteLocale();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [txType, setTxType] = useState<TransactionType>('entry');
@@ -270,12 +273,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
             </div>
             <div>
               <label className={labelCls()}>{copy.date}</label>
-              <input
-                type="date"
-                className={inputCls('w-full')}
-                value={txDate}
-                onChange={e => setTxDate(e.target.value)}
-              />
+              <DateInput className={inputCls('w-full')} value={txDate} onChange={setTxDate} />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -384,7 +382,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                         </div>
                         <div>
                           <label className={labelCls()}>{copy.date}</label>
-                          <input type="date" className={inputCls('w-full')} value={editDate} onChange={e => setEditDate(e.target.value)} />
+                          <DateInput className={inputCls('w-full')} value={editDate} onChange={setEditDate} />
                         </div>
                       </div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -423,7 +421,7 @@ function TransactionList({ item, churches, copy, uid, isAdmin }: TransactionList
                 </tr>
               ) : (
                 <tr key={tx.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-slate-100 py-2 md:table-row md:border-slate-50 md:py-0">
-                  <td className="text-slate-600 md:py-1 md:pr-2">{formatSacramentDate(tx.date) || '—'}</td>
+                  <td className="text-slate-600 md:py-1 md:pr-2">{formatSacramentDate(tx.date, locale) || '—'}</td>
                   <td className="md:py-1 md:pr-2">
                     <span className={`rounded-full px-1.5 py-0.5 font-medium ${tx.type === 'entry' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                       {tx.type === 'entry' ? copy.entry : copy.exit}
@@ -627,11 +625,10 @@ function BatchFormFields({ itemForm, churches, copy, onRequestCreateChurch, setF
 
       <div>
         <label className={labelCls()}>{copy.feitioDate}</label>
-        <input
-          type="date"
+        <DateInput
           className={inputCls('w-48')}
           value={toDateInputValue(itemForm.feitioDate)}
-          onChange={e => setField('feitioDate', e.target.value)}
+          onChange={value => setField('feitioDate', value)}
         />
       </div>
 
@@ -661,6 +658,7 @@ type BatchTableRowProps = {
 };
 
 function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, onRequestCreateChurch, onToggle }: BatchTableRowProps) {
+  const { locale } = useSiteLocale();
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -703,9 +701,9 @@ function BatchTableRow({ item, balance, churches, copy, uid, isAdmin, expanded, 
       >
         <td className="col-span-2 font-semibold text-slate-800 md:px-3 md:py-2">
           {item.originChurchName ?? '—'}
-          <div className="font-normal text-slate-600 md:hidden">{formatFeitioDate(item)}</div>
+          <div className="font-normal text-slate-600 md:hidden">{formatFeitioDate(item, locale)}</div>
         </td>
-        <td className="hidden font-semibold text-slate-800 md:table-cell md:px-3 md:py-2">{formatFeitioDate(item)}</td>
+        <td className="hidden font-semibold text-slate-800 md:table-cell md:px-3 md:py-2">{formatFeitioDate(item, locale)}</td>
         <td className="text-slate-600 md:px-3 md:py-2">
           <span className="block text-xs text-slate-400 md:hidden">{copy.responsiblePerson}</span>
           {item.responsiblePerson ?? '—'}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { DateInput } from '../../components/DateInput';
 import { FileUploadField } from '../../components/FileUploadField';
 import { UserDocumentLink } from '../../components/UserDocumentLink';
 import {
@@ -13,6 +14,7 @@ import type { FileUploadLabels } from '../../lib/fileUploadLabels';
 import { uploadAccept } from '../../lib/uploads';
 import type { WorkReviewStatus } from '../../lib/works';
 import type { ChurchOption } from '../../providers/useChurchRecordAccess';
+import { useSiteLocale } from '../../providers/useSiteLocale';
 import { formatSacramentDate, inputCls, labelCls } from '../sacrament/form';
 import { formatEuro } from '../works/form';
 import type { DonationsCopy } from './copy';
@@ -105,13 +107,12 @@ export function DonationForm({
         </div>
         <div>
           <label className={labelCls()} htmlFor="donation-date">{copy.date}</label>
-          <input
+          <DateInput
             id="donation-date"
-            type="date"
             max={today}
             className={inputCls(`w-full ${errorCls(has('date', 'dateInFuture'))}`)}
             value={form.date}
-            onChange={event => setField('date', event.target.value)}
+            onChange={value => setField('date', value)}
           />
           <FieldError copy={copy} errors={errors} keys={['date', 'dateInFuture']} />
         </div>
@@ -262,6 +263,7 @@ export function DonationList({
   onDelete,
   onReview
 }: DonationListProps) {
+  const { locale } = useSiteLocale();
   const visible = filterDonations(donations, filter);
   const totals = summarizeDonations(visible);
   const years = donationYears(donations);
@@ -341,7 +343,7 @@ export function DonationList({
                         <span className="ml-2 text-sm font-medium text-slate-600">{copy.reasons[donation.reason]}</span>
                       </div>
                       <div className="text-sm text-slate-600">
-                        {formatSacramentDate(donation.date) || '—'} · {donation.churchName || donation.churchId || '—'}
+                        {formatSacramentDate(donation.date, locale) || '—'} · {donation.churchName || donation.churchId || '—'}
                       </div>
                       <div className="text-sm text-slate-700">{copy.to}: {donation.recipient || '—'}</div>
                     </div>

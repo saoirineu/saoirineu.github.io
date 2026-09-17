@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { DateInput } from '../components/DateInput';
 import {
   createEvent,
   deleteEvent,
@@ -15,7 +16,9 @@ import {
 import {
   buildEventInput,
   initialEventForm,
+  joinWorkDateTime,
   prefillEventForm,
+  splitWorkDateTime,
   type EventFormValues,
   type EventFormWork
 } from './events/form';
@@ -248,16 +251,22 @@ export default function EventsAdminPage() {
             <span className="text-sm font-medium text-slate-700">Trabalhos</span>
             <button type="button" className="py-1 text-xs font-medium text-blue-700 underline" onClick={addWork}>+ adicionar trabalho</button>
           </div>
-          {form.works.map((work, index) => (
-            <div key={work.id} className="grid gap-2 rounded-md border border-slate-200 bg-white p-2 sm:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,1fr)),12rem,auto]">
-              <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="PT" value={work.labelPt} onChange={e => updateWork(index, { labelPt: e.target.value })} />
-              <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="EN" value={work.labelEn} onChange={e => updateWork(index, { labelEn: e.target.value })} />
-              <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="ES" value={work.labelEs} onChange={e => updateWork(index, { labelEs: e.target.value })} />
-              <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="IT" value={work.labelIt} onChange={e => updateWork(index, { labelIt: e.target.value })} />
-              <input type="datetime-local" className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm sm:col-span-3 xl:col-span-1" value={work.dateTime} onChange={e => updateWork(index, { dateTime: e.target.value })} />
-              <button type="button" className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700" onClick={() => removeWork(index)} disabled={form.works.length <= 1}>remover</button>
-            </div>
-          ))}
+          {form.works.map((work, index) => {
+            const { date, time } = splitWorkDateTime(work.dateTime);
+            return (
+              <div key={work.id} className="grid gap-2 rounded-md border border-slate-200 bg-white p-2 sm:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,1fr)),16rem,auto]">
+                <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="PT" value={work.labelPt} onChange={e => updateWork(index, { labelPt: e.target.value })} />
+                <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="EN" value={work.labelEn} onChange={e => updateWork(index, { labelEn: e.target.value })} />
+                <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="ES" value={work.labelEs} onChange={e => updateWork(index, { labelEs: e.target.value })} />
+                <input className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" placeholder="IT" value={work.labelIt} onChange={e => updateWork(index, { labelIt: e.target.value })} />
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr),auto] gap-2 sm:col-span-3 xl:col-span-1">
+                  <DateInput className="w-full min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" value={date} onChange={value => updateWork(index, { dateTime: joinWorkDateTime(value, time) })} />
+                  <input type="time" aria-label="Horário" className="min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm" value={time} onChange={e => updateWork(index, { dateTime: joinWorkDateTime(date, e.target.value) })} />
+                </div>
+                <button type="button" className="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700" onClick={() => removeWork(index)} disabled={form.works.length <= 1}>remover</button>
+              </div>
+            );
+          })}
         </div>
 
         <div className="grid gap-3 rounded-lg bg-slate-100 p-3 sm:grid-cols-3">
@@ -280,10 +289,10 @@ export default function EventsAdminPage() {
             <input className={inputClass} value={form.worksIceflu} onChange={e => set('worksIceflu', e.target.value)} />
           </label>
           <label className="text-sm text-slate-700">Check-in sugerido
-            <input type="date" className={inputClass} value={form.checkInSuggested} onChange={e => set('checkInSuggested', e.target.value)} />
+            <DateInput className={inputClass} value={form.checkInSuggested} onChange={value => set('checkInSuggested', value)} />
           </label>
           <label className="text-sm text-slate-700">Check-out sugerido
-            <input type="date" className={inputClass} value={form.checkOutSuggested} onChange={e => set('checkOutSuggested', e.target.value)} />
+            <DateInput className={inputClass} value={form.checkOutSuggested} onChange={value => set('checkOutSuggested', value)} />
           </label>
         </div>
 

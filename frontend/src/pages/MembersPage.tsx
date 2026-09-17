@@ -26,6 +26,7 @@ import { type MembersCopy, membersCopyByLocale, memberFieldLabel, sourceBadgeLab
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
 import type { SiteLocale } from '../lib/siteLocale';
+import { formatIsoDate } from '../lib/dateFormat';
 
 type ReviewFilter = 'all' | 'flagged' | 'clean';
 type SourceFilter = 'all' | MemberSourceFile;
@@ -416,7 +417,7 @@ export default function MembersPage() {
               {member.birthDate ? (
                 <>
                   <dt className="text-slate-500">{memberFieldLabel(locale, 'birthDate')}</dt>
-                  <dd>{member.birthDate}</dd>
+                  <dd>{formatIsoDate(member.birthDate, locale)}</dd>
                 </>
               ) : null}
             </dl>
@@ -445,7 +446,7 @@ export default function MembersPage() {
               <tr key={member.id} className="align-top">
                 <td className="px-4 py-3">
                   <div className="font-medium text-slate-900">{formatFullName(member) || '—'}</div>
-                  {member.birthDate ? <div className="text-xs text-slate-500">{member.birthDate}</div> : null}
+                  {member.birthDate ? <div className="text-xs text-slate-500">{formatIsoDate(member.birthDate, locale)}</div> : null}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">{member.fiscalCode ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-700">{member.email ?? '—'}</td>

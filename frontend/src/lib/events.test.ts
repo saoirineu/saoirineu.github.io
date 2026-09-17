@@ -62,6 +62,7 @@ describe('validateEventInput', () => {
 
   it('requires at least one work and exactly one for single-work events', () => {
     expect(validateEventInput(baseInput({ works: [] }))).toBe('works');
+    expect(validateEventInput(baseInput({ works: [{ id: 'a', label: { pt: '', en: 'A', es: '', it: '' }, dateTime: '2026-09-25T' }] }))).toBe('works');
     expect(
       validateEventInput(
         baseInput({

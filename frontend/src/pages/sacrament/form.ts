@@ -1,4 +1,6 @@
+import { formatIsoDate, formatIsoDatesInText } from '../../lib/dateFormat';
 import type { SacramentForm, SacramentItem, SacramentStock, SacramentTransaction } from '../../lib/sacrament';
+import type { SiteLocale } from '../../lib/siteLocale';
 import type { ChurchInfo } from '../../lib/works';
 import type { Copy } from './copy';
 
@@ -16,8 +18,6 @@ export const ADD_CHURCH_VALUE = '__add_church__';
 
 // ─── date / quantity formatting ────────────────────────────────────────────────
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 export function toDateInputValue(value?: string) {
   const trimmed = value?.trim();
   if (!trimmed) return '';
@@ -27,27 +27,19 @@ export function toDateInputValue(value?: string) {
   return month ? `${month[1]}-01` : trimmed;
 }
 
-export function formatSacramentDate(value?: string) {
-  const inputValue = toDateInputValue(value);
-  const match = inputValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return value?.trim() || '';
-
-  const [, year, month, day] = match;
-  const monthIndex = Number(month) - 1;
-  const monthLabel = MONTH_LABELS[monthIndex];
-
-  return monthLabel ? `${day}/${monthLabel}/${year}` : value?.trim() || '';
+export function formatSacramentDate(value: string | undefined, locale: SiteLocale) {
+  return formatIsoDate(toDateInputValue(value), locale);
 }
 
-export function formatFeitioDate(item: SacramentItem) {
-  const start = formatSacramentDate(item.feitioDate);
-  const end = formatSacramentDate(item.feitioDateEnd);
+/** The batch's feitio date, or its range, as stored dates; '' when unknown. */
+export function feitioDateRange(item: Pick<SacramentItem, 'feitioDate' | 'feitioDateEnd'>) {
+  const start = toDateInputValue(item.feitioDate);
+  const end = toDateInputValue(item.feitioDateEnd);
+  return start && end && start !== end ? `${start} → ${end}` : start || end;
+}
 
-  if (start && end && start !== end) {
-    return `${start} → ${end}`;
-  }
-
-  return start || end || '—';
+export function formatFeitioDate(item: SacramentItem, locale: SiteLocale) {
+  return formatIsoDatesInText(feitioDateRange(item), locale) || '—';
 }
 
 export function sortDateValue(value?: string) {

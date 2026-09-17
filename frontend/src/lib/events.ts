@@ -99,7 +99,7 @@ export function validateEventInput(input: EventInput): EventValidationError | nu
 
   if (input.cautionDepositRate < 0 || input.cautionDepositRate > 1) return 'cautionDepositRate';
 
-  if (!input.works || input.works.length === 0 || input.works.some(work => !work.dateTime)) return 'works';
+  if (!input.works || input.works.length === 0 || input.works.some(work => !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(work.dateTime))) return 'works';
   if (input.kind === 'single' && input.works.length !== 1) return 'works';
 
   if (!input.pricing || input.pricing.lodgingNightRate < 0 || input.pricing.mealsNightRate < 0) return 'pricing';

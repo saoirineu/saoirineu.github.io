@@ -14,6 +14,7 @@ import {
   type ProfileLocale
 } from '../../lib/profileCatalog';
 import type { ChurchInfo } from '../../lib/works';
+import { DateInput } from '../../components/DateInput';
 import { PROFILE_BIRTH_DATE_PICKER_START, avatarFallback, isValidOptionalEmail, requiredProfileTextFields, type ProfileFormFieldSetter, type ProfileFormState } from './form';
 
 /** Shared classes for an input/select that is present but disabled (grayed). */
@@ -75,7 +76,6 @@ export type ProfileSectionsCopy = {
   sexMale: string;
   sexHint: string;
   birthDate: string;
-  birthDateMonthShortNames: string[];
   birthPlace: string;
   birthProvince: string;
   birthCountry: string;
@@ -246,13 +246,6 @@ function isItalianReferenceChurch(church: ChurchInfo) {
   return ITALIAN_REFERENCE_CHURCHES.some(reference => reference.id === church.id || reference.name === church.name);
 }
 
-function formatDateWithShortMonth(value: string, monthShortNames: string[]) {
-  const [year, month, day] = value.split('-');
-  const monthIndex = Number(month) - 1;
-  if (!year || !day || monthIndex < 0 || monthIndex >= monthShortNames.length) return value;
-  return `${day}/${monthShortNames[monthIndex]}/${year}`;
-}
-
 /**
  * An ICEFLU profile text field. On this form every active field is required, so
  * `required` doubles as the enabled flag: required → editable + asterisk;
@@ -302,70 +295,30 @@ function TextInput<K extends TextProfileField>({
   );
 }
 
-/** Date field shown as DD/MMM/YYYY, backed by a hidden native date picker. */
+/** A profile date field; see DateInput for why it is not a native date input. */
 function MonthNameDateInput({
   label,
   value,
-  monthShortNames,
   onChange,
   required = false,
   disabled = false
 }: {
   label: ReactNode;
   value: string;
-  monthShortNames: string[];
   onChange: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
 }) {
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  const displayValue = formatDateWithShortMonth(value, monthShortNames);
-
-  const openPicker = () => {
-    const input = dateInputRef.current;
-    if (!input || disabled) return;
-    if (!value) input.value = PROFILE_BIRTH_DATE_PICKER_START;
-    const picker = input as HTMLInputElement & { showPicker?: () => void };
-    if (typeof picker.showPicker === 'function') {
-      picker.showPicker();
-      return;
-    }
-    input.click();
-  };
-
   return (
-    <label className={`relative text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
+    <label className={`text-sm ${disabled ? 'text-slate-400' : 'text-slate-700'}`}>
       {label}
       {required ? <RequiredMark /> : null}
-      <input
-        type="text"
-        readOnly
-        disabled={disabled}
-        className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabled ? disabledFieldClass : 'cursor-pointer bg-white'}`}
-        value={displayValue}
-        onClick={openPicker}
-        onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openPicker();
-          }
-        }}
-        placeholder="DD/MMM/YYYY"
-      />
-      <input
-        ref={dateInputRef}
-        type="date"
-        disabled={disabled}
-        tabIndex={-1}
-        aria-hidden="true"
-        className="absolute bottom-0 right-0 h-px w-px opacity-0"
+      <DateInput
         value={value}
-        onChange={event => onChange(event.target.value)}
-        onBlur={event => {
-          if (!value && event.currentTarget.value === PROFILE_BIRTH_DATE_PICKER_START) {
-            event.currentTarget.value = '';
-          }
-        }}
+        onChange={onChange}
+        disabled={disabled}
+        pickerStart={PROFILE_BIRTH_DATE_PICKER_START}
+        className={`mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ${disabled ? disabledFieldClass : 'bg-white'}`}
       />
     </label>
   );
@@ -376,7 +329,6 @@ function BirthDateInput({ copy, form, required, setField }: BaseSectionProps & {
     <MonthNameDateInput
       label={copy.birthDate}
       value={form.birthDate}
-      monthShortNames={copy.birthDateMonthShortNames}
       required={required}
       disabled={!required}
       onChange={value => setField('birthDate', value)}
@@ -938,7 +890,6 @@ export function ProfileChurchesSection({
         <MonthNameDateInput
           label={copy.firstWorkDate}
           value={form.firstWorkDate}
-          monthShortNames={copy.birthDateMonthShortNames}
           onChange={value => setField('firstWorkDate', value)}
           disabled={firstWorkDisabled}
         />
@@ -1097,7 +1048,6 @@ export function ProfileInitiationSection({
           <MonthNameDateInput
             label={copy.initiationDate}
             value={form.initiationDate}
-            monthShortNames={copy.birthDateMonthShortNames}
             onChange={value => setField('initiationDate', value)}
           />
           <label className="text-sm text-slate-700">

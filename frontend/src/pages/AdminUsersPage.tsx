@@ -24,6 +24,7 @@ import {
   type UserApprovalStatus,
   type UserProfile
 } from '../lib/users';
+import { formatDateTime } from '../lib/dateFormat';
 import { useAuth } from '../providers/useAuth';
 import { DeleteUserDialog } from './admin/DeleteUserDialog';
 import { PrivilegesInfoButton, PrivilegesInfoModal } from './admin/PrivilegesInfoModal';
@@ -517,7 +518,7 @@ export default function AdminUsersPage() {
   }, [allUsers, searchTerm, approvalFilter, privilegeFilter, sortKey]);
 
   const unverifiedSignups = unverifiedQuery.data ?? [];
-  const formatMoment = (value: string | null) => (value ? new Date(value).toLocaleString(locale) : copy.unverified.never);
+  const formatMoment = (value: string | null) => (value ? formatDateTime(value, locale) : copy.unverified.never);
 
   const toggleRole = (uid: string, currentRoles: SystemRole[], roleToToggle: SystemRole) => {
     const selected = currentRoles.includes(roleToToggle)

@@ -5,6 +5,9 @@ import type { UserProfile } from '../../lib/users';
 import type { Work, WorkReviewStatus } from '../../lib/works';
 import { OTHER_WORK_TYPE_ID, newWorkTypeId, type WorkType, type WorkTypeCatalog } from '../../lib/workTypes';
 import { ChurchChecklist } from '../../components/ChurchChecklist';
+import { DateInput } from '../../components/DateInput';
+import { formatIsoDatesInText } from '../../lib/dateFormat';
+import { useSiteLocale } from '../../providers/useSiteLocale';
 import type { ChurchOption } from '../../providers/useChurchRecordAccess';
 import { formatQuantity, inputCls, labelCls } from '../sacrament/form';
 import type { WorksCopy } from './copy';
@@ -84,6 +87,7 @@ export function WorkRecordForm({
   onSubmit,
   onCancel
 }: WorkRecordFormProps) {
+  const { locale } = useSiteLocale();
   const has = (...keys: WorkFormError[]) => keys.some(key => errors.includes(key));
   const whites = whiteAttendees(form);
   const activeTypes = workTypes.filter(type => type.active);
@@ -133,13 +137,12 @@ export function WorkRecordForm({
           </div>
           <div>
             <label className={labelCls()} htmlFor="work-date">{copy.date}</label>
-            <input
+            <DateInput
               id="work-date"
-              type="date"
               max={today}
               className={inputCls(`w-full ${errorCls(has('date', 'dateInFuture'))}`)}
               value={form.date}
-              onChange={event => setField('date', event.target.value)}
+              onChange={value => setField('date', value)}
             />
             <FieldError copy={copy} errors={errors} keys={['date', 'dateInFuture']} />
           </div>
@@ -262,11 +265,11 @@ export function WorkRecordForm({
             >
               <option value="">{sacramentLoading ? copy.loading : copy.selectBatch}</option>
               {keptSacrament ? (
-                <option value={keptSacrament.itemId}>{keptSacrament.itemLabel ?? keptSacrament.itemId}</option>
+                <option value={keptSacrament.itemId}>{formatIsoDatesInText(keptSacrament.itemLabel, locale) || keptSacrament.itemId}</option>
               ) : null}
               {sacramentOptions.map(option => (
                 <option key={option.item.id} value={option.item.id}>
-                  {sacramentItemLabel(option.item, option.stock)} — {copy.balance} {formatQuantity(availableForWork(option, editing ?? undefined), sacramentUnit(option.item))}
+                  {formatIsoDatesInText(sacramentItemLabel(option.item, option.stock), locale)} — {copy.balance} {formatQuantity(availableForWork(option, editing ?? undefined), sacramentUnit(option.item))}
                 </option>
               ))}
             </select>
@@ -391,6 +394,7 @@ export function WorkRecordList({
   onDelete,
   onReview
 }: WorkRecordListProps) {
+  const { locale } = useSiteLocale();
   const visible = filterWorks(works, filter);
   const totals = summarizeWorks(visible);
   const years = workYears(works);
@@ -464,7 +468,7 @@ export function WorkRecordList({
                     <div className="min-w-0">
                       <div className="font-semibold text-slate-900">{workTypeDisplay(work)}</div>
                       <div className="text-sm text-slate-600">
-                        {formatWorkDate(work.date)} · {work.churchName || work.churchId || '—'}
+                        {formatWorkDate(work.date, locale)} · {work.churchName || work.churchId || '—'}
                         {work.venueText ? ` · ${work.venueText}` : ''}
                       </div>
                       {work.hymnalText ? <div className="text-xs text-slate-500">{copy.hymnal}: {work.hymnalText}</div> : null}
@@ -487,14 +491,14 @@ export function WorkRecordList({
                     <Figure
                       label={copy.sacramentItem}
                       value={work.sacrament ? (
-                        <span title={work.sacrament.itemLabel}>{formatQuantity(work.sacrament.quantity, work.sacrament.unit)}</span>
+                        <span title={formatIsoDatesInText(work.sacrament.itemLabel, locale)}>{formatQuantity(work.sacrament.quantity, work.sacrament.unit)}</span>
                       ) : '—'}
                     />
                     <Figure label={copy.contributionsCollected} value={formatEuro(work.contributions.collected, numberLocale)} />
                     <Figure label={copy.icefluBrazilQuota} value={formatEuro(work.contributions.icefluBrazilQuota, numberLocale)} />
                   </div>
                   {work.sacrament?.itemLabel ? (
-                    <p className="mt-1 truncate text-xs text-slate-400">{work.sacrament.itemLabel}</p>
+                    <p className="mt-1 truncate text-xs text-slate-400">{formatIsoDatesInText(work.sacrament.itemLabel, locale)}</p>
                   ) : null}
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
