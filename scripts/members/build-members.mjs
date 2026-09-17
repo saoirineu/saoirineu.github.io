@@ -36,7 +36,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -324,7 +324,7 @@ function compareCandidateRecency(left, right) {
 // ---------------------------------------------------------------------------
 
 export function readRows(file) {
-  const workbook = XLSX.readFile(join(DATA_DIR, file), { cellDates: true });
+  const workbook = XLSX.read(readFileSync(join(DATA_DIR, file)), { type: 'buffer', cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true, blankrows: false });
 }

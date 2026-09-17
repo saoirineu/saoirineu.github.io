@@ -1,4 +1,7 @@
-import * as admin from 'firebase-admin';
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -13,7 +16,7 @@ import { sameWorkExit, workExitTransaction, workExitTransactionId } from './work
 import type { MailGuard } from './mailQueue';
 import { createMailQueue, type QueueOutcome } from './mailQueueRuntime';
 
-admin.initializeApp();
+initializeApp();
 
 const mailRelayToken = defineSecret('MAIL_RELAY_TOKEN');
 // Endpoint on the santodaime.it hosting account (see scripts/portal-mail/).
@@ -33,7 +36,7 @@ const PAYMENT_ADMIN_EMAIL = 'amministrazione@stellazzurra.org';
 
 type LeaderComment = {
   text: string;
-  at: admin.firestore.Timestamp;
+  at: Timestamp;
 };
 
 // Leader token is scoped to events/{eventId}/registrations/{registrationId}.
@@ -235,7 +238,7 @@ const DAY_MS = 24 * HOUR_MS;
  * to; only the admin SDK touches them.
  */
 async function consumeMailAllowance(key: string, maxInWindow: number, windowMs: number): Promise<boolean> {
-  const db = admin.firestore();
+  const db = getFirestore();
   const ref = db.collection('mailThrottle').doc(key.replace(/\//g, '_'));
 
   try {
@@ -250,7 +253,7 @@ async function consumeMailAllowance(key: string, maxInWindow: number, windowMs: 
       const decision = evaluateThrottle({ now: Date.now(), windowMs, maxInWindow, state });
       transaction.set(ref, {
         ...decision.next,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
       return decision.allowed;
     });
@@ -290,11 +293,11 @@ async function sendPortalMail(message: { to: string | string[]; subject: string;
 }
 
 const mailQueue = createMailQueue({
-  db: admin.firestore(),
+  db: getFirestore(),
   send: sendPortalMail,
   isEmailVerified: async uid => {
     try {
-      return (await admin.auth().getUser(uid)).emailVerified;
+      return (await getAuth().getUser(uid)).emailVerified;
     } catch {
       return null; // the account no longer exists
     }
@@ -314,7 +317,7 @@ export const retryQueuedMail = onSchedule(
 // plus the users and extra emails admins configure in settings/notifications
 // (managed from the /admin/users panel).
 async function loadNotificationRecipients() {
-  const db = admin.firestore();
+  const db = getFirestore();
   const emails = new Set<string>(BASELINE_NOTIFY);
 
   const settings = (await db.doc('settings/notifications').get()).data() ?? {};
@@ -625,7 +628,7 @@ export const onRegistrationCapacityChange = onDocumentWritten(
   { document: 'events/{eventId}/registrations/{id}' },
   async event => {
     const { eventId } = event.params;
-    const db = admin.firestore();
+    const db = getFirestore();
 
     const before = event.data?.before.data();
     const after = event.data?.after.data();
@@ -660,7 +663,7 @@ export const onRegistrationCapacityChange = onDocumentWritten(
         capacity: row.capacity,
         reserved: row.reserved,
         available: row.available,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
     }
     await batch.commit();
@@ -684,7 +687,7 @@ export const onWorkSacramentChange = onDocumentWritten(
     const after = workExitTransaction(workId, event.data?.after.data());
     if (sameWorkExit(before, after)) return;
 
-    const db = admin.firestore();
+    const db = getFirestore();
     const ref = db.doc(`sacramentTransactions/${workExitTransactionId(workId)}`);
 
     if (!after) {
@@ -694,7 +697,7 @@ export const onWorkSacramentChange = onDocumentWritten(
 
     await db.runTransaction(async transaction => {
       const existing = await transaction.get(ref);
-      const now = admin.firestore.FieldValue.serverTimestamp();
+      const now = FieldValue.serverTimestamp();
       transaction.set(ref, existing.exists ? { ...after, updatedAt: now } : { ...after, createdAt: now, updatedAt: now });
     });
   }
@@ -721,7 +724,7 @@ export const onEventRegistration = onDocumentCreated(
     // Flag it for the event admins and send nothing: a self-addressed approval
     // link would make leaderApproval meaningless.
     const accountEmail = userId !== 'unknown'
-      ? (await admin.firestore().doc(`users/${userId}`).get()).data()?.email
+      ? (await getFirestore().doc(`users/${userId}`).get()).data()?.email
       : undefined;
 
     // They may also delete and recreate the registration freely, so cap how
@@ -735,7 +738,7 @@ export const onEventRegistration = onDocumentCreated(
       console.warn(`Self-nominated reference leader on ${eventId}/${id}; no review link sent`);
       await event.data!.ref.update({
         leaderReviewBlocked: 'self-nominated',
-        leaderReviewBlockedAt: admin.firestore.FieldValue.serverTimestamp()
+        leaderReviewBlockedAt: FieldValue.serverTimestamp()
       });
 
       // Tell a human, rather than leaving the registration silently unreviewed.
@@ -801,7 +804,7 @@ function sanitizeInterview(value: unknown) {
       | 'awaiting'
       | 'approved'
       | 'rejected',
-    resolvedAt: interview.resolvedAt instanceof admin.firestore.Timestamp ? interview.resolvedAt.toMillis() : null
+    resolvedAt: interview.resolvedAt instanceof Timestamp ? interview.resolvedAt.toMillis() : null
   };
 }
 
@@ -831,13 +834,13 @@ function sanitizeRegistrationForLeader(id: string, data: FirebaseFirestore.Docum
       total: contribution.total ?? 0
     },
     leaderApproval: (data.leaderApproval ?? null) as LeaderDecision | null,
-    leaderApprovalRespondedAt: data.leaderApprovalRespondedAt instanceof admin.firestore.Timestamp
+    leaderApprovalRespondedAt: data.leaderApprovalRespondedAt instanceof Timestamp
       ? data.leaderApprovalRespondedAt.toMillis()
       : null,
     interview: sanitizeInterview(data.interview),
     leaderComments: comments.map(comment => ({
       text: comment.text,
-      at: comment.at instanceof admin.firestore.Timestamp ? comment.at.toMillis() : null
+      at: comment.at instanceof Timestamp ? comment.at.toMillis() : null
     }))
   };
 }
@@ -856,7 +859,7 @@ async function loadRegistrationForLeader(args: { id: unknown; token: unknown; ev
   }
 
   const eventId = args.eventId;
-  const ref = admin.firestore().collection('events').doc(eventId).collection('registrations').doc(args.id);
+  const ref = getFirestore().collection('events').doc(eventId).collection('registrations').doc(args.id);
   const snapshot = await ref.get();
   if (!snapshot.exists) {
     throw new HttpsError('not-found', 'Registration not found.');
@@ -903,7 +906,7 @@ async function loadRegistrationForPayment(args: { id: unknown; token: unknown; e
   }
 
   const eventId = args.eventId;
-  const ref = admin.firestore().collection('events').doc(eventId).collection('registrations').doc(args.id);
+  const ref = getFirestore().collection('events').doc(eventId).collection('registrations').doc(args.id);
   const snapshot = await ref.get();
   if (!snapshot.exists) {
     throw new HttpsError('not-found', 'Registration not found.');
@@ -923,8 +926,7 @@ async function loadRegistrationForPayment(args: { id: unknown; token: unknown; e
 async function resolvePaymentProofUrl(path: unknown): Promise<string | null> {
   if (typeof path !== 'string' || !path) return null;
   try {
-    const [url] = await admin
-      .storage()
+    const [url] = await getStorage()
       .bucket()
       .file(path)
       .getSignedUrl({ action: 'read', expires: Date.now() + 60 * 60 * 1000 });
@@ -957,7 +959,7 @@ async function sanitizeRegistrationForPayment(id: string, data: FirebaseFirestor
     paymentApproval: (data.paymentApproval === 'approved' || data.paymentApproval === 'rejected'
       ? data.paymentApproval
       : null) as 'approved' | 'rejected' | null,
-    paymentApprovalRespondedAt: data.paymentApprovalRespondedAt instanceof admin.firestore.Timestamp
+    paymentApprovalRespondedAt: data.paymentApprovalRespondedAt instanceof Timestamp
       ? data.paymentApprovalRespondedAt.toMillis()
       : null,
     status: (data.status ?? 'pending') as string
@@ -986,7 +988,7 @@ export const paymentRespond = onCall(
 
     await ref.update({
       paymentApproval: decision,
-      paymentApprovalRespondedAt: admin.firestore.FieldValue.serverTimestamp()
+      paymentApprovalRespondedAt: FieldValue.serverTimestamp()
     });
 
     const refreshed = await ref.get();
@@ -999,7 +1001,7 @@ async function approveUserConsentForRegistration(userId: unknown, registrationId
     return;
   }
 
-  const consentsRef = admin.firestore().collection('users').doc(userId).collection('consents');
+  const consentsRef = getFirestore().collection('users').doc(userId).collection('consents');
   const snapshot = await consentsRef.where('eventId', '==', registrationId).get();
   await Promise.all(
     snapshot.docs
@@ -1007,7 +1009,7 @@ async function approveUserConsentForRegistration(userId: unknown, registrationId
       .map(docSnap =>
         docSnap.ref.update({
           status: 'approved',
-          approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+          approvedAt: FieldValue.serverTimestamp(),
           approvedBy
         })
       )
@@ -1055,21 +1057,21 @@ export const leaderRespond = onCall(
     const { plan } = result;
     const updates: Record<string, unknown> = {};
     if (trimmedComment) {
-      updates.leaderComments = admin.firestore.FieldValue.arrayUnion({
+      updates.leaderComments = FieldValue.arrayUnion({
         text: trimmedComment.slice(0, 2000),
-        at: admin.firestore.Timestamp.now()
+        at: Timestamp.now()
       });
     }
     if (plan.leaderApproval) {
       updates.leaderApproval = plan.leaderApproval;
-      updates.leaderApprovalRespondedAt = admin.firestore.FieldValue.serverTimestamp();
+      updates.leaderApprovalRespondedAt = FieldValue.serverTimestamp();
     }
     if (plan.interview) {
       updates.interview = plan.interview.resolved
         ? {
             required: plan.interview.required,
             status: plan.interview.status,
-            resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+            resolvedAt: FieldValue.serverTimestamp(),
             resolvedBy: leaderEmail
           }
         : plan.interview.status
@@ -1140,7 +1142,7 @@ export const leaderRespond = onCall(
 async function callerSystemRoles(uid: string | undefined): Promise<string[]> {
   if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
 
-  const caller = (await admin.firestore().doc(`users/${uid}`).get()).data() ?? {};
+  const caller = (await getFirestore().doc(`users/${uid}`).get()).data() ?? {};
   const roles = Array.isArray(caller.systemRoles) ? caller.systemRoles.filter(role => typeof role === 'string') : [];
   if (typeof caller.systemRole === 'string') roles.push(caller.systemRole);
   return roles;
@@ -1176,13 +1178,13 @@ export const deleteUserAccountCallable = onCall(async request => {
   if (uid === callerUid) throw new HttpsError('failed-precondition', 'You cannot delete your own account.');
 
   // Subcollections (consents, approvedSnapshots) go with the document.
-  await admin.firestore().recursiveDelete(admin.firestore().doc(`users/${uid}`));
+  await getFirestore().recursiveDelete(getFirestore().doc(`users/${uid}`));
 
   // Best effort: a storage failure must not strand the account half-deleted,
   // with the profile gone but the login still able to sign in.
   let deletedFiles = 0;
   try {
-    const [files] = await admin.storage().bucket().getFiles({ prefix: `users/${uid}/` });
+    const [files] = await getStorage().bucket().getFiles({ prefix: `users/${uid}/` });
     await Promise.all(files.map(file => file.delete().catch(() => undefined)));
     deletedFiles = files.length;
   } catch (error) {
@@ -1191,7 +1193,7 @@ export const deleteUserAccountCallable = onCall(async request => {
 
   // A missing auth account is fine: the profile may outlive a deleted login.
   try {
-    await admin.auth().deleteUser(uid);
+    await getAuth().deleteUser(uid);
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code !== 'auth/user-not-found') throw error;
@@ -1226,7 +1228,7 @@ export const listUnverifiedSignupsCallable = onCall(async request => {
 
   let pageToken: string | undefined;
   do {
-    const page = await admin.auth().listUsers(1000, pageToken);
+    const page = await getAuth().listUsers(1000, pageToken);
     page.users.forEach(record => {
       if (!record.email || record.emailVerified) return;
       accounts.push({
@@ -1267,7 +1269,7 @@ export const sendVerificationEmailCallable = onCall(
 
     let link: string;
     try {
-      link = await admin.auth().generateEmailVerificationLink(email, { url: `${base}/login` });
+      link = await getAuth().generateEmailVerificationLink(email, { url: `${base}/login` });
     } catch (error) {
       console.error('Failed to generate the verification link', error);
       // Firebase refuses links requested in quick succession; that is a "wait a

@@ -71,7 +71,7 @@ async function bootstrap() {
         <SiteLocaleProvider>
           <AuthProvider>
             <DevModeProvider>
-              <BrowserRouter basename={basePath} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <BrowserRouter basename={basePath}>
                 <App />
               </BrowserRouter>
             </DevModeProvider>
