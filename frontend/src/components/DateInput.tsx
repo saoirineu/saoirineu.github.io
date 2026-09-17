@@ -31,11 +31,16 @@ export function DateInput({
 }) {
   const { locale } = useSiteLocale();
   const pickerRef = useRef<HTMLInputElement>(null);
+  // An empty field's picker opens on pickerStart because the hidden input holds it
+  // first. It holds it with a five-digit year (02000-01-01 names the same day): the
+  // picker hands back 2000-01-01, so choosing exactly that day still changes the
+  // value. Holding 2000-01-01 itself, that choice fired no event and the field stayed empty.
+  const pickerOpeningValue = pickerStart ? `0${pickerStart}` : '';
 
   const openPicker = () => {
     const input = pickerRef.current;
     if (!input || disabled) return;
-    if (!value && pickerStart) input.value = pickerStart;
+    if (!value && pickerOpeningValue) input.value = pickerOpeningValue;
     const picker = input as HTMLInputElement & { showPicker?: () => void };
     if (typeof picker.showPicker === 'function') {
       picker.showPicker();
@@ -78,7 +83,7 @@ export function DateInput({
         value={value}
         onChange={event => onChange(event.target.value)}
         onBlur={event => {
-          if (!value && pickerStart && event.currentTarget.value === pickerStart) {
+          if (!value && pickerOpeningValue && event.currentTarget.value === pickerOpeningValue) {
             event.currentTarget.value = '';
           }
         }}
