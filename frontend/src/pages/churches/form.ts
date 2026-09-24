@@ -6,6 +6,8 @@ export type ChurchFormState = {
   city: string;
   state: string;
   country: string;
+  /** ICEFLU is the default; otherwise `lineage` names the other line. */
+  isIceflu: boolean;
   lineage: string;
   leaderName: string;
   leaderEmail: string;
@@ -27,11 +29,18 @@ export const emptyChurchUsageStats: ChurchUsageStats = {
   membersInitiationChurch: 0
 };
 
+export const ICEFLU_LINEAGE = 'ICEFLU';
+
+export function isIcefluLineage(lineage: string | undefined) {
+  return lineage?.trim().toUpperCase() === ICEFLU_LINEAGE;
+}
+
 export const initialChurchForm: ChurchFormState = {
   name: '',
   city: '',
   state: '',
   country: '',
+  isIceflu: true,
   lineage: '',
   leaderName: '',
   leaderEmail: '',
@@ -56,7 +65,7 @@ export function buildChurchPayload(form: ChurchFormState): ChurchInput {
     city: form.city.trim() || undefined,
     state: form.state.trim() || undefined,
     country: form.country.trim() || undefined,
-    lineage: form.lineage.trim() || undefined,
+    lineage: form.isIceflu ? ICEFLU_LINEAGE : form.lineage.trim() || undefined,
     leaderName: form.leaderName.trim() || undefined,
     leaderEmail: form.leaderEmail.trim() || undefined,
     churchEmail: form.churchEmail.trim() || undefined,
@@ -67,12 +76,15 @@ export function buildChurchPayload(form: ChurchFormState): ChurchInput {
 }
 
 export function prefillChurchForm(church: ChurchInfo): ChurchFormState {
+  // A church with no line recorded opens as ICEFLU, the portal's usual case.
+  const isIceflu = !church.lineage?.trim() || isIcefluLineage(church.lineage);
   return {
     name: church.name,
     city: church.city ?? '',
     state: church.state ?? '',
     country: church.country ?? '',
-    lineage: church.lineage ?? '',
+    isIceflu,
+    lineage: isIceflu ? '' : church.lineage ?? '',
     leaderName: church.leaderName ?? '',
     leaderEmail: church.leaderEmail ?? '',
     churchEmail: church.churchEmail ?? '',

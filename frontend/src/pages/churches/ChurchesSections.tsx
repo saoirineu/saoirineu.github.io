@@ -33,6 +33,8 @@ export type ChurchesCopy = {
   loginToSave: string;
   name: string;
   lineage: string;
+  notIceflu: string;
+  otherLineage: string;
   city: string;
   state: string;
   country: string;
@@ -105,15 +107,43 @@ export function ChurchFormSection({
           />
         </label>
 
-        <label className="text-sm text-slate-700">
-          {copy.lineage}
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={form.lineage}
-            onChange={event => setField('lineage', event.target.value)}
-            placeholder="Ex.: ICEFLU, CEFLI, IDCEFLU, Barquinha, UdV, Linha Unificada, etc."
-          />
-        </label>
+        <fieldset className="text-sm text-slate-700">
+          <legend>{copy.lineage}</legend>
+          <div className="mt-1 flex flex-wrap gap-4 py-2">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="isIceflu"
+                className="h-4 w-4 border-slate-300 text-slate-900"
+                checked={form.isIceflu}
+                onChange={() => setField('isIceflu', true)}
+              />
+              ICEFLU
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="isIceflu"
+                className="h-4 w-4 border-slate-300 text-slate-900"
+                checked={!form.isIceflu}
+                onChange={() => setField('isIceflu', false)}
+              />
+              {copy.notIceflu}
+            </label>
+          </div>
+          {!form.isIceflu ? (
+            <label className="block">
+              {copy.otherLineage}
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.lineage}
+                onChange={event => setField('lineage', event.target.value)}
+                placeholder="Ex.: CEFLI, Barquinha, UdV"
+                required
+              />
+            </label>
+          ) : null}
+        </fieldset>
 
         <div className="grid grid-cols-3 gap-3 sm:col-span-2">
           <label className="text-sm text-slate-700">
@@ -152,7 +182,7 @@ export function ChurchFormSection({
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={form.leaderName}
               onChange={event => setField('leaderName', event.target.value)}
-              placeholder="Ex.: Madrinha Maria"
+              placeholder="Ex.: Maria Silva"
             />
           </label>
           <label className="text-sm text-slate-700">

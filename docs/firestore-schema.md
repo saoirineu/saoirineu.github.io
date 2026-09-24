@@ -51,7 +51,7 @@ detalhes em [email-delivery.md](email-delivery.md#the-mail-queue). Nenhum client
 ### churches
 - nome
 - localizacao: { cidade, uf, pais?, coords? }
-- linhagem?
+- linhagem? (campo `lineage`: "ICEFLU" quando marcada como ICEFLU no formulario; senao o nome livre da outra linha)
 - leaderName?, leaderEmail?, churchEmail?
 - centros ICEFLU Italia catalogados no frontend e persistidos quando possivel: Casa Regina della Pace, Stella Azzurra, Casa Maria delle Rose, Luce di Misericordia, Estrela d'Oriente, Leone Bianco, Céu do Panda
 - responsaveis: ref[](pessoas)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildChurchPayload, buildChurchUsageMap, prefillChurchForm, sortChurches } from './form';
+import { buildChurchPayload, buildChurchUsageMap, initialChurchForm, prefillChurchForm, sortChurches } from './form';
 
 describe('churches form helpers', () => {
   it('builds church payload trimming text and validating coordinates', () => {
@@ -9,8 +9,9 @@ describe('churches form helpers', () => {
       city: ' Rio Branco ',
       state: ' AC ',
       country: ' Brasil ',
-      lineage: ' ICEFLU ',
-      leaderName: ' Madrinha Maria ',
+      isIceflu: false,
+      lineage: ' Barquinha ',
+      leaderName: ' Maria Silva ',
       leaderEmail: ' maria@example.org ',
       churchEmail: ' igreja@example.org ',
       observations: ' nota ',
@@ -23,8 +24,8 @@ describe('churches form helpers', () => {
       city: 'Rio Branco',
       state: 'AC',
       country: 'Brasil',
-      lineage: 'ICEFLU',
-      leaderName: 'Madrinha Maria',
+      lineage: 'Barquinha',
+      leaderName: 'Maria Silva',
       leaderEmail: 'maria@example.org',
       churchEmail: 'igreja@example.org',
       observations: 'nota',
@@ -38,7 +39,7 @@ describe('churches form helpers', () => {
       id: '2',
       name: 'Centro',
       city: 'Rio Branco',
-      leaderName: 'Padrinho João',
+      leaderName: 'João Souza',
       leaderEmail: 'joao@example.org',
       churchEmail: 'centro@example.org',
       lat: -9.9,
@@ -46,7 +47,7 @@ describe('churches form helpers', () => {
     } as import('../../lib/works').ChurchInfo);
 
     expect(form.name).toBe('Centro');
-    expect(form.leaderName).toBe('Padrinho João');
+    expect(form.leaderName).toBe('João Souza');
     expect(form.leaderEmail).toBe('joao@example.org');
     expect(form.churchEmail).toBe('centro@example.org');
     expect(form.lat).toBe('-9.9');
@@ -54,6 +55,17 @@ describe('churches form helpers', () => {
       'Alpha',
       'Zulu'
     ]);
+  });
+
+  it('stores ICEFLU as the line unless another one is named', () => {
+    expect(initialChurchForm.isIceflu).toBe(true);
+    expect(buildChurchPayload({ ...initialChurchForm, name: 'Casa', lineage: 'Barquinha' }).lineage).toBe('ICEFLU');
+    expect(buildChurchPayload({ ...initialChurchForm, name: 'Casa', isIceflu: false, lineage: '  ' }).lineage).toBeUndefined();
+
+    const church = { id: '1', name: 'Casa' };
+    expect(prefillChurchForm({ ...church, lineage: ' iceflu ' })).toMatchObject({ isIceflu: true, lineage: '' });
+    expect(prefillChurchForm({ ...church, lineage: 'UdV' })).toMatchObject({ isIceflu: false, lineage: 'UdV' });
+    expect(prefillChurchForm(church)).toMatchObject({ isIceflu: true, lineage: '' });
   });
 
   it('aggregates usage stats from sessions and users', () => {
