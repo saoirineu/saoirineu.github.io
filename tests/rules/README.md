@@ -10,8 +10,9 @@ npm --prefix tests/rules test -- firestore   # one file
 ```
 
 First run installs deps and downloads the emulators. Needs **JDK 21 or newer** —
-`run.sh` locates one automatically (`/usr/libexec/java_home`, then Homebrew) and tells
-you how to install one if it cannot.
+`run.sh` locates one automatically through `tests/with-jdk21.sh` (`/usr/libexec/java_home`,
+then Homebrew), which `make test-mail-queue` shares, and tells you how to install one if
+it cannot.
 
 ## What the tags mean
 

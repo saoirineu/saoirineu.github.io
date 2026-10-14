@@ -23,10 +23,11 @@ test-rules: tests/rules/node_modules
 	./tests/rules/run.sh
 
 # The outbound mail queue (claims, retries, guards, expiry) against a throwaway
-# Firestore emulator with a fake relay. Needs a JDK 21+, like test-rules.
+# Firestore emulator with a fake relay. Needs a JDK 21+, like test-rules;
+# tests/with-jdk21.sh finds one when the JDK on PATH is older.
 test-mail-queue:
 	npm --prefix functions run build
-	$(FIREBASE) emulators:exec --only firestore --project sao-irineu-test "node --test functions/lib/mailQueueRuntime.emulator.js"
+	./tests/with-jdk21.sh $(FIREBASE) emulators:exec --only firestore --project sao-irineu-test "node --test functions/lib/mailQueueRuntime.emulator.js"
 
 # Everything that can run without credentials.
 test: test-rules test-mail-queue
