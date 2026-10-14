@@ -10,5 +10,8 @@
     "@firebase/rules-unit-testing": "^4.0.1",
     "firebase": "^11.0.2",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }
