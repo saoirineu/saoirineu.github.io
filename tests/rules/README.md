@@ -10,9 +10,9 @@ npm --prefix tests/rules test -- firestore   # one file
 ```
 
 First run installs deps and downloads the emulators. Needs **JDK 21 or newer** —
-`run.sh` locates one automatically through `tests/with-jdk21.sh` (`/usr/libexec/java_home`,
-then Homebrew), which `make test-mail-queue` shares, and tells you how to install one if
-it cannot.
+`run.sh` locates one automatically (`/usr/libexec/java_home`, then Homebrew) and tells
+you how to install one if it cannot. The lookup lives in `tests/with-jdk21.sh`, which
+`make test-mail-queue` uses too.
 
 ## What the tags mean
 
@@ -20,22 +20,20 @@ Each test name carries a tag:
 
 - **`[guard]`** — behaviour that is already correct and must keep passing. Most of the
   suite is this: the regression net around the rules.
-- **a finding tag** (`[M2]`) — a gap from the security review that is not closed yet.
-  These are written with `it.fails`, so they pass *because* the assertion still fails.
-  When someone closes the gap, the test flips to failing and tells them to drop the
-  marker. The suite stays green and the debt stays visible.
+- **a finding tag** (`[C3]`, `[M2]`…) — the security-review finding the test pins down.
+  While a finding is open, its test is written with `it.fails`, so it passes *because*
+  the assertion still fails; closing the gap flips it to failing, and the fix drops the
+  `.fails`. The suite stays green and the debt stays visible.
 
 ```
-make test-rules     # 83 tests, all passing
-make test           # + frontend (104) + functions (9)
+make test-rules     # 124 tests, all passing
+make test           # + mail queue (13) + frontend (159) + functions (64)
 ```
 
 A red run means a real regression, so treat it as one.
 
-Only `[M2]` is open today: capacity accounting still runs client-side inside the
-registration transaction (`adjustEventCapacity` in `lib/eventRegistrations.ts`), so
-tightening that rule to event admins would break registration until the accounting
-moves server-side.
+No finding is open today: `[M2]`, the last one, closed when capacity accounting moved
+server-side, so every tagged test is now a plain regression guard.
 
 ## Layout
 
