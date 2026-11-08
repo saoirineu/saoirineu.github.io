@@ -17,5 +17,10 @@
   },
   "devDependencies": {
     "typescript": "^5.4.0"
+  },
+  "overrides": {
+    "rimraf": {
+      "glob": "^14.0.3"
+    }
   }
 }
