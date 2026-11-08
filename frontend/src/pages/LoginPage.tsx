@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { BrandMark } from '../components/BrandMark';
+import { portalDescriptorByLocale, portalName } from '../lib/portalName';
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { useAuth } from '../providers/useAuth';
 import { useSiteLocale } from '../providers/useSiteLocale';
@@ -14,8 +15,6 @@ import {
 
 const copyByLocale = {
   pt: {
-    title: 'Portal São Irineu',
-    subtitle: 'Aplicativo online do ICEFLU Europa',
     email: 'Email',
     password: 'Senha',
     confirmPassword: 'Confirmar senha',
@@ -78,8 +77,6 @@ const copyByLocale = {
     resendTooMany: 'Você pediu muitos envios em pouco tempo. Aguarde alguns minutos antes de tentar de novo.'
   },
   en: {
-    title: 'São Irineu Portal',
-    subtitle: 'ICEFLU Europe\'s Online App',
     email: 'Email',
     password: 'Password',
     confirmPassword: 'Confirm password',
@@ -142,8 +139,6 @@ const copyByLocale = {
     resendTooMany: 'Too many emails were requested in a short time. Wait a few minutes before trying again.'
   },
   es: {
-    title: 'Portal São Irineu',
-    subtitle: 'Aplicación online de ICEFLU Europa',
     email: 'Correo electrónico',
     password: 'Contraseña',
     confirmPassword: 'Confirmar contraseña',
@@ -206,8 +201,6 @@ const copyByLocale = {
     resendTooMany: 'Ha pedido demasiados envíos en poco tiempo. Espere unos minutos antes de volver a intentarlo.'
   },
   it: {
-    title: 'Portale São Irineu',
-    subtitle: 'App online di ICEFLU Europa',
     email: 'Email',
     password: 'Password',
     confirmPassword: 'Conferma password',
@@ -561,8 +554,8 @@ export function LoginPage() {
 
         <div className="mb-6 text-center">
           <BrandMark className="mx-auto mb-4 h-16 w-16" decorative />
-          <h1 className="text-2xl font-bold tracking-tight text-[color:var(--brand-ink)]">{copy.title}</h1>
-          <p className="mt-2 text-sm font-medium text-[color:rgba(36,54,77,0.72)]">{copy.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[color:var(--brand-ink)]">{portalName}</h1>
+          <p className="mt-2 text-sm font-medium text-[color:rgba(36,54,77,0.72)]">{portalDescriptorByLocale[locale]}</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleEmail}>

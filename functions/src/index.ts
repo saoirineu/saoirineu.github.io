@@ -342,7 +342,7 @@ async function loadNotificationRecipients() {
 
 function buildVerificationEmailText(link: string): string {
   return [
-    'São Irineu',
+    'São Irineu — portale integrazione ICEFLU',
     '',
     '────────────────────────────────',
     'Benvenuto/a su São Irineu!',
@@ -406,7 +406,7 @@ function profileDisplayName(data: FirebaseFirestore.DocumentData): string {
 function buildUserApprovedEmailText(name: string, portalUrl: string): string {
   const hi = name ? ` ${name}` : '';
   return [
-    'São Irineu',
+    'São Irineu — portale integrazione ICEFLU',
     '',
     '────────────────────────────────',
     `Ciao${hi},`,
@@ -446,7 +446,7 @@ function buildUserNeedsInfoEmailText(name: string, note: string, profileUrl: str
   const hi = name ? ` ${name}` : '';
   const noteBlock = (label: string) => (note ? ['', `${label}: ${note}`] : []);
   return [
-    'São Irineu',
+    'São Irineu — portale integrazione ICEFLU',
     '',
     '────────────────────────────────',
     `Ciao${hi},`,

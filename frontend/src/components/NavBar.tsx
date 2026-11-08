@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
+import { portalDescriptorByLocale, portalName } from '../lib/portalName';
 import { siteLocaleOptions } from '../lib/siteLocale';
 import { hasRequiredRole } from '../lib/systemRole';
 import { BrandMark } from './BrandMark';
@@ -308,9 +309,14 @@ export function NavBar() {
     <header ref={headerRef} className="sticky top-0 z-30 border-b border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.92)] backdrop-blur">
       <div className="mx-auto max-w-6xl px-4">
         <div className="flex h-16 items-stretch gap-4">
-          <Link to="/" className="flex shrink-0 items-center gap-2.5 self-center rounded-xl">
+          {/* The brand may shrink, cutting the descriptor short, so the menu button stays on screen. */}
+          <Link to="/" className="flex min-w-0 items-center gap-2.5 self-center rounded-xl">
             <BrandMark className="h-9 w-9 shrink-0" decorative />
-            <span className="whitespace-nowrap text-lg font-semibold tracking-tight text-[color:var(--brand-ink)]">São Irineu</span>
+            <span className="flex min-w-0 flex-col">
+              <span className="whitespace-nowrap text-lg font-semibold leading-tight tracking-tight text-[color:var(--brand-ink)]">{portalName}</span>
+              <span className="sr-only"> — </span>
+              <span className="truncate text-[11px] font-medium leading-tight text-[color:rgba(36,54,77,0.72)]">{portalDescriptorByLocale[locale]}</span>
+            </span>
           </Link>
           {devModeEnabled ? (
             <span className="-ml-1 self-center rounded-full bg-[rgba(232,194,76,0.35)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900">

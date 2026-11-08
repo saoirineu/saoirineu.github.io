@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { portalFullName } from '../lib/portalName';
 import {
   resolveInitialSiteLocale,
   siteLocaleStorageKey,
@@ -18,6 +19,10 @@ export function SiteLocaleProvider({ children }: { children: ReactNode }) {
       window.localStorage.setItem(siteLocaleStorageKey, nextLocale);
     }
   }, []);
+
+  useEffect(() => {
+    document.title = portalFullName(localeState);
+  }, [localeState]);
 
   const value = useMemo<SiteLocaleContextValue>(
     () => ({
