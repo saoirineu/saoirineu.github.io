@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
+import { normalizeIcefluQuota, type IcefluQuotaRates } from './icefluQuota';
 import { ITALIAN_REFERENCE_CHURCHES } from './profileCatalog';
 import {
   asOptionalNumber,
@@ -41,9 +42,14 @@ export type Work = {
   /** Label at the time of recording: the work-type catalog is admin-editable. */
   workTypeLabel: string;
   workTypeOther?: string;
+  /** From the work type's group when saved. Outside the official calendar, the ICEFLU minimum counts everyone. */
+  officialCalendar: boolean;
   venueText?: string;
   hymnalText?: string;
-  /** Whites (non-fardados) are derived as total - initiated, never stored. */
+  /**
+   * Shown as ICEFLU members, with visitors derived as total - initiated and never stored.
+   * Before the 2026-10-20 meeting these were fardados and bianchi; older records keep that meaning.
+   */
   attendees: { total: number; initiated: number };
   sacrament?: {
     stockId: string;
@@ -52,7 +58,10 @@ export type Work = {
     quantity: number;
     unit: WorkSacramentUnit;
   };
-  contributions: { collected: number; icefluBrazilQuota: number };
+  /** EUR. Net contributions (collected - venueCost) and the ICEFLU share are derived, never stored. */
+  contributions: { collected: number; venueCost: number };
+  /** The ICEFLU Brazil rates in force when the record was created; the rules keep them fixed. */
+  icefluQuota: IcefluQuotaRates;
   reviewStatus: WorkReviewStatus;
   reviewedAt?: Timestamp;
   reviewedBy?: string;
@@ -93,6 +102,7 @@ function mapWork(id: string, value: unknown): Work {
     workTypeId: asOptionalString(data.workTypeId) ?? '',
     workTypeLabel: asOptionalString(data.workTypeLabel) ?? asOptionalString(data.title) ?? '',
     workTypeOther: asOptionalString(data.workTypeOther),
+    officialCalendar: data.officialCalendar === true,
     venueText: asOptionalString(data.venueText),
     hymnalText: asOptionalString(data.hymnalText),
     attendees: {
@@ -110,8 +120,9 @@ function mapWork(id: string, value: unknown): Work {
       : undefined,
     contributions: {
       collected: asOptionalNumber(contributions.collected) ?? 0,
-      icefluBrazilQuota: asOptionalNumber(contributions.icefluBrazilQuota) ?? 0
+      venueCost: asOptionalNumber(contributions.venueCost) ?? 0
     },
+    icefluQuota: normalizeIcefluQuota(data.icefluQuota),
     reviewStatus: data.reviewStatus === 'reviewed' ? 'reviewed' : 'pre-approved',
     reviewedAt: asOptionalTimestamp(data.reviewedAt) ?? undefined,
     reviewedBy: asOptionalString(data.reviewedBy),
@@ -150,10 +161,15 @@ function workPayload(input: WorkInput) {
     date: input.date,
     workTypeId: input.workTypeId,
     workTypeLabel: input.workTypeLabel,
+    officialCalendar: input.officialCalendar,
     attendees: { total: input.attendees.total, initiated: input.attendees.initiated },
     contributions: {
       collected: input.contributions.collected,
-      icefluBrazilQuota: input.contributions.icefluBrazilQuota
+      venueCost: input.contributions.venueCost
+    },
+    icefluQuota: {
+      sharePercent: input.icefluQuota.sharePercent,
+      minimumPerPerson: input.icefluQuota.minimumPerPerson
     }
   };
 }

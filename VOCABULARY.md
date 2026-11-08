@@ -34,10 +34,12 @@ Intended to become a SKOS vocabulary / OWL ontology.
 | `venueText`            | localTexto                 | Free-text place (luogo) |
 | `hymnalText`           | hinarioTexto               | Free-text hymnal(s) (innario) |
 | `attendees.total`      | participantes.total        | |
-| `attendees.initiated`  | participantes.fardados     | Whites (bianchi / não fardados) = total − fardados, derived |
+| `attendees.initiated`  | participantes.fardados     | Shown as ICEFLU members (Membri ICEFLU) since the 2026-10-20 meeting; visitors (visitatori) = total − initiated, derived |
+| `officialCalendar`     | calendarioOficial          | From the work type's group when saved; outside it the ICEFLU minimum counts every participant |
 | `sacrament.itemId` / `quantity` | daimeUsado / quantidade | Batch from a stock linked to the church; `unit` L or kg |
 | `contributions.collected` | contribuicoesRecebidas  | EUR |
-| `contributions.icefluBrazilQuota` | cotaIcefluBrasil | EUR, includes feitio |
+| `contributions.venueCost` | custoEspaco             | EUR (costo di affitto della struttura); net = collected − venueCost, derived |
+| `icefluQuota`          | cotasIceflu                | Rates copied from `catalogs/icefluQuota` at creation (`sharePercent`, `minimumPerPerson`); the quota owed is derived |
 | `reviewStatus`         | estadoRevisao              | `pre-approved` (pré-aprovado) or `reviewed` (revisado e aprovado) |
 | `ChurchManager`        | gestorDaIgreja             | `churchManagers/{uid}`: account acting for a church |
 

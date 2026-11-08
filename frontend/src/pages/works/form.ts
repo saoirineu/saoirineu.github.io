@@ -1,3 +1,4 @@
+import type { IcefluQuotaRates } from '../../lib/icefluQuota';
 import type { SacramentItem, SacramentStock } from '../../lib/sacrament';
 import type { Work, WorkInput } from '../../lib/works';
 import { OTHER_WORK_TYPE_ID, type WorkType } from '../../lib/workTypes';
@@ -18,7 +19,7 @@ export type WorkFormState = {
   sacramentItemId: string;
   sacramentQuantity: string;
   contributionsCollected: string;
-  icefluBrazilQuota: string;
+  venueCost: string;
 };
 
 export function initialWorkForm(churchId = ''): WorkFormState {
@@ -34,7 +35,7 @@ export function initialWorkForm(churchId = ''): WorkFormState {
     sacramentItemId: '',
     sacramentQuantity: '',
     contributionsCollected: '',
-    icefluBrazilQuota: ''
+    venueCost: ''
   };
 }
 
@@ -55,7 +56,7 @@ export function workToForm(work: Work): WorkFormState {
     sacramentItemId: work.sacrament?.itemId ?? '',
     sacramentQuantity: numberText(work.sacrament?.quantity),
     contributionsCollected: numberText(work.contributions.collected),
-    icefluBrazilQuota: numberText(work.contributions.icefluBrazilQuota)
+    venueCost: numberText(work.contributions.venueCost)
   };
 }
 
@@ -78,7 +79,7 @@ export function parseDecimal(value: string): number | null {
   return Number(trimmed);
 }
 
-/** Bianchi = total - fardati, or null while the two do not make a valid pair. */
+/** Visitors = total - ICEFLU members, or null while the two do not make a valid pair. */
 export function whiteAttendees(form: Pick<WorkFormState, 'totalAttendees' | 'initiatedAttendees'>): number | null {
   const total = parseCount(form.totalAttendees);
   const initiated = parseCount(form.initiatedAttendees);
@@ -141,7 +142,7 @@ export type WorkFormError =
   | 'sacramentItem'
   | 'sacramentQuantity'
   | 'contributionsCollected'
-  | 'icefluBrazilQuota';
+  | 'venueCost';
 
 export function validateWorkForm(form: WorkFormState, options: { today: string }): WorkFormError[] {
   const errors: WorkFormError[] = [];
@@ -167,9 +168,25 @@ export function validateWorkForm(form: WorkFormState, options: { today: string }
   if (quantity === null || quantity <= 0) errors.push('sacramentQuantity');
 
   if (parseDecimal(form.contributionsCollected) === null) errors.push('contributionsCollected');
-  if (parseDecimal(form.icefluBrazilQuota) === null) errors.push('icefluBrazilQuota');
+  if (parseDecimal(form.venueCost) === null) errors.push('venueCost');
 
   return errors;
+}
+
+/**
+ * Whether the work belongs to the official calendar, from its type's group in the
+ * catalog. "Other" never does; a type since removed from the catalog keeps what
+ * the record was saved with.
+ */
+export function isOfficialCalendar(
+  workTypeId: string,
+  workTypes: readonly WorkType[],
+  existing?: Pick<Work, 'workTypeId' | 'officialCalendar'>
+) {
+  if (workTypeId === OTHER_WORK_TYPE_ID) return false;
+  const workType = workTypes.find(type => type.id === workTypeId);
+  if (workType) return workType.category === 'official';
+  return existing?.workTypeId === workTypeId ? existing.officialCalendar : false;
 }
 
 // ─── payload ───────────────────────────────────────────────────────────────────
@@ -177,7 +194,8 @@ export function validateWorkForm(form: WorkFormState, options: { today: string }
 /**
  * Builds the record from a form that passed validateWorkForm. The batch is resolved
  * from the church's options; a record whose batch is no longer offered (its stock
- * was unlinked since) keeps the batch it was saved with.
+ * was unlinked since) keeps the batch it was saved with. `rates` are the ICEFLU
+ * rates in force, which only a new record takes: an existing one keeps its own.
  */
 export function buildWorkInput(args: {
   form: WorkFormState;
@@ -185,9 +203,10 @@ export function buildWorkInput(args: {
   workTypes: readonly WorkType[];
   otherLabel: string;
   sacramentOptions: readonly SacramentOption[];
+  rates: IcefluQuotaRates;
   existing?: Work;
 }): WorkInput {
-  const { form, churchName, workTypes, otherLabel, sacramentOptions, existing } = args;
+  const { form, churchName, workTypes, otherLabel, sacramentOptions, rates, existing } = args;
   const isOther = form.workTypeId === OTHER_WORK_TYPE_ID;
   const workType = workTypes.find(type => type.id === form.workTypeId);
   const option = sacramentOptions.find(entry => entry.item.id === form.sacramentItemId);
@@ -215,6 +234,7 @@ export function buildWorkInput(args: {
       ? otherLabel
       : workType?.label ?? (existing?.workTypeId === form.workTypeId ? existing.workTypeLabel : form.workTypeId),
     workTypeOther: isOther ? form.workTypeOther.trim() : undefined,
+    officialCalendar: isOfficialCalendar(form.workTypeId, workTypes, existing),
     venueText: form.venueText.trim() || undefined,
     hymnalText: form.hymnalText.trim() || undefined,
     attendees: {
@@ -224,9 +244,72 @@ export function buildWorkInput(args: {
     sacrament,
     contributions: {
       collected: parseDecimal(form.contributionsCollected) ?? 0,
-      icefluBrazilQuota: parseDecimal(form.icefluBrazilQuota) ?? 0
-    }
+      venueCost: parseDecimal(form.venueCost) ?? 0
+    },
+    icefluQuota: existing ? existing.icefluQuota : rates
   };
+}
+
+// ─── ICEFLU Brazil quota ───────────────────────────────────────────────────────
+
+export type WorkQuota = {
+  /** Contributions collected minus the venue rental; negative when the venue cost more. */
+  net: number;
+  /** The share of the net contributions, never below zero. */
+  share: number;
+  /** People the minimum is counted on: visitors, or every participant outside the official calendar. */
+  counted: number;
+  minimum: number;
+  /** What the church owes: the share, but no less than the minimum. */
+  owed: number;
+};
+
+function roundCents(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+export function computeWorkQuota(args: {
+  collected: number;
+  venueCost: number;
+  total: number;
+  initiated: number;
+  officialCalendar: boolean;
+  rates: IcefluQuotaRates;
+}): WorkQuota {
+  const net = roundCents(args.collected - args.venueCost);
+  const share = roundCents((Math.max(0, net) * args.rates.sharePercent) / 100);
+  const counted = args.officialCalendar ? Math.max(0, args.total - args.initiated) : args.total;
+  const minimum = roundCents(counted * args.rates.minimumPerPerson);
+  return { net, share, counted, minimum, owed: Math.max(share, minimum) };
+}
+
+export function workQuota(work: Pick<Work, 'attendees' | 'contributions' | 'officialCalendar' | 'icefluQuota'>): WorkQuota {
+  return computeWorkQuota({
+    collected: work.contributions.collected,
+    venueCost: work.contributions.venueCost,
+    total: work.attendees.total,
+    initiated: work.attendees.initiated,
+    officialCalendar: work.officialCalendar,
+    rates: work.icefluQuota
+  });
+}
+
+/** The quota the form's figures imply, or null while any of them is not valid. */
+export function formWorkQuota(form: WorkFormState, officialCalendar: boolean, rates: IcefluQuotaRates): WorkQuota | null {
+  const collected = parseDecimal(form.contributionsCollected);
+  const venueCost = parseDecimal(form.venueCost);
+  const total = parseCount(form.totalAttendees);
+  const initiated = parseCount(form.initiatedAttendees);
+  if (collected === null || venueCost === null || total === null || initiated === null || initiated > total) return null;
+  return computeWorkQuota({ collected, venueCost, total, initiated, officialCalendar, rates });
+}
+
+/** The admin's rates, or null unless the share is a percentage up to 100 and the minimum an amount. */
+export function parseQuotaRates(sharePercent: string, minimumPerPerson: string): IcefluQuotaRates | null {
+  const share = parseDecimal(sharePercent);
+  const minimum = parseDecimal(minimumPerPerson);
+  if (share === null || share > 100 || minimum === null) return null;
+  return { sharePercent: share, minimumPerPerson: minimum };
 }
 
 // ─── display ───────────────────────────────────────────────────────────────────
@@ -246,6 +329,11 @@ export function formatEuro(value: number, locale: string) {
   return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(value);
 }
 
+/** `value` is a percentage, e.g. 50 for 50%. */
+export function formatPercent(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 2 }).format(value / 100);
+}
+
 export type WorkTotals = {
   count: number;
   attendees: number;
@@ -253,7 +341,9 @@ export type WorkTotals = {
   liters: number;
   kg: number;
   collected: number;
-  icefluBrazilQuota: number;
+  net: number;
+  /** What the works owe ICEFLU Brazil. */
+  quota: number;
 };
 
 export function summarizeWorks(works: readonly Work[]): WorkTotals {
@@ -264,11 +354,13 @@ export function summarizeWorks(works: readonly Work[]): WorkTotals {
       totals.initiated += work.attendees.initiated;
       if (work.sacrament?.unit === 'kg') totals.kg += work.sacrament.quantity;
       else if (work.sacrament) totals.liters += work.sacrament.quantity;
+      const quota = workQuota(work);
       totals.collected += work.contributions.collected;
-      totals.icefluBrazilQuota += work.contributions.icefluBrazilQuota;
+      totals.net += quota.net;
+      totals.quota += quota.owed;
       return totals;
     },
-    { count: 0, attendees: 0, initiated: 0, liters: 0, kg: 0, collected: 0, icefluBrazilQuota: 0 }
+    { count: 0, attendees: 0, initiated: 0, liters: 0, kg: 0, collected: 0, net: 0, quota: 0 }
   );
 }
 

@@ -145,11 +145,42 @@ service cloud.firestore {
       return (value is int || value is float) && value >= 0 && value <= 10000000;
     }
 
+    // The rates owed to ICEFLU Brazil on every church's works, set by admins in
+    // catalogs/icefluQuota. Until one is saved, the defaults agreed on 2026-10-20
+    // apply (DEFAULT_ICEFLU_QUOTA in frontend/src/lib/icefluQuota.ts).
+    function hasCurrentIcefluQuota(quota) {
+      let path = /databases/$(database)/documents/catalogs/icefluQuota;
+      return (!exists(path) && quota.sharePercent == 50 && quota.minimumPerPerson == 25)
+        || (exists(path)
+          && quota.sharePercent == get(path).data.sharePercent
+          && quota.minimumPerPerson == get(path).data.minimumPerPerson);
+    }
+
+    // A work takes the rates in force when it is recorded and keeps them, so a
+    // later change of the rates does not rewrite what past works owed.
+    function hasValidWorkQuota() {
+      let quota = request.resource.data.icefluQuota;
+      return quota is map
+        && quota.keys().hasOnly(['sharePercent', 'minimumPerPerson'])
+        && ((resource == null && hasCurrentIcefluQuota(quota))
+          || (resource != null && quota == resource.data.get('icefluQuota', null)));
+    }
+
+    function hasValidIcefluQuota() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['sharePercent', 'minimumPerPerson', 'updatedBy', 'updatedAt'])
+        && (data.sharePercent is int || data.sharePercent is float)
+        && data.sharePercent >= 0 && data.sharePercent <= 100
+        && isAmount(data.minimumPerPerson)
+        && data.updatedBy == request.auth.uid
+        && data.updatedAt == request.time;
+    }
+
     function hasValidWorkRecord() {
       let data = request.resource.data;
       return data.keys().hasOnly([
-          'churchId', 'churchName', 'date', 'workTypeId', 'workTypeLabel', 'workTypeOther',
-          'venueText', 'hymnalText', 'attendees', 'sacrament', 'contributions',
+          'churchId', 'churchName', 'date', 'workTypeId', 'workTypeLabel', 'workTypeOther', 'officialCalendar',
+          'venueText', 'hymnalText', 'attendees', 'sacrament', 'contributions', 'icefluQuota',
           'reviewStatus', 'reviewedAt', 'reviewedBy', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
         ])
         && data.churchId is string && data.churchId.size() > 0 && data.churchId.size() <= 128
@@ -158,6 +189,7 @@ service cloud.firestore {
         && data.workTypeId is string && data.workTypeId.size() > 0 && data.workTypeId.size() <= 64
         && data.workTypeLabel is string && data.workTypeLabel.size() > 0 && data.workTypeLabel.size() <= 200
         && hasValidOptionalString('workTypeOther', 200)
+        && data.officialCalendar is bool
         && hasValidOptionalString('venueText', 200)
         && hasValidOptionalString('hymnalText', 500)
         && data.attendees is map
@@ -166,9 +198,10 @@ service cloud.firestore {
         && data.attendees.initiated is int && data.attendees.initiated >= 0
         && data.attendees.initiated <= data.attendees.total
         && data.contributions is map
-        && data.contributions.keys().hasOnly(['collected', 'icefluBrazilQuota'])
+        && data.contributions.keys().hasOnly(['collected', 'venueCost'])
         && isAmount(data.contributions.collected)
-        && isAmount(data.contributions.icefluBrazilQuota)
+        && isAmount(data.contributions.venueCost)
+        && hasValidWorkQuota()
         && data.createdBy is string
         && data.updatedBy == request.auth.uid
         && data.updatedAt == request.time
@@ -555,8 +588,14 @@ service cloud.firestore {
     match /catalogs/{catalogId} {
       allow read: if isSignedIn();
       allow write: if isAdmin()
+        && catalogId != 'icefluQuota'
         && request.resource.data.items is list
         && request.resource.data.items.size() <= 200;
+    }
+
+    // The ICEFLU Brazil rates (see hasCurrentIcefluQuota), read through the match above.
+    match /catalogs/icefluQuota {
+      allow write: if isAdmin() && hasValidIcefluQuota();
     }
 
     match /conceitos/{id} {

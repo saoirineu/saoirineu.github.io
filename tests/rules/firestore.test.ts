@@ -586,13 +586,38 @@ describe('guard — work records are church-scoped', () => {
     );
   });
 
-  it('[guard] fardati cannot exceed the total', async () => {
+  it('[guard] ICEFLU members cannot exceed the total', async () => {
     await assertFails(
       setDoc(doc(as(MANAGER), 'trabalhos', 'new'), {
         ...workFixture({ attendees: { total: 5, initiated: 6 } }),
         ...created(MANAGER)
       })
     );
+  });
+
+  it('[guard] a new record takes the ICEFLU rates in force and keeps them', async () => {
+    const record = (icefluQuota: Record<string, unknown>) => ({ ...workFixture({ icefluQuota }), ...created(MANAGER) });
+    await assertFails(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ sharePercent: 0, minimumPerPerson: 25 })));
+
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'catalogs', 'icefluQuota'), { sharePercent: 40, minimumPerPerson: 30 });
+    });
+    await assertFails(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ sharePercent: 50, minimumPerPerson: 25 })));
+    await assertSucceeds(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ sharePercent: 40, minimumPerPerson: 30 })));
+
+    // work-pre was recorded under the defaults and keeps them, whoever edits it.
+    const rerated = { icefluQuota: { sharePercent: 40, minimumPerPerson: 30 } };
+    await assertSucceeds(updateDoc(doc(as(MANAGER), 'trabalhos', 'work-pre'), { hymnalText: 'O Cruzeiro', ...edited(MANAGER) }));
+    await assertFails(updateDoc(doc(as(MANAGER), 'trabalhos', 'work-pre'), { ...rerated, ...edited(MANAGER) }));
+    await assertFails(updateDoc(doc(as(ADMIN), 'trabalhos', 'work-pre'), { ...rerated, ...edited(ADMIN) }));
+  });
+
+  it('[guard] the venue cost is a required amount, and the hand-entered quota is gone', async () => {
+    const record = (contributions: Record<string, unknown>) => ({ ...workFixture({ contributions }), ...created(MANAGER) });
+    await assertFails(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ collected: 400 })));
+    await assertFails(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ collected: 400, venueCost: -1 })));
+    await assertFails(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ collected: 400, venueCost: 100, icefluBrazilQuota: 120 })));
+    await assertSucceeds(setDoc(doc(as(MANAGER), 'trabalhos', 'new'), record({ collected: 400, venueCost: 0 })));
   });
 
   it('[guard] a manager can list their church\'s records, and only those', async () => {
@@ -721,6 +746,24 @@ describe('guard — work records are church-scoped', () => {
     await assertFails(getDoc(doc(anon(), 'catalogs', 'workTypes')));
     await assertFails(setDoc(doc(as(MANAGER), 'catalogs', 'workTypes'), items));
     await assertSucceeds(setDoc(doc(as(ADMIN), 'catalogs', 'workTypes'), items));
+  });
+
+  it('[guard] only admins set the ICEFLU rates, within range, and members can read them', async () => {
+    const rates = (who: { uid: string }, overrides: Record<string, unknown> = {}) => ({
+      sharePercent: 50,
+      minimumPerPerson: 25,
+      updatedBy: who.uid,
+      updatedAt: serverTimestamp(),
+      ...overrides
+    });
+    await assertFails(setDoc(doc(as(MANAGER), 'catalogs', 'icefluQuota'), rates(MANAGER)));
+    await assertFails(setDoc(doc(as(USERADMIN), 'catalogs', 'icefluQuota'), rates(USERADMIN)));
+    await assertFails(setDoc(doc(as(ADMIN), 'catalogs', 'icefluQuota'), rates(ADMIN, { sharePercent: 120 })));
+    await assertFails(setDoc(doc(as(ADMIN), 'catalogs', 'icefluQuota'), { items: [] }));
+    await assertSucceeds(setDoc(doc(as(ADMIN), 'catalogs', 'icefluQuota'), rates(ADMIN, { sharePercent: 40 })));
+    await assertSucceeds(setDoc(doc(as(SUPERADMIN), 'catalogs', 'icefluQuota'), rates(SUPERADMIN)));
+    await assertSucceeds(getDoc(doc(as(BOB), 'catalogs', 'icefluQuota')));
+    await assertFails(getDoc(doc(anon(), 'catalogs', 'icefluQuota')));
   });
 });
 

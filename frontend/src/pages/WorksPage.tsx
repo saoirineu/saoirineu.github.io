@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { fetchChurchManagers, saveChurchManager, type ChurchManager } from '../lib/churchManagers';
+import { DEFAULT_ICEFLU_QUOTA, fetchIcefluQuota, saveIcefluQuota, type IcefluQuotaRates } from '../lib/icefluQuota';
 import { fetchItems, fetchStocks, fetchTransactionsByStock } from '../lib/sacrament';
 import { fetchUsers } from '../lib/users';
 import {
@@ -34,12 +35,13 @@ import {
 } from './works/form';
 import {
   ChurchManagersPanel,
+  IcefluQuotaPanel,
   WorkRecordForm,
   WorkRecordList,
   WorkTypesPanel
 } from './works/WorksSections';
 
-type Tab = 'records' | 'managers' | 'workTypes';
+type Tab = 'records' | 'managers' | 'workTypes' | 'quota';
 
 export default function WorksPage() {
   const { locale } = useSiteLocale();
@@ -57,6 +59,7 @@ export default function WorksPage() {
   const [filter, setFilter] = useState(initialWorkFilter);
 
   const catalogQuery = useQuery({ queryKey: ['workTypeCatalog'], queryFn: fetchWorkTypeCatalog, enabled: canRecord });
+  const quotaQuery = useQuery({ queryKey: ['icefluQuota'], queryFn: fetchIcefluQuota, enabled: canRecord });
   const worksQuery = useQuery({
     queryKey: ['works', isAdmin ? 'all' : managedChurchIds.join(',')],
     queryFn: () => (isAdmin ? fetchWorks() : fetchWorksForChurches(managedChurchIds)),
@@ -108,12 +111,15 @@ export default function WorksPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (values: WorkFormState) => {
+      // The rules accept a new record only with the rates in force, so read them fresh.
+      const rates = editing?.icefluQuota ?? await fetchIcefluQuota();
       const input = buildWorkInput({
         form: values,
         churchName: churchName(values.churchId),
         workTypes,
         otherLabel: copy.other,
         sacramentOptions,
+        rates,
         existing: editing ?? undefined
       });
       if (editing) {
@@ -155,6 +161,11 @@ export default function WorksPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workTypeCatalog'] })
   });
 
+  const quotaMutation = useMutation({
+    mutationFn: (rates: IcefluQuotaRates) => saveIcefluQuota(rates, uid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['icefluQuota'] })
+  });
+
   if (accessLoading) {
     return <p className="text-sm text-slate-500">{copy.loading}</p>;
   }
@@ -169,7 +180,7 @@ export default function WorksPage() {
 
   const values = { ...form, churchId: formChurchId };
   const busyWork = reviewMutation.isPending ? reviewMutation.variables?.work : deleteMutation.isPending ? deleteMutation.variables : undefined;
-  const tabs: Tab[] = isAdmin ? ['records', 'managers', 'workTypes'] : ['records'];
+  const tabs: Tab[] = isAdmin ? ['records', 'managers', 'workTypes', 'quota'] : ['records'];
 
   return (
     <div className="space-y-4">
@@ -220,6 +231,7 @@ export default function WorksPage() {
             workTypes={workTypes}
             sacramentOptions={sacramentOptions}
             sacramentLoading={sacramentLoading}
+            quotaRates={editing?.icefluQuota ?? quotaQuery.data ?? DEFAULT_ICEFLU_QUOTA}
             editing={editing}
             today={todayDateValue()}
             saving={saveMutation.isPending}
@@ -286,6 +298,17 @@ export default function WorksPage() {
           saved={workTypesMutation.isSuccess}
           error={workTypesMutation.isError}
           onSave={items => workTypesMutation.mutate(items)}
+        />
+      ) : null}
+
+      {tab === 'quota' && isAdmin ? (
+        <IcefluQuotaPanel
+          copy={copy}
+          rates={quotaQuery.data}
+          saving={quotaMutation.isPending}
+          saved={quotaMutation.isSuccess}
+          error={quotaMutation.isError}
+          onSave={rates => quotaMutation.mutate(rates)}
         />
       ) : null}
     </div>

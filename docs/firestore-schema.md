@@ -93,12 +93,21 @@ Comportamento, permissoes e limitacoes: [work-records.md](work-records.md).
 - date: `YYYY-MM-DD` (nao pode ser futura no formulario)
 - workTypeId, workTypeLabel: tipo vindo de `catalogs/workTypes`; o label e copiado no momento do
   registro, pois a lista e editavel. `workTypeId == 'other'` usa `workTypeOther` (texto livre)
+- officialCalendar: bool, copiado do grupo do tipo (`official`/`other`) ao salvar; `other` e
+  sempre false. Fora do calendario oficial a quota minima ICEFLU conta todos os participantes
 - venueText?, hymnalText?: luogo e innario, texto livre, opcionais
-- attendees: { total, initiated } (inteiros, initiated <= total). Os "bianchi" (nao fardados)
-  sao derivados como total - initiated e nao sao gravados
+- attendees: { total, initiated } (inteiros, initiated <= total). A interface mostra `initiated`
+  como "Membri ICEFLU"; os "Visitatori" sao derivados como total - initiated e nao sao gravados.
+  Ate a reuniao de 2026-10-20 eram "fardati" e "bianchi"; registros anteriores nao foram migrados
 - sacrament?: { stockId, itemId, itemLabel? (datas do feitio em AAAA-MM-DD, formatadas na exibição), quantity, unit: `L`|`kg` }: lote de um estoque
   vinculado a igreja (`sacramentStocks.churchIds`); `kg` para itens `gel`. Obrigatorio no formulario
-- contributions: { collected, icefluBrazilQuota } em euros (a quota inclui o feitio)
+- contributions: { collected, venueCost } em euros (venueCost = costo di affitto della struttura).
+  As contribuicoes liquidas (collected - venueCost) e a quota ICEFLU Brasil sao derivadas e nao
+  gravadas; o antigo `icefluBrazilQuota` digitado (incluia o feitio) saiu com a reuniao de 2026-10-20
+- icefluQuota: { sharePercent, minimumPerPerson }: as cotas de `catalogs/icefluQuota` em vigor
+  quando o registro foi criado; as regras as fixam depois. Quota devida = maior entre
+  liquidas x sharePercent% (nunca negativa) e minimumPerPerson x visitatori (x total fora do
+  calendario oficial)
 - reviewStatus: `pre-approved` | `reviewed`; reviewedAt?, reviewedBy? (so quando `reviewed`)
 - createdBy, createdAt, updatedBy, updatedAt
 - Efeito colateral: a Cloud Function `onWorkSacramentChange` mantem uma saida em
@@ -134,6 +143,9 @@ Listas de opcoes editaveis por admins; leitura para usuarios verificados.
 - `catalogs/workTypes`: items: [{ id, label, category: `official`|`other`, active }]. Enquanto
   o documento nao existe, o app usa o rascunho `DEFAULT_WORK_TYPES` de `lib/workTypes.ts`
   (calendario oficial ainda a revisar). `other` e reservado e sempre oferecido no fim do menu.
+- `catalogs/icefluQuota`: { sharePercent (0..100), minimumPerPerson (EUR), updatedBy, updatedAt }.
+  Iguais para todas as igrejas; so admins/superadmins escrevem. Sem o documento valem 50% e 25 EUR
+  (reuniao de 2026-10-20), repetidos em `DEFAULT_ICEFLU_QUOTA` e em `hasCurrentIcefluQuota` (rules).
 
 ### conceitos (planejado — sem codigo ainda; opcional, espelho SKOS/OWL)
 - id (URI ou slug)
@@ -197,7 +209,7 @@ senao `email-<hash>` ou `name-<hash>`.
 
 ## Notas de modelagem
 - Campos que referenciam taxonomias (papel, temas) devem usar labels/ids SKOS para alinhar UI/tooltips.
-- `trabalhos` segue a especificacao de 2026-09-10: data, luogo, tipo de trabalho, innario, participantes (total/fardados), Daime (lote do estoque da igreja + quantidade), contributi raccolti e quota ICEFLU Brasile.
+- `trabalhos` segue a especificacao de 2026-09-10: data, luogo, tipo de trabalho, innario, participantes (total/membros ICEFLU, que eram fardados ate a reuniao de 2026-10-20), Daime (lote do estoque da igreja + quantidade), contributi raccolti e quota ICEFLU Brasile. A reuniao de 2026-10-20 acrescentou o custo da estrutura, as contribuicoes liquidas, a quota calculada (cotas em `catalogs/icefluQuota`) e o calendario oficial.
 - Perfil do usuario cobre fardado? (bool), data e quem fardou (ref), igreja de fardamento e vinculos.
 - Inscricoes de eventos vivem em `events/{eventId}/registrations` (anexos no Firebase Storage, path administrativo guardado); `events/{eventId}/capacity/{bucket}` eh o agregado publico de vagas.
 - Ha privilegios administrativos cumulativos no app: `useradmin` aprova usuarios, `custodian` gerencia Sacramento, `eventadmin` cria/gerencia eventos, `admin` visualiza dados operacionais (e herda `eventadmin`), enquanto `superadmin` tambem gerencia privilegios de usuarios.

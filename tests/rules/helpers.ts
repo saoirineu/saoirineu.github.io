@@ -95,9 +95,12 @@ export function workFixture(overrides: Record<string, unknown> = {}) {
     date: '2026-09-15',
     workTypeId: 'concentracao',
     workTypeLabel: 'Concentração',
+    officialCalendar: true,
     attendees: { total: 20, initiated: 12 },
     sacrament: { stockId: 'stock-1', itemId: 'item-1', itemLabel: '2º grau', quantity: 0.5, unit: 'L' },
-    contributions: { collected: 400, icefluBrazilQuota: 120.5 },
+    contributions: { collected: 400, venueCost: 100 },
+    // The defaults, in force while catalogs/icefluQuota does not exist.
+    icefluQuota: { sharePercent: 50, minimumPerPerson: 25 },
     reviewStatus: 'pre-approved',
     ...overrides
   };

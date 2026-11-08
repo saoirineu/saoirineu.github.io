@@ -1,19 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_ICEFLU_QUOTA } from '../../lib/icefluQuota';
 import type { SacramentItem, SacramentStock } from '../../lib/sacrament';
 import type { Work } from '../../lib/works';
 import {
   availableForWork,
   buildWorkInput,
+  computeWorkQuota,
   filterWorks,
+  formWorkQuota,
   initialWorkForm,
+  isOfficialCalendar,
   parseCount,
   parseDecimal,
+  parseQuotaRates,
   sacramentItemLabel,
   stocksForChurch,
   summarizeWorks,
   validateWorkForm,
   whiteAttendees,
+  workQuota,
   workToForm,
   workTypeDisplay,
   workYears,
@@ -36,7 +42,11 @@ const options: SacramentOption[] = [
   { item, stock, balance: 4 },
   { item: gel, stock, balance: 1 }
 ];
-const workTypes = [{ id: 'concentracao', label: 'Concentração (15 e 30)', category: 'official' as const, active: true }];
+const workTypes = [
+  { id: 'concentracao', label: 'Concentração (15 e 30)', category: 'official' as const, active: true },
+  { id: 'cura', label: 'Trabalho de Cura', category: 'other' as const, active: true }
+];
+const rates = DEFAULT_ICEFLU_QUOTA;
 
 function makeForm(overrides: Partial<WorkFormState> = {}): WorkFormState {
   return {
@@ -48,7 +58,7 @@ function makeForm(overrides: Partial<WorkFormState> = {}): WorkFormState {
     sacramentItemId: 'item-1',
     sacramentQuantity: '0,75',
     contributionsCollected: '400',
-    icefluBrazilQuota: '120.50',
+    venueCost: '100',
     ...overrides
   };
 }
@@ -61,9 +71,11 @@ function makeWork(overrides: Partial<Work> = {}): Work {
     date: '2026-09-15',
     workTypeId: 'concentracao',
     workTypeLabel: 'Concentração (15 e 30)',
+    officialCalendar: true,
     attendees: { total: 20, initiated: 12 },
     sacrament: { stockId: 'stock-1', itemId: 'item-1', quantity: 0.75, unit: 'L' },
-    contributions: { collected: 400, icefluBrazilQuota: 120.5 },
+    contributions: { collected: 400, venueCost: 100 },
+    icefluQuota: { sharePercent: 50, minimumPerPerson: 25 },
     reviewStatus: 'pre-approved',
     ...overrides
   };
@@ -87,7 +99,7 @@ describe('works form parsing', () => {
     expect(parseDecimal('')).toBeNull();
   });
 
-  it('derives bianchi as total minus fardati', () => {
+  it('derives visitors as total minus ICEFLU members', () => {
     expect(whiteAttendees({ totalAttendees: '20', initiatedAttendees: '12' })).toBe(8);
     expect(whiteAttendees({ totalAttendees: '20', initiatedAttendees: '20' })).toBe(0);
     expect(whiteAttendees({ totalAttendees: '5', initiatedAttendees: '6' })).toBeNull();
@@ -112,7 +124,7 @@ describe('works form validation', () => {
       'sacramentItem',
       'sacramentQuantity',
       'contributionsCollected',
-      'icefluBrazilQuota'
+      'venueCost'
     ]);
   });
 
@@ -126,7 +138,7 @@ describe('works form validation', () => {
     expect(validateWorkForm(makeForm({ workTypeId: 'other', workTypeOther: 'Hinário' }), { today })).toEqual([]);
   });
 
-  it('rejects more fardati than participants, and a zero Daime quantity', () => {
+  it('rejects more ICEFLU members than participants, and a zero Daime quantity', () => {
     expect(validateWorkForm(makeForm({ initiatedAttendees: '21' }), { today })).toEqual(['initiatedAboveTotal']);
     expect(validateWorkForm(makeForm({ sacramentQuantity: '0' }), { today })).toEqual(['sacramentQuantity']);
   });
@@ -139,7 +151,8 @@ describe('works payload', () => {
       churchName: 'Stella Azzurra',
       workTypes,
       otherLabel: 'Altro',
-      sacramentOptions: options
+      sacramentOptions: options,
+      rates
     });
 
     expect(input).toEqual({
@@ -149,6 +162,7 @@ describe('works payload', () => {
       workTypeId: 'concentracao',
       workTypeLabel: 'Concentração (15 e 30)',
       workTypeOther: undefined,
+      officialCalendar: true,
       venueText: 'Casa',
       hymnalText: 'O Cruzeiro',
       attendees: { total: 20, initiated: 12 },
@@ -159,7 +173,8 @@ describe('works payload', () => {
         quantity: 0.75,
         unit: 'L'
       },
-      contributions: { collected: 400, icefluBrazilQuota: 120.5 }
+      contributions: { collected: 400, venueCost: 100 },
+      icefluQuota: { sharePercent: 50, minimumPerPerson: 25 }
     });
   });
 
@@ -169,7 +184,8 @@ describe('works payload', () => {
       churchName: 'Stella Azzurra',
       workTypes,
       otherLabel: 'Altro',
-      sacramentOptions: options
+      sacramentOptions: options,
+      rates
     });
     expect(input.sacrament).toMatchObject({ itemId: 'item-gel', unit: 'kg', quantity: 0.2 });
   });
@@ -180,10 +196,43 @@ describe('works payload', () => {
       churchName: 'Stella Azzurra',
       workTypes,
       otherLabel: 'Altro',
-      sacramentOptions: options
+      sacramentOptions: options,
+      rates
     });
-    expect(input).toMatchObject({ workTypeId: 'other', workTypeLabel: 'Altro', workTypeOther: 'Hinário da Madrinha' });
+    expect(input).toMatchObject({
+      workTypeId: 'other',
+      workTypeLabel: 'Altro',
+      workTypeOther: 'Hinário da Madrinha',
+      officialCalendar: false
+    });
     expect(workTypeDisplay(input)).toBe('Hinário da Madrinha');
+  });
+
+  it('places the work in or outside the official calendar by its type\'s group', () => {
+    expect(isOfficialCalendar('concentracao', workTypes)).toBe(true);
+    expect(isOfficialCalendar('cura', workTypes)).toBe(false);
+    expect(isOfficialCalendar('other', workTypes)).toBe(false);
+    // A type removed from the catalog keeps what the record was saved with.
+    expect(isOfficialCalendar('retired', workTypes, { workTypeId: 'retired', officialCalendar: true })).toBe(true);
+    expect(isOfficialCalendar('retired', workTypes)).toBe(false);
+  });
+
+  it('gives a new record the rates in force, while a saved one keeps its own', () => {
+    const newer = { sharePercent: 40, minimumPerPerson: 30 };
+    const fresh = buildWorkInput({ form: makeForm(), churchName: 'Stella Azzurra', workTypes, otherLabel: 'Altro', sacramentOptions: options, rates: newer });
+    expect(fresh.icefluQuota).toEqual(newer);
+
+    const existing = makeWork();
+    const edited = buildWorkInput({
+      form: workToForm(existing),
+      churchName: 'Stella Azzurra',
+      workTypes,
+      otherLabel: 'Altro',
+      sacramentOptions: options,
+      rates: newer,
+      existing
+    });
+    expect(edited.icefluQuota).toEqual({ sharePercent: 50, minimumPerPerson: 25 });
   });
 
   it('keeps the saved batch and label when they are no longer offered', () => {
@@ -198,9 +247,11 @@ describe('works payload', () => {
       workTypes,
       otherLabel: 'Altro',
       sacramentOptions: options,
+      rates,
       existing
     });
     expect(input.workTypeLabel).toBe('Tipo antigo');
+    expect(input.officialCalendar).toBe(true);
     expect(input.sacrament).toEqual({ stockId: 'old-stock', itemId: 'old-item', itemLabel: 'Old batch', quantity: 1.5, unit: 'L' });
   });
 
@@ -209,9 +260,64 @@ describe('works payload', () => {
     expect(workToForm(work)).toEqual(makeForm({
       venueText: 'Casa',
       hymnalText: 'O Cruzeiro',
-      sacramentQuantity: '0.75',
-      icefluBrazilQuota: '120.5'
+      sacramentQuantity: '0.75'
     }));
+  });
+});
+
+describe('works ICEFLU quota', () => {
+  const base = { collected: 400, venueCost: 100, total: 20, initiated: 12, officialCalendar: true, rates };
+
+  it('owes the share of the net contributions when it is above the minimum', () => {
+    expect(computeWorkQuota({ ...base, collected: 1000, venueCost: 200 })).toEqual({
+      net: 800,
+      share: 400,
+      counted: 8,
+      minimum: 200,
+      owed: 400
+    });
+  });
+
+  it('owes the minimum per visitor when the share falls below it', () => {
+    expect(computeWorkQuota(base)).toEqual({ net: 300, share: 150, counted: 8, minimum: 200, owed: 200 });
+  });
+
+  it('counts every participant for works outside the official calendar', () => {
+    expect(computeWorkQuota({ ...base, officialCalendar: false })).toMatchObject({ counted: 20, minimum: 500, owed: 500 });
+  });
+
+  it('owes no share when the venue cost more than was collected', () => {
+    expect(computeWorkQuota({ ...base, collected: 100, venueCost: 300, total: 10, initiated: 10 })).toEqual({
+      net: -200,
+      share: 0,
+      counted: 0,
+      minimum: 0,
+      owed: 0
+    });
+  });
+
+  it('rounds the share to the cent', () => {
+    const quota = computeWorkQuota({ ...base, collected: 255.5, venueCost: 0, initiated: 20, rates: { sharePercent: 12.5, minimumPerPerson: 25 } });
+    expect(quota).toMatchObject({ share: 31.94, owed: 31.94 });
+  });
+
+  it('reads a saved record with the rates it keeps', () => {
+    expect(workQuota(makeWork())).toMatchObject({ net: 300, owed: 200 });
+    expect(workQuota(makeWork({ icefluQuota: { sharePercent: 100, minimumPerPerson: 0 } }))).toMatchObject({ share: 300, owed: 300 });
+  });
+
+  it('previews the quota only once the form figures are valid', () => {
+    expect(formWorkQuota(makeForm(), true, rates)).toMatchObject({ net: 300, owed: 200 });
+    expect(formWorkQuota(makeForm({ venueCost: '' }), true, rates)).toBeNull();
+    expect(formWorkQuota(makeForm({ initiatedAttendees: '21' }), true, rates)).toBeNull();
+  });
+
+  it('accepts admin rates up to 100% with a minimum amount', () => {
+    expect(parseQuotaRates('50', '25')).toEqual({ sharePercent: 50, minimumPerPerson: 25 });
+    expect(parseQuotaRates('12,5', '0')).toEqual({ sharePercent: 12.5, minimumPerPerson: 0 });
+    expect(parseQuotaRates('101', '25')).toBeNull();
+    expect(parseQuotaRates('', '25')).toBeNull();
+    expect(parseQuotaRates('50', 'venti')).toBeNull();
   });
 });
 
@@ -248,12 +354,13 @@ describe('works list helpers', () => {
       churchId: 'church-2',
       reviewStatus: 'reviewed',
       sacrament: { stockId: 's', itemId: 'g', quantity: 0.25, unit: 'kg' },
-      contributions: { collected: 100, icefluBrazilQuota: 30 }
+      contributions: { collected: 100, venueCost: 0 }
     }),
     makeWork({ id: 'c', date: '2026-01-06', sacrament: undefined })
   ];
 
   it('totals participants, Daime by unit, and money', () => {
+    // Each record owes the €200 minimum (8 visitors): a and c net 300, b nets 100.
     expect(summarizeWorks(works)).toEqual({
       count: 3,
       attendees: 60,
@@ -261,7 +368,8 @@ describe('works list helpers', () => {
       liters: 0.75,
       kg: 0.25,
       collected: 900,
-      icefluBrazilQuota: 271
+      net: 700,
+      quota: 600
     });
   });
 

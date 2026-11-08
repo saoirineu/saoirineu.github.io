@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ChurchManager } from '../../lib/churchManagers';
+import type { IcefluQuotaRates } from '../../lib/icefluQuota';
 import type { UserProfile } from '../../lib/users';
 import type { Work, WorkReviewStatus } from '../../lib/works';
 import { OTHER_WORK_TYPE_ID, newWorkTypeId, type WorkType, type WorkTypeCatalog } from '../../lib/workTypes';
@@ -15,18 +16,24 @@ import {
   availableForWork,
   filterWorks,
   formatEuro,
+  formatPercent,
   formatWorkDate,
+  formWorkQuota,
+  isOfficialCalendar,
   parseDecimal,
+  parseQuotaRates,
   sacramentItemLabel,
   sacramentUnit,
   summarizeWorks,
   whiteAttendees,
+  workQuota,
   workTypeDisplay,
   workYears,
   type SacramentOption,
   type WorkFilter,
   type WorkFormError,
-  type WorkFormState
+  type WorkFormState,
+  type WorkQuota
 } from './form';
 
 
@@ -48,6 +55,30 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
   );
 }
 
+/** Both ways of reckoning the ICEFLU quota, with the one that applies emphasised. */
+function QuotaBreakdown({ copy, numberLocale, quota, rates, officialCalendar, className = '' }: {
+  copy: WorksCopy;
+  numberLocale: string;
+  quota: WorkQuota;
+  rates: IcefluQuotaRates;
+  officialCalendar: boolean;
+  className?: string;
+}) {
+  const minimumApplies = quota.minimum > quota.share;
+  const applied = 'font-medium text-slate-800';
+  return (
+    <p className={`text-xs text-slate-500 ${className}`}>
+      <span className={minimumApplies ? '' : applied}>
+        {copy.shareOfNet(formatPercent(rates.sharePercent, numberLocale))}: {formatEuro(quota.share, numberLocale)}
+      </span>
+      {' · '}
+      <span className={minimumApplies ? applied : ''}>
+        {copy.minimumFor(formatEuro(rates.minimumPerPerson, numberLocale), quota.counted, officialCalendar)}: {formatEuro(quota.minimum, numberLocale)}
+      </span>
+    </p>
+  );
+}
+
 // ─── record form ───────────────────────────────────────────────────────────────
 
 type WorkRecordFormProps = {
@@ -60,6 +91,8 @@ type WorkRecordFormProps = {
   workTypes: WorkType[];
   sacramentOptions: SacramentOption[];
   sacramentLoading: boolean;
+  /** The record's own rates when editing, the ones in force otherwise. */
+  quotaRates: IcefluQuotaRates;
   editing: Work | null;
   today: string;
   saving: boolean;
@@ -79,6 +112,7 @@ export function WorkRecordForm({
   workTypes,
   sacramentOptions,
   sacramentLoading,
+  quotaRates,
   editing,
   today,
   saving,
@@ -90,6 +124,8 @@ export function WorkRecordForm({
   const { locale } = useSiteLocale();
   const has = (...keys: WorkFormError[]) => keys.some(key => errors.includes(key));
   const whites = whiteAttendees(form);
+  const officialCalendar = isOfficialCalendar(form.workTypeId, workTypes, editing ?? undefined);
+  const quota = formWorkQuota(form, officialCalendar, quotaRates);
   const activeTypes = workTypes.filter(type => type.active);
   // A record keeps its type even after an admin deactivates or renames it.
   const retiredType = editing && form.workTypeId === editing.workTypeId && form.workTypeId !== OTHER_WORK_TYPE_ID
@@ -169,6 +205,9 @@ export function WorkRecordForm({
               </optgroup>
             </select>
             <FieldError copy={copy} errors={errors} keys={['workType']} />
+            {form.workTypeId ? (
+              <p className="mt-0.5 text-xs text-slate-500">{officialCalendar ? copy.officialCalendar : copy.offCalendar}</p>
+            ) : null}
           </div>
           {form.workTypeId === OTHER_WORK_TYPE_ID ? (
             <div>
@@ -293,7 +332,7 @@ export function WorkRecordForm({
       </FormSection>
 
       <FormSection title={copy.sectionContributions}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className={labelCls()} htmlFor="work-collected">{copy.contributionsCollected} (€)</label>
             <input
@@ -307,26 +346,42 @@ export function WorkRecordForm({
             <FieldError copy={copy} errors={errors} keys={['contributionsCollected']} />
           </div>
           <div>
-            <label className={labelCls()} htmlFor="work-quota">
-              {copy.icefluBrazilQuota} (€) <span className="font-normal text-slate-400">— {copy.icefluBrazilQuotaHint}</span>
-            </label>
+            <label className={labelCls()} htmlFor="work-venue-cost">{copy.venueCost} (€)</label>
             <input
-              id="work-quota"
+              id="work-venue-cost"
               type="text"
               inputMode="decimal"
-              className={inputCls(`w-full ${errorCls(has('icefluBrazilQuota'))}`)}
-              value={form.icefluBrazilQuota}
-              onChange={event => setField('icefluBrazilQuota', event.target.value)}
+              className={inputCls(`w-full ${errorCls(has('venueCost'))}`)}
+              value={form.venueCost}
+              onChange={event => setField('venueCost', event.target.value)}
             />
-            <FieldError copy={copy} errors={errors} keys={['icefluBrazilQuota']} />
+            <FieldError copy={copy} errors={errors} keys={['venueCost']} />
+          </div>
+          <div>
+            <span className={labelCls()}>{copy.netContributions} <span className="font-normal text-slate-400">({copy.computed})</span></span>
+            <output className="block rounded-lg border border-dashed border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700">
+              {quota ? formatEuro(quota.net, numberLocale) : '—'}
+            </output>
           </div>
         </div>
-        {parseDecimal(form.contributionsCollected) !== null ? (
-          <p className="text-xs text-slate-500">
-            {formatEuro(parseDecimal(form.contributionsCollected) ?? 0, numberLocale)}
-            {parseDecimal(form.icefluBrazilQuota) !== null ? ` · ICEFLU ${formatEuro(parseDecimal(form.icefluBrazilQuota) ?? 0, numberLocale)}` : ''}
-          </p>
-        ) : null}
+        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
+          <div>
+            <span className={labelCls()}>{copy.icefluBrazilQuota} <span className="font-normal text-slate-400">({copy.computed})</span></span>
+            <output className="block rounded-lg border border-dashed border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800">
+              {quota ? formatEuro(quota.owed, numberLocale) : '—'}
+            </output>
+          </div>
+          {quota ? (
+            <QuotaBreakdown
+              copy={copy}
+              numberLocale={numberLocale}
+              quota={quota}
+              rates={quotaRates}
+              officialCalendar={officialCalendar}
+              className="sm:col-span-2 sm:self-end sm:pb-2"
+            />
+          ) : null}
+        </div>
       </FormSection>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -449,12 +504,13 @@ export function WorkRecordList({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 rounded-xl border border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.6)] p-3 text-sm sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 rounded-xl border border-[color:var(--brand-sand)] bg-[rgba(247,244,234,0.6)] p-3 text-sm sm:grid-cols-3">
             <Figure label={copy.totals} value={`${totals.count} ${copy.works}`} />
             <Figure label={copy.totalAttendees} value={`${totals.attendees} (${copy.initiatedAttendees} ${totals.initiated})`} />
             <Figure label={copy.sacramentItem} value={daimeTotal} />
             <Figure label={copy.contributionsCollected} value={formatEuro(totals.collected, numberLocale)} />
-            <Figure label={copy.icefluBrazilQuota} value={formatEuro(totals.icefluBrazilQuota, numberLocale)} />
+            <Figure label={copy.netContributions} value={formatEuro(totals.net, numberLocale)} />
+            <Figure label={copy.icefluBrazilQuota} value={formatEuro(totals.quota, numberLocale)} />
           </div>
 
           <ul className="space-y-3">
@@ -462,11 +518,13 @@ export function WorkRecordList({
               const reviewed = work.reviewStatus === 'reviewed';
               const busy = busyId === work.id;
               const canDelete = isAdmin || !reviewed;
+              const quota = workQuota(work);
               return (
                 <li key={work.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="font-semibold text-slate-900">{workTypeDisplay(work)}</div>
+                      <div className="text-xs text-slate-500">{work.officialCalendar ? copy.officialCalendar : copy.offCalendar}</div>
                       <div className="text-sm text-slate-600">
                         {formatWorkDate(work.date, locale)} · {work.churchName || work.churchId || '—'}
                         {work.venueText ? ` · ${work.venueText}` : ''}
@@ -482,7 +540,7 @@ export function WorkRecordList({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
                     <Figure label={copy.totalAttendees} value={work.attendees.total} />
                     <Figure
                       label={`${copy.initiatedAttendees} / ${copy.whiteAttendees}`}
@@ -495,7 +553,30 @@ export function WorkRecordList({
                       ) : '—'}
                     />
                     <Figure label={copy.contributionsCollected} value={formatEuro(work.contributions.collected, numberLocale)} />
-                    <Figure label={copy.icefluBrazilQuota} value={formatEuro(work.contributions.icefluBrazilQuota, numberLocale)} />
+                    <Figure
+                      label={copy.netContributions}
+                      value={(
+                        <>
+                          {formatEuro(quota.net, numberLocale)}
+                          <span className="block text-[11px] font-normal text-slate-400">
+                            {copy.venueCostShort}: {formatEuro(work.contributions.venueCost, numberLocale)}
+                          </span>
+                        </>
+                      )}
+                    />
+                    <Figure
+                      label={copy.icefluBrazilQuota}
+                      value={(
+                        <>
+                          {formatEuro(quota.owed, numberLocale)}
+                          <span className="block text-[11px] font-normal text-slate-400">
+                            {quota.minimum > quota.share
+                              ? copy.minimumFor(formatEuro(work.icefluQuota.minimumPerPerson, numberLocale), quota.counted, work.officialCalendar)
+                              : copy.shareOfNet(formatPercent(work.icefluQuota.sharePercent, numberLocale))}
+                          </span>
+                        </>
+                      )}
+                    />
                   </div>
                   {work.sacrament?.itemLabel ? (
                     <p className="mt-1 truncate text-xs text-slate-400">{formatIsoDatesInText(work.sacrament.itemLabel, locale)}</p>
@@ -675,6 +756,91 @@ export function ChurchManagersPanel({ copy, managers, users, churches, loading, 
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+// ─── ICEFLU Brazil rates (admin) ───────────────────────────────────────────────
+
+type IcefluQuotaPanelProps = {
+  copy: WorksCopy;
+  rates: IcefluQuotaRates | undefined;
+  saving: boolean;
+  saved: boolean;
+  error: boolean;
+  onSave: (rates: IcefluQuotaRates) => void;
+};
+
+export function IcefluQuotaPanel({ copy, rates, saving, saved, error, onSave }: IcefluQuotaPanelProps) {
+  const [sharePercent, setSharePercent] = useState(rates ? String(rates.sharePercent) : '');
+  const [minimumPerPerson, setMinimumPerPerson] = useState(rates ? String(rates.minimumPerPerson) : '');
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => {
+    if (!rates) return;
+    setSharePercent(String(rates.sharePercent));
+    setMinimumPerPerson(String(rates.minimumPerPerson));
+  }, [rates]);
+
+  return (
+    <section className="space-y-3 rounded-xl border border-[color:var(--brand-sand)] bg-white p-4 shadow-sm">
+      <div>
+        <h2 className="text-base font-semibold text-[color:var(--brand-ink)]">{copy.quotaTitle}</h2>
+        <p className="text-xs text-slate-500">{copy.quotaIntro}</p>
+      </div>
+
+      {!rates ? (
+        <p className="text-sm text-slate-400">{copy.loading}</p>
+      ) : (
+        <form
+          noValidate
+          className="space-y-3"
+          onSubmit={event => {
+            event.preventDefault();
+            const next = parseQuotaRates(sharePercent, minimumPerPerson);
+            setInvalid(!next);
+            if (next) onSave(next);
+          }}
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelCls()} htmlFor="quota-share">{copy.sharePercent}</label>
+              <input
+                id="quota-share"
+                type="text"
+                inputMode="decimal"
+                className={inputCls(`w-full ${errorCls(invalid)}`)}
+                value={sharePercent}
+                onChange={event => setSharePercent(event.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelCls()} htmlFor="quota-minimum">{copy.minimumPerPerson}</label>
+              <input
+                id="quota-minimum"
+                type="text"
+                inputMode="decimal"
+                className={inputCls(`w-full ${errorCls(invalid)}`)}
+                value={minimumPerPerson}
+                onChange={event => setMinimumPerPerson(event.target.value)}
+              />
+              <p className="mt-0.5 text-xs text-slate-500">{copy.minimumPerPersonHint}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-[color:var(--brand-green)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? copy.saving : copy.saveQuota}
+            </button>
+            {invalid ? <span className="text-xs text-red-600">{copy.quotaInvalid}</span> : null}
+            {saved && !invalid ? <span className="text-xs text-green-700">{copy.quotaSaved}</span> : null}
+            {error ? <span className="text-xs text-red-600">{copy.actionError}</span> : null}
+          </div>
+        </form>
       )}
     </section>
   );

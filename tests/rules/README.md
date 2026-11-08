@@ -26,8 +26,8 @@ Each test name carries a tag:
   `.fails`. The suite stays green and the debt stays visible.
 
 ```
-make test-rules     # 124 tests, all passing
-make test           # + mail queue (13) + frontend (159) + functions (64)
+make test-rules     # 127 tests, all passing
+make test           # + mail queue (13) + frontend (169) + functions (64)
 ```
 
 A red run means a real regression, so treat it as one.

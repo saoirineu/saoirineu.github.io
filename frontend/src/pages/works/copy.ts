@@ -10,7 +10,7 @@ const pt = {
   loading: 'Carregando...',
   loadError: 'Erro ao carregar os registros.',
   noPermission: 'Esta área é para os gestores das igrejas. Peça a um administrador para vincular sua conta a uma igreja.',
-  tabs: { records: 'Registros', managers: 'Gestores das igrejas', workTypes: 'Tipos de trabalho' },
+  tabs: { records: 'Registros', managers: 'Gestores das igrejas', workTypes: 'Tipos de trabalho', quota: 'Cotas ICEFLU Brasil' },
 
   newRecord: 'Registrar trabalho',
   editRecord: 'Editar registro',
@@ -25,14 +25,15 @@ const pt = {
   selectWorkType: 'Selecionar trabalho...',
   officialCalendar: 'Calendário oficial',
   otherWorks: 'Outros trabalhos',
+  offCalendar: 'Fora do calendário oficial',
   other: 'Outro',
   workTypeOther: 'Qual trabalho?',
   venue: 'Local',
   hymnal: 'Hinário',
   optional: 'opcional',
   totalAttendees: 'Total de participantes',
-  initiatedAttendees: 'Fardados',
-  whiteAttendees: 'Não fardados',
+  initiatedAttendees: 'Membros ICEFLU',
+  whiteAttendees: 'Visitantes',
   computed: 'calculado',
   sacramentItem: 'Daime usado',
   selectBatch: 'Selecionar lote...',
@@ -41,8 +42,15 @@ const pt = {
   noLinkedStock: 'Nenhum estoque de Daime está vinculado a esta igreja. Peça a um administrador para vincular um na página Sacramento.',
   aboveBalance: 'A quantidade supera o saldo registrado deste lote.',
   contributionsCollected: 'Total de contribuições recebidas',
+  venueCost: 'Custo do aluguel do espaço',
+  venueCostShort: 'espaço',
+  netContributions: 'Contribuições líquidas',
   icefluBrazilQuota: 'Cota para a ICEFLU Brasil',
-  icefluBrazilQuotaHint: 'incluindo o feitio',
+  shareOfNet: (percent: string) => `${percent} das contribuições líquidas`,
+  minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
+    `mínimo ${rate} × ${count} ${officialCalendar
+      ? (count === 1 ? 'visitante' : 'visitantes')
+      : (count === 1 ? 'participante' : 'participantes')}`,
   save: 'Salvar registro',
   saving: 'Salvando...',
   cancel: 'Cancelar',
@@ -93,6 +101,15 @@ const pt = {
   workTypesSaved: 'Lista salva.',
   otherAlwaysOffered: '"Outro", com descrição livre, é sempre oferecido no fim do menu.',
 
+  quotaTitle: 'Cotas para a ICEFLU Brasil',
+  quotaIntro: 'Valem para todas as igrejas. Cada trabalho guarda as cotas em vigor quando foi registrado.',
+  sharePercent: 'Cota para a ICEFLU Brasil (% das contribuições líquidas)',
+  minimumPerPerson: 'Cota mínima por pessoa (€)',
+  minimumPerPersonHint: 'Por visitante nos trabalhos do calendário oficial; por participante nos demais.',
+  saveQuota: 'Salvar cotas',
+  quotaSaved: 'Cotas salvas.',
+  quotaInvalid: 'Informe uma porcentagem entre 0 e 100 e um valor mínimo.',
+
   errors: {
     church: 'Selecione a igreja.',
     date: 'Informe a data.',
@@ -101,11 +118,11 @@ const pt = {
     workTypeOther: 'Descreva o trabalho.',
     totalAttendees: 'Informe um número inteiro.',
     initiatedAttendees: 'Informe um número inteiro.',
-    initiatedAboveTotal: 'Os fardados não podem superar o total.',
+    initiatedAboveTotal: 'Os membros ICEFLU não podem superar o total.',
     sacramentItem: 'Selecione o lote de Daime.',
     sacramentQuantity: 'Informe uma quantidade maior que zero.',
     contributionsCollected: 'Informe um valor (0 se nenhum).',
-    icefluBrazilQuota: 'Informe um valor (0 se nenhum).'
+    venueCost: 'Informe um valor (0 se nenhum).'
   } satisfies Record<WorkFormError, string>
 };
 
@@ -118,7 +135,7 @@ const en: WorksCopy = {
   loading: 'Loading...',
   loadError: 'Could not load the records.',
   noPermission: 'This area is for church managers. Ask an administrator to link your account to a church.',
-  tabs: { records: 'Records', managers: 'Church managers', workTypes: 'Work types' },
+  tabs: { records: 'Records', managers: 'Church managers', workTypes: 'Work types', quota: 'ICEFLU Brazil shares' },
 
   newRecord: 'Record a work',
   editRecord: 'Edit record',
@@ -133,14 +150,15 @@ const en: WorksCopy = {
   selectWorkType: 'Select work...',
   officialCalendar: 'Official calendar',
   otherWorks: 'Other works',
+  offCalendar: 'Outside the official calendar',
   other: 'Other',
   workTypeOther: 'Which work?',
   venue: 'Place',
   hymnal: 'Hymnal',
   optional: 'optional',
   totalAttendees: 'Total participants',
-  initiatedAttendees: 'Fardados',
-  whiteAttendees: 'Non-fardados',
+  initiatedAttendees: 'ICEFLU members',
+  whiteAttendees: 'Visitors',
   computed: 'calculated',
   sacramentItem: 'Daime used',
   selectBatch: 'Select batch...',
@@ -149,8 +167,15 @@ const en: WorksCopy = {
   noLinkedStock: 'No Daime stock is linked to this church. Ask an administrator to link one on the Sacrament page.',
   aboveBalance: 'The quantity exceeds this batch\'s recorded balance.',
   contributionsCollected: 'Total contributions collected',
+  venueCost: 'Venue rental cost',
+  venueCostShort: 'venue',
+  netContributions: 'Net contributions',
   icefluBrazilQuota: 'Share for ICEFLU Brazil',
-  icefluBrazilQuotaHint: 'including feitio',
+  shareOfNet: (percent: string) => `${percent} of net contributions`,
+  minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
+    `minimum ${rate} × ${count} ${officialCalendar
+      ? (count === 1 ? 'visitor' : 'visitors')
+      : (count === 1 ? 'participant' : 'participants')}`,
   save: 'Save record',
   saving: 'Saving...',
   cancel: 'Cancel',
@@ -201,6 +226,15 @@ const en: WorksCopy = {
   workTypesSaved: 'List saved.',
   otherAlwaysOffered: '"Other", with a free description, is always offered at the end of the menu.',
 
+  quotaTitle: 'Shares for ICEFLU Brazil',
+  quotaIntro: 'They apply to every church. Each work keeps the rates in force when it was recorded.',
+  sharePercent: 'Share for ICEFLU Brazil (% of net contributions)',
+  minimumPerPerson: 'Minimum per person (€)',
+  minimumPerPersonHint: 'Per visitor at official-calendar works; per participant at the others.',
+  saveQuota: 'Save rates',
+  quotaSaved: 'Rates saved.',
+  quotaInvalid: 'Enter a percentage between 0 and 100 and a minimum amount.',
+
   errors: {
     church: 'Select the church.',
     date: 'Enter the date.',
@@ -209,11 +243,11 @@ const en: WorksCopy = {
     workTypeOther: 'Describe the work.',
     totalAttendees: 'Enter a whole number.',
     initiatedAttendees: 'Enter a whole number.',
-    initiatedAboveTotal: 'Fardados cannot exceed the total.',
+    initiatedAboveTotal: 'ICEFLU members cannot exceed the total.',
     sacramentItem: 'Select the Daime batch.',
     sacramentQuantity: 'Enter a quantity above zero.',
     contributionsCollected: 'Enter an amount (0 if none).',
-    icefluBrazilQuota: 'Enter an amount (0 if none).'
+    venueCost: 'Enter an amount (0 if none).'
   }
 };
 
@@ -224,7 +258,7 @@ const es: WorksCopy = {
   loading: 'Cargando...',
   loadError: 'Error al cargar los registros.',
   noPermission: 'Esta área es para los gestores de las iglesias. Pida a un administrador que vincule su cuenta a una iglesia.',
-  tabs: { records: 'Registros', managers: 'Gestores de las iglesias', workTypes: 'Tipos de trabajo' },
+  tabs: { records: 'Registros', managers: 'Gestores de las iglesias', workTypes: 'Tipos de trabajo', quota: 'Cuotas ICEFLU Brasil' },
 
   newRecord: 'Registrar trabajo',
   editRecord: 'Editar registro',
@@ -239,14 +273,15 @@ const es: WorksCopy = {
   selectWorkType: 'Seleccionar trabajo...',
   officialCalendar: 'Calendario oficial',
   otherWorks: 'Otros trabajos',
+  offCalendar: 'Fuera del calendario oficial',
   other: 'Otro',
   workTypeOther: '¿Qué trabajo?',
   venue: 'Lugar',
   hymnal: 'Himnario',
   optional: 'opcional',
   totalAttendees: 'Total de participantes',
-  initiatedAttendees: 'Fardados',
-  whiteAttendees: 'No fardados',
+  initiatedAttendees: 'Miembros ICEFLU',
+  whiteAttendees: 'Visitantes',
   computed: 'calculado',
   sacramentItem: 'Daime usado',
   selectBatch: 'Seleccionar lote...',
@@ -255,8 +290,15 @@ const es: WorksCopy = {
   noLinkedStock: 'Ningún stock de Daime está vinculado a esta iglesia. Pida a un administrador que vincule uno en la página Sacramento.',
   aboveBalance: 'La cantidad supera el saldo registrado de este lote.',
   contributionsCollected: 'Total de contribuciones recibidas',
+  venueCost: 'Coste del alquiler del local',
+  venueCostShort: 'local',
+  netContributions: 'Contribuciones netas',
   icefluBrazilQuota: 'Cuota para ICEFLU Brasil',
-  icefluBrazilQuotaHint: 'incluido el feitio',
+  shareOfNet: (percent: string) => `${percent} de las contribuciones netas`,
+  minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
+    `mínimo ${rate} × ${count} ${officialCalendar
+      ? (count === 1 ? 'visitante' : 'visitantes')
+      : (count === 1 ? 'participante' : 'participantes')}`,
   save: 'Guardar registro',
   saving: 'Guardando...',
   cancel: 'Cancelar',
@@ -307,6 +349,15 @@ const es: WorksCopy = {
   workTypesSaved: 'Lista guardada.',
   otherAlwaysOffered: '"Otro", con descripción libre, siempre se ofrece al final del menú.',
 
+  quotaTitle: 'Cuotas para ICEFLU Brasil',
+  quotaIntro: 'Valen para todas las iglesias. Cada trabajo conserva las cuotas vigentes cuando se registró.',
+  sharePercent: 'Cuota para ICEFLU Brasil (% de las contribuciones netas)',
+  minimumPerPerson: 'Cuota mínima por persona (€)',
+  minimumPerPersonHint: 'Por visitante en los trabajos del calendario oficial; por participante en los demás.',
+  saveQuota: 'Guardar cuotas',
+  quotaSaved: 'Cuotas guardadas.',
+  quotaInvalid: 'Indique un porcentaje entre 0 y 100 y un importe mínimo.',
+
   errors: {
     church: 'Seleccione la iglesia.',
     date: 'Indique la fecha.',
@@ -315,11 +366,11 @@ const es: WorksCopy = {
     workTypeOther: 'Describa el trabajo.',
     totalAttendees: 'Indique un número entero.',
     initiatedAttendees: 'Indique un número entero.',
-    initiatedAboveTotal: 'Los fardados no pueden superar el total.',
+    initiatedAboveTotal: 'Los miembros ICEFLU no pueden superar el total.',
     sacramentItem: 'Seleccione el lote de Daime.',
     sacramentQuantity: 'Indique una cantidad mayor que cero.',
     contributionsCollected: 'Indique un importe (0 si no hay).',
-    icefluBrazilQuota: 'Indique un importe (0 si no hay).'
+    venueCost: 'Indique un importe (0 si no hay).'
   }
 };
 
@@ -330,7 +381,7 @@ const it: WorksCopy = {
   loading: 'Caricamento...',
   loadError: 'Errore nel caricamento dei registri.',
   noPermission: 'Quest\'area è per i gestori delle chiese. Chiedi a un amministratore di collegare il tuo account a una chiesa.',
-  tabs: { records: 'Registri', managers: 'Gestori delle chiese', workTypes: 'Tipi di lavoro' },
+  tabs: { records: 'Registri', managers: 'Gestori delle chiese', workTypes: 'Tipi di lavoro', quota: 'Quote ICEFLU Brasile' },
 
   newRecord: 'Registra lavoro',
   editRecord: 'Modifica registro',
@@ -345,14 +396,15 @@ const it: WorksCopy = {
   selectWorkType: 'Seleziona lavoro...',
   officialCalendar: 'Calendario ufficiale',
   otherWorks: 'Altri lavori',
+  offCalendar: 'Fuori calendario ufficiale',
   other: 'Altro',
   workTypeOther: 'Quale lavoro?',
   venue: 'Luogo',
   hymnal: 'Innario',
   optional: 'facoltativo',
   totalAttendees: 'Totale partecipanti',
-  initiatedAttendees: 'Fardati',
-  whiteAttendees: 'Bianchi',
+  initiatedAttendees: 'Membri ICEFLU',
+  whiteAttendees: 'Visitatori',
   computed: 'calcolato',
   sacramentItem: 'Daime usato',
   selectBatch: 'Seleziona lotto...',
@@ -361,8 +413,15 @@ const it: WorksCopy = {
   noLinkedStock: 'Nessuno stock di Daime è collegato a questa chiesa. Chiedi a un amministratore di collegarne uno nella pagina Sacramento.',
   aboveBalance: 'La quantità supera il saldo registrato di questo lotto.',
   contributionsCollected: 'Totale contributi raccolti',
+  venueCost: 'Costo di affitto della struttura',
+  venueCostShort: 'struttura',
+  netContributions: 'Contributi netti',
   icefluBrazilQuota: 'Quota per ICEFLU Brasile',
-  icefluBrazilQuotaHint: 'incluso feitio',
+  shareOfNet: (percent: string) => `${percent} dei contributi netti`,
+  minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
+    `minimo ${rate} × ${count} ${officialCalendar
+      ? (count === 1 ? 'visitatore' : 'visitatori')
+      : (count === 1 ? 'partecipante' : 'partecipanti')}`,
   save: 'Salva registro',
   saving: 'Salvataggio...',
   cancel: 'Annulla',
@@ -413,6 +472,15 @@ const it: WorksCopy = {
   workTypesSaved: 'Elenco salvato.',
   otherAlwaysOffered: '"Altro", con descrizione libera, è sempre offerto in fondo al menu.',
 
+  quotaTitle: 'Quote per ICEFLU Brasile',
+  quotaIntro: 'Valgono per tutte le chiese. Ogni lavoro conserva le quote in vigore quando è stato registrato.',
+  sharePercent: 'Quota per ICEFLU Brasile (% dei contributi netti)',
+  minimumPerPerson: 'Quota minima per persona (€)',
+  minimumPerPersonHint: 'Per visitatore nei lavori del calendario ufficiale; per partecipante negli altri.',
+  saveQuota: 'Salva quote',
+  quotaSaved: 'Quote salvate.',
+  quotaInvalid: 'Indica una percentuale tra 0 e 100 e un importo minimo.',
+
   errors: {
     church: 'Seleziona la chiesa.',
     date: 'Indica la data.',
@@ -421,11 +489,11 @@ const it: WorksCopy = {
     workTypeOther: 'Descrivi il lavoro.',
     totalAttendees: 'Indica un numero intero.',
     initiatedAttendees: 'Indica un numero intero.',
-    initiatedAboveTotal: 'I fardati non possono superare il totale.',
+    initiatedAboveTotal: 'I membri ICEFLU non possono superare il totale.',
     sacramentItem: 'Seleziona il lotto di Daime.',
     sacramentQuantity: 'Indica una quantità maggiore di zero.',
     contributionsCollected: 'Indica un importo (0 se nessuno).',
-    icefluBrazilQuota: 'Indica un importo (0 se nessuno).'
+    venueCost: 'Indica un importo (0 se nessuno).'
   }
 };
 
