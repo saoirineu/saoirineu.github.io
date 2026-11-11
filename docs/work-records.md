@@ -169,9 +169,11 @@ buttons, since the next save of the record would overwrite any change made there
 - **Record form**: church (preselected when the account manages one church), date, work type,
   place, hymnal, participants with computed "visitatori", Daime batch with its current balance,
   quantity, contributions collected and venue rental. Under the work type it says whether the
-  work is in the official calendar; the net contributions and the ICEFLU quota are worked out
-  as the figures are typed, showing both the share and the minimum with the one that applies
-  emphasised. It warns, without blocking, when the quantity exceeds the recorded balance.
+  work is in the official calendar. Net contributions and the percentage share are worked out
+  as soon as the two amounts are valid, independently of the participant counts. The percentage
+  and minimum per person stay visible; the minimum is calculated once the work type and relevant
+  counts are entered, and the final amount due is the larger of the share and the minimum. It
+  warns, without blocking, when the quantity exceeds the recorded balance.
 - **Records list**: filters by church, year and review status; a totals row (works,
   participants, ICEFLU members, litres/kg, contributions, net contributions, ICEFLU quota) over
   the filtered records. Each record shows its calendar, the venue cost under the net

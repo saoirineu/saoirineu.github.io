@@ -306,10 +306,59 @@ describe('works ICEFLU quota', () => {
     expect(workQuota(makeWork({ icefluQuota: { sharePercent: 100, minimumPerPerson: 0 } }))).toMatchObject({ share: 300, owed: 300 });
   });
 
-  it('previews the quota only once the form figures are valid', () => {
-    expect(formWorkQuota(makeForm(), true, rates)).toMatchObject({ net: 300, owed: 200 });
-    expect(formWorkQuota(makeForm({ venueCost: '' }), true, rates)).toBeNull();
-    expect(formWorkQuota(makeForm({ initiatedAttendees: '21' }), true, rates)).toBeNull();
+  it('previews the complete quota when the form figures are valid', () => {
+    expect(formWorkQuota(makeForm(), true, rates)).toEqual({ net: 300, share: 150, counted: 8, minimum: 200, owed: 200 });
+  });
+
+  it('shows net contributions and the share before participant counts are entered', () => {
+    const form = { ...initialWorkForm(), contributionsCollected: '1000', venueCost: '100' };
+    expect(formWorkQuota(form, true, rates)).toEqual({ net: 900, share: 450, counted: null, minimum: null, owed: null });
+    expect(formWorkQuota(form, null, rates)).toEqual({ net: 900, share: 450, counted: null, minimum: null, owed: null });
+  });
+
+  it('uses the supplied rates for independently available calculations', () => {
+    const customRates = { sharePercent: 40, minimumPerPerson: 30 };
+    expect(formWorkQuota(makeForm({ totalAttendees: '', initiatedAttendees: '' }), true, customRates))
+      .toEqual({ net: 300, share: 120, counted: null, minimum: null, owed: null });
+    expect(formWorkQuota(makeForm({ venueCost: '' }), true, customRates))
+      .toEqual({ net: null, share: null, counted: 8, minimum: 240, owed: null });
+  });
+
+  it.each([
+    { venueCost: '' },
+    { contributionsCollected: 'invalid' },
+    { venueCost: '-1' }
+  ])('keeps the minimum visible while monetary input is incomplete or invalid: %j', overrides => {
+    expect(formWorkQuota(makeForm(overrides), true, rates))
+      .toEqual({ net: null, share: null, counted: 8, minimum: 200, owed: null });
+  });
+
+  it('waits for the work calendar classification before calculating the minimum', () => {
+    expect(formWorkQuota(makeForm(), null, rates))
+      .toEqual({ net: 300, share: 150, counted: null, minimum: null, owed: null });
+  });
+
+  it.each(['', 'invalid', '21'])('counts all participants outside the official calendar regardless of member input: %j', initiatedAttendees => {
+    expect(formWorkQuota(makeForm({ initiatedAttendees }), false, rates))
+      .toEqual({ net: 300, share: 150, counted: 20, minimum: 500, owed: 500 });
+  });
+
+  it('requires a valid total outside the official calendar and accepts zero participants', () => {
+    expect(formWorkQuota(makeForm({ totalAttendees: '' }), false, rates))
+      .toEqual({ net: 300, share: 150, counted: null, minimum: null, owed: null });
+    expect(formWorkQuota(makeForm({ totalAttendees: '0', initiatedAttendees: '' }), false, rates))
+      .toEqual({ net: 300, share: 150, counted: 0, minimum: 0, owed: 150 });
+  });
+
+  it.each([
+    { totalAttendees: '' },
+    { totalAttendees: 'invalid' },
+    { initiatedAttendees: '' },
+    { initiatedAttendees: 'invalid' },
+    { initiatedAttendees: '21' }
+  ])('keeps monetary calculations visible while official-calendar counts are incomplete or invalid: %j', overrides => {
+    expect(formWorkQuota(makeForm(overrides), true, rates))
+      .toEqual({ net: 300, share: 150, counted: null, minimum: null, owed: null });
   });
 
   it('accepts admin rates up to 100% with a minimum amount', () => {

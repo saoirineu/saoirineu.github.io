@@ -46,6 +46,12 @@ const pt = {
   venueCostShort: 'espaço',
   netContributions: 'Contribuições líquidas',
   icefluBrazilQuota: 'Cota para a ICEFLU Brasil',
+  shareAmount: 'Cota percentual para a ICEFLU Brasil',
+  minimumQuota: 'Cota mínima para a ICEFLU Brasil',
+  quotaDue: 'Cota devida à ICEFLU Brasil',
+  quotaRatesHint: 'Somente um administrador pode alterar as cotas.',
+  quotaDueHint: 'O valor devido é o maior entre a cota percentual e a cota mínima.',
+  minimumPending: 'Selecione o trabalho e informe os participantes para calcular a cota mínima.',
   shareOfNet: (percent: string) => `${percent} das contribuições líquidas`,
   minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
     `mínimo ${rate} × ${count} ${officialCalendar
@@ -171,6 +177,12 @@ const en: WorksCopy = {
   venueCostShort: 'venue',
   netContributions: 'Net contributions',
   icefluBrazilQuota: 'Share for ICEFLU Brazil',
+  shareAmount: 'Percentage share for ICEFLU Brazil',
+  minimumQuota: 'Minimum share for ICEFLU Brazil',
+  quotaDue: 'Amount owed to ICEFLU Brazil',
+  quotaRatesHint: 'Only an administrator can change the rates.',
+  quotaDueHint: 'The amount owed is the larger of the percentage share and the minimum.',
+  minimumPending: 'Select the work and enter participant counts to calculate the minimum.',
   shareOfNet: (percent: string) => `${percent} of net contributions`,
   minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
     `minimum ${rate} × ${count} ${officialCalendar
@@ -294,6 +306,12 @@ const es: WorksCopy = {
   venueCostShort: 'local',
   netContributions: 'Contribuciones netas',
   icefluBrazilQuota: 'Cuota para ICEFLU Brasil',
+  shareAmount: 'Cuota porcentual para ICEFLU Brasil',
+  minimumQuota: 'Cuota mínima para ICEFLU Brasil',
+  quotaDue: 'Cuota debida a ICEFLU Brasil',
+  quotaRatesHint: 'Solo un administrador puede cambiar las cuotas.',
+  quotaDueHint: 'El importe debido es el mayor entre la cuota porcentual y la cuota mínima.',
+  minimumPending: 'Seleccione el trabajo e indique los participantes para calcular la cuota mínima.',
   shareOfNet: (percent: string) => `${percent} de las contribuciones netas`,
   minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
     `mínimo ${rate} × ${count} ${officialCalendar
@@ -417,6 +435,12 @@ const it: WorksCopy = {
   venueCostShort: 'struttura',
   netContributions: 'Contributi netti',
   icefluBrazilQuota: 'Quota per ICEFLU Brasile',
+  shareAmount: 'Quota percentuale per ICEFLU Brasile',
+  minimumQuota: 'Quota minima per ICEFLU Brasile',
+  quotaDue: 'Quota dovuta a ICEFLU Brasile',
+  quotaRatesHint: 'Solo un amministratore può modificare le quote.',
+  quotaDueHint: 'La quota dovuta è il maggiore tra la quota percentuale e la quota minima.',
+  minimumPending: 'Seleziona il lavoro e indica i partecipanti per calcolare la quota minima.',
   shareOfNet: (percent: string) => `${percent} dei contributi netti`,
   minimumFor: (rate: string, count: number, officialCalendar: boolean) =>
     `minimo ${rate} × ${count} ${officialCalendar

@@ -264,8 +264,16 @@ export type WorkQuota = {
   owed: number;
 };
 
+export type WorkQuotaPreview = { [K in keyof WorkQuota]: number | null };
+
 function roundCents(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function contributionAmounts(collected: number, venueCost: number, rates: IcefluQuotaRates) {
+  const net = roundCents(collected - venueCost);
+  const share = roundCents((Math.max(0, net) * rates.sharePercent) / 100);
+  return { net, share };
 }
 
 export function computeWorkQuota(args: {
@@ -276,8 +284,7 @@ export function computeWorkQuota(args: {
   officialCalendar: boolean;
   rates: IcefluQuotaRates;
 }): WorkQuota {
-  const net = roundCents(args.collected - args.venueCost);
-  const share = roundCents((Math.max(0, net) * args.rates.sharePercent) / 100);
+  const { net, share } = contributionAmounts(args.collected, args.venueCost, args.rates);
   const counted = args.officialCalendar ? Math.max(0, args.total - args.initiated) : args.total;
   const minimum = roundCents(counted * args.rates.minimumPerPerson);
   return { net, share, counted, minimum, owed: Math.max(share, minimum) };
@@ -294,14 +301,19 @@ export function workQuota(work: Pick<Work, 'attendees' | 'contributions' | 'offi
   });
 }
 
-/** The quota the form's figures imply, or null while any of them is not valid. */
-export function formWorkQuota(form: WorkFormState, officialCalendar: boolean, rates: IcefluQuotaRates): WorkQuota | null {
+/** Preview each amount as soon as its own inputs are valid. A missing work type has no calendar classification yet. */
+export function formWorkQuota(form: WorkFormState, officialCalendar: boolean | null, rates: IcefluQuotaRates): WorkQuotaPreview {
   const collected = parseDecimal(form.contributionsCollected);
   const venueCost = parseDecimal(form.venueCost);
-  const total = parseCount(form.totalAttendees);
-  const initiated = parseCount(form.initiatedAttendees);
-  if (collected === null || venueCost === null || total === null || initiated === null || initiated > total) return null;
-  return computeWorkQuota({ collected, venueCost, total, initiated, officialCalendar, rates });
+  const { net, share } = collected !== null && venueCost !== null
+    ? contributionAmounts(collected, venueCost, rates)
+    : { net: null, share: null };
+  const counted = officialCalendar === null
+    ? null
+    : officialCalendar ? whiteAttendees(form) : parseCount(form.totalAttendees);
+  const minimum = counted === null ? null : roundCents(counted * rates.minimumPerPerson);
+  const owed = share === null || minimum === null ? null : Math.max(share, minimum);
+  return { net, share, counted, minimum, owed };
 }
 
 /** The admin's rates, or null unless the share is a percentage up to 100 and the minimum an amount. */

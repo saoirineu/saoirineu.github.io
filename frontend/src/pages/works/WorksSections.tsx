@@ -33,7 +33,7 @@ import {
   type WorkFilter,
   type WorkFormError,
   type WorkFormState,
-  type WorkQuota
+  type WorkQuotaPreview
 } from './form';
 
 
@@ -55,27 +55,80 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-/** Both ways of reckoning the ICEFLU quota, with the one that applies emphasised. */
-function QuotaBreakdown({ copy, numberLocale, quota, rates, officialCalendar, className = '' }: {
+function ContributionValue({ id, label, value, computedLabel, hint, emphasized = false }: {
+  id: string;
+  label: string;
+  value: string;
+  computedLabel?: string;
+  hint?: string;
+  emphasized?: boolean;
+}) {
+  return (
+    <div>
+      <label className={labelCls()} htmlFor={id}>
+        {label}
+        {computedLabel ? <span className="font-normal text-slate-400"> ({computedLabel})</span> : null}
+      </label>
+      <output id={id} className={`block rounded-lg border border-dashed border-slate-200 bg-white px-3 py-1.5 text-sm ${emphasized ? 'font-semibold text-slate-800' : 'text-slate-700'}`}>
+        {value}
+      </output>
+      {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Show the rates even while the figures needed for the share or minimum are missing. */
+function QuotaBreakdown({ copy, numberLocale, quota, rates, officialCalendar }: {
   copy: WorksCopy;
   numberLocale: string;
-  quota: WorkQuota;
+  quota: WorkQuotaPreview;
   rates: IcefluQuotaRates;
   officialCalendar: boolean;
-  className?: string;
 }) {
-  const minimumApplies = quota.minimum > quota.share;
-  const applied = 'font-medium text-slate-800';
+  const euro = (amount: number | null) => amount === null ? '—' : formatEuro(amount, numberLocale);
   return (
-    <p className={`text-xs text-slate-500 ${className}`}>
-      <span className={minimumApplies ? '' : applied}>
-        {copy.shareOfNet(formatPercent(rates.sharePercent, numberLocale))}: {formatEuro(quota.share, numberLocale)}
-      </span>
-      {' · '}
-      <span className={minimumApplies ? applied : ''}>
-        {copy.minimumFor(formatEuro(rates.minimumPerPerson, numberLocale), quota.counted, officialCalendar)}: {formatEuro(quota.minimum, numberLocale)}
-      </span>
-    </p>
+    <>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <ContributionValue
+          id="work-share-percent"
+          label={copy.sharePercent}
+          value={formatPercent(rates.sharePercent, numberLocale)}
+        />
+        <ContributionValue
+          id="work-share-amount"
+          label={`${copy.shareAmount} (€)`}
+          value={euro(quota.share)}
+          computedLabel={copy.computed}
+          hint={copy.shareOfNet(formatPercent(rates.sharePercent, numberLocale))}
+        />
+        <ContributionValue
+          id="work-minimum-per-person"
+          label={copy.minimumPerPerson}
+          value={formatEuro(rates.minimumPerPerson, numberLocale)}
+          hint={copy.minimumPerPersonHint}
+        />
+        <ContributionValue
+          id="work-minimum-quota"
+          label={copy.minimumQuota}
+          value={euro(quota.minimum)}
+          computedLabel={copy.computed}
+          hint={quota.counted === null
+            ? copy.minimumPending
+            : copy.minimumFor(formatEuro(rates.minimumPerPerson, numberLocale), quota.counted, officialCalendar)}
+        />
+        <div className="sm:col-span-2">
+          <ContributionValue
+            id="work-quota-due"
+            label={copy.quotaDue}
+            value={euro(quota.owed)}
+            computedLabel={copy.computed}
+            hint={copy.quotaDueHint}
+            emphasized
+          />
+        </div>
+      </div>
+      <p className="text-xs text-slate-500">{copy.quotaRatesHint}</p>
+    </>
   );
 }
 
@@ -125,7 +178,7 @@ export function WorkRecordForm({
   const has = (...keys: WorkFormError[]) => keys.some(key => errors.includes(key));
   const whites = whiteAttendees(form);
   const officialCalendar = isOfficialCalendar(form.workTypeId, workTypes, editing ?? undefined);
-  const quota = formWorkQuota(form, officialCalendar, quotaRates);
+  const quota = formWorkQuota(form, form.workTypeId ? officialCalendar : null, quotaRates);
   const activeTypes = workTypes.filter(type => type.active);
   // A record keeps its type even after an admin deactivates or renames it.
   const retiredType = editing && form.workTypeId === editing.workTypeId && form.workTypeId !== OTHER_WORK_TYPE_ID
@@ -357,31 +410,20 @@ export function WorkRecordForm({
             />
             <FieldError copy={copy} errors={errors} keys={['venueCost']} />
           </div>
-          <div>
-            <span className={labelCls()}>{copy.netContributions} <span className="font-normal text-slate-400">({copy.computed})</span></span>
-            <output className="block rounded-lg border border-dashed border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700">
-              {quota ? formatEuro(quota.net, numberLocale) : '—'}
-            </output>
-          </div>
+          <ContributionValue
+            id="work-net-contributions"
+            label={copy.netContributions}
+            value={quota.net === null ? '—' : formatEuro(quota.net, numberLocale)}
+            computedLabel={copy.computed}
+          />
         </div>
-        <div className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-3">
-          <div>
-            <span className={labelCls()}>{copy.icefluBrazilQuota} <span className="font-normal text-slate-400">({copy.computed})</span></span>
-            <output className="block rounded-lg border border-dashed border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800">
-              {quota ? formatEuro(quota.owed, numberLocale) : '—'}
-            </output>
-          </div>
-          {quota ? (
-            <QuotaBreakdown
-              copy={copy}
-              numberLocale={numberLocale}
-              quota={quota}
-              rates={quotaRates}
-              officialCalendar={officialCalendar}
-              className="sm:col-span-2 sm:self-end sm:pb-2"
-            />
-          ) : null}
-        </div>
+        <QuotaBreakdown
+          copy={copy}
+          numberLocale={numberLocale}
+          quota={quota}
+          rates={quotaRates}
+          officialCalendar={officialCalendar}
+        />
       </FormSection>
 
       <div className="flex flex-wrap items-center gap-2">
