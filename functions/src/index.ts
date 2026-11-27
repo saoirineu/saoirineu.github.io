@@ -25,7 +25,7 @@ const leaderTokenSecret = defineSecret('LEADER_TOKEN_SECRET');
 
 /** Everything a mail-sending function needs declared on it. */
 const MAIL_SECRETS = [mailRelayToken];
-const appBaseUrl = defineString('APP_BASE_URL', { default: 'https://saoirineu.github.io' });
+const appBaseUrl = defineString('APP_BASE_URL', { default: 'https://portal.santodaime.it' });
 
 // Always-on recipients of the "new ICEFLU registration pending" admin notice.
 // Admins can add more via the settings/notifications doc (see loadNotificationRecipients).

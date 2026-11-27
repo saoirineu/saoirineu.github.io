@@ -65,8 +65,13 @@ npm run test        # tsc && node --test
 
 ## Deploy
 
-The frontend deploys to GitHub Pages via GitHub Actions on push. Backend pieces deploy via
-the Makefile:
+The frontend deploys to GitHub Pages via GitHub Actions on push. It is served at
+<https://portal.santodaime.it>, a custom domain set in the repository's Pages
+settings and pointed there by a CNAME (`portal` → `saoirineu.github.io`) in the
+santodaime.it cPanel Zone Editor; `saoirineu.github.io` redirects to it. Links in the
+emails come from `APP_BASE_URL` in the gitignored `functions/.env.sao-irineu`, and the
+domain must stay in Firebase Auth's authorized domains. Backend pieces deploy via the
+Makefile:
 
 ```bash
 make firestore-rules    # deploy Firestore rules

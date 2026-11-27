@@ -74,7 +74,7 @@ regenerate-leader-token:
 
 # Generates a leader-review URL for an existing event registration.
 # Usage: make leader-link ID=<registrationId> EMAIL=<leaderEmail> EVENT=<eventId> [BASE=<baseUrl>]
-# BASE defaults to http://localhost:5174 (dev). For production, pass BASE=https://saoirineu.github.io
+# BASE defaults to http://localhost:5174 (dev). For production, pass BASE=https://portal.santodaime.it
 leader-link:
 	@node scripts/leader-link.js --id "$(ID)" --email "$(EMAIL)" --event "$(EVENT)" $(if $(BASE),--base "$(BASE)",)
 

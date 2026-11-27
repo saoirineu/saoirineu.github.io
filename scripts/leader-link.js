@@ -11,7 +11,7 @@
  *
  * Usage:
  *   node scripts/leader-link.js --id <registrationId> --email <leaderEmail> --event <eventId>
- *   node scripts/leader-link.js --id abc123 --email leader@example.com --event encontro-europeu-2026 --base https://saoirineu.github.io
+ *   node scripts/leader-link.js --id abc123 --email leader@example.com --event encontro-europeu-2026 --base https://portal.santodaime.it
  */
 
 import crypto from 'crypto';
